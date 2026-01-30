@@ -2,6 +2,10 @@
 // Note: @testing-library/react-native v12.4+ has built-in matchers
 // No need to import extend-expect separately
 
+// Load environment variables from .env file for tests
+process.env.EXPO_PUBLIC_SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://pigtshfobiwuwaionxpo.supabase.co';
+process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpZ3RzaGZvYml3dXdhaW9ueHBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MDgzMTgsImV4cCI6MjA4NTI4NDMxOH0.Y_r1qK2yiHtNYdnKjbv0c3MnKjG8MOwBEC78n39uZwU';
+
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -35,6 +39,7 @@ jest.mock('@supabase/supabase-js', () => ({
       signInWithOAuth: jest.fn(),
       signOut: jest.fn(),
       getSession: jest.fn(),
+      getUser: jest.fn(),
       onAuthStateChange: jest.fn(() => ({
         data: { subscription: { unsubscribe: jest.fn() } },
       })),
