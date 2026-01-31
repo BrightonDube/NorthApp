@@ -7,12 +7,13 @@
  * - The Axis: Connection between AI and human
  * 
  * Design: Swiss-style geometry, monochromatic, scalable
+ * Platform-aware: Uses react-native-svg for native, inline SVG for web
  */
 
 import * as React from 'react';
-import Svg, { Path, Rect, SvgProps } from 'react-native-svg';
+import { Platform } from 'react-native';
 
-export interface LogoProps extends SvgProps {
+export interface LogoProps {
   /**
    * Primary color for the logo
    * @default "#09090B" (Zinc-950)
@@ -49,39 +50,80 @@ export interface LogoProps extends SvgProps {
 export const Logo: React.FC<LogoProps> = ({ 
   color = '#09090B', 
   size = 80,
-  ...props 
-}) => (
-  <Svg
-    width={size}
-    height={size}
-    viewBox="0 0 512 512"
-    fill="none"
-    {...props}
-  >
-    {/* The Base (Context/Foundation) - Subtle transparency */}
-    <Path
-      d="M256 460L160 316H256V460Z"
-      fill={color}
-      fillOpacity={0.6}
-    />
-    
-    {/* The Needle (North/AI/Guidance) - Solid */}
-    <Path
-      d="M256 52L352 196H256V52Z"
-      fill={color}
-    />
-    
-    {/* The Axis (System/Connection) - Very subtle */}
-    <Rect
-      x="254"
-      y="180"
-      width="4"
-      height="152"
-      fill={color}
-      fillOpacity={0.2}
-    />
-  </Svg>
-);
+}) => {
+  // For web, use inline SVG to avoid react-native-svg issues
+  if (Platform.OS === 'web') {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 512 512"
+        fill="none"
+        style={{ display: 'inline-block' }}
+      >
+        {/* The Base (Context/Foundation) - Subtle transparency */}
+        <path
+          d="M256 460L160 316H256V460Z"
+          fill={color}
+          fillOpacity={0.6}
+        />
+        
+        {/* The Needle (North/AI/Guidance) - Solid */}
+        <path
+          d="M256 52L352 196H256V52Z"
+          fill={color}
+        />
+        
+        {/* The Axis (System/Connection) - Very subtle */}
+        <rect
+          x="254"
+          y="180"
+          width="4"
+          height="152"
+          fill={color}
+          fillOpacity={0.2}
+        />
+      </svg>
+    );
+  }
+
+  // For native platforms, use react-native-svg
+  const Svg = require('react-native-svg').default;
+  const Path = require('react-native-svg').Path;
+  const Rect = require('react-native-svg').Rect;
+
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 512 512"
+      fill="none"
+    >
+      {/* The Base (Context/Foundation) - Subtle transparency */}
+      <Path
+        d="M256 460L160 316H256V460Z"
+        fill={color}
+        fillOpacity={0.6}
+      />
+      
+      {/* The Needle (North/AI/Guidance) - Solid */}
+      <Path
+        d="M256 52L352 196H256V52Z"
+        fill={color}
+      />
+      
+      {/* The Axis (System/Connection) - Very subtle */}
+      <Rect
+        x="254"
+        y="180"
+        width="4"
+        height="152"
+        fill={color}
+        fillOpacity={0.2}
+      />
+    </Svg>
+  );
+};
 
 /**
  * Logo variant for splash screens and large displays

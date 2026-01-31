@@ -7,51 +7,75 @@ module.exports = {
     './components/**/*.{js,jsx,ts,tsx}',
   ],
   presets: [require('nativewind/preset')],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Semantic color tokens - these reference CSS variables
-        background: 'var(--background)',
-        foreground: 'var(--foreground)',
+        // North Design System Colors
+        // Light mode values as defaults, dark mode handled via dark: prefix
+        background: {
+          DEFAULT: '#FFFFFF',
+          dark: '#050505',
+        },
+        foreground: {
+          DEFAULT: '#09090B',
+          dark: '#FAFAFA',
+        },
         surface: {
-          DEFAULT: 'var(--surface)',
-          highlight: 'var(--surface-highlight)',
+          DEFAULT: '#F4F4F5',
+          dark: '#18181B',
+          highlight: '#E4E4E7',
+          'highlight-dark': '#27272A',
         },
         brand: {
-          primary: 'var(--brand-primary)',
-          inverse: 'var(--brand-inverse)',
+          primary: '#09090B',
+          'primary-dark': '#FAFAFA',
+          inverse: '#FFFFFF',
+          'inverse-dark': '#09090B',
         },
         // Text colors
-        primary: 'var(--text-primary)',
-        secondary: 'var(--text-secondary)',
-        tertiary: 'var(--text-tertiary)',
+        'text-primary': {
+          DEFAULT: '#09090B',
+          dark: '#FAFAFA',
+        },
+        'text-secondary': {
+          DEFAULT: '#71717A',
+          dark: '#A1A1AA',
+        },
+        'text-tertiary': {
+          DEFAULT: '#D4D4D8',
+          dark: '#52525B',
+        },
         // Border
-        'border-subtle': 'var(--border-subtle)',
+        'border-subtle': {
+          DEFAULT: '#E4E4E7',
+          dark: '#27272A',
+        },
         // Semantic colors (fixed across themes)
         error: '#FF453A',
         success: '#30D158',
       },
       fontFamily: {
-        sans: ['SF Pro Text', 'Inter', 'System', 'sans-serif'],
-        mono: ['SF Mono', 'JetBrains Mono', 'Menlo', 'monospace'],
-        display: ['SF Pro Display', 'Inter', 'System', 'sans-serif'],
+        sans: ['System', 'sans-serif'],
+        mono: ['Menlo', 'monospace'],
+        display: ['System', 'sans-serif'],
       },
       borderWidth: {
         hairline: hairlineWidth(),
       },
       borderRadius: {
-        '3xl': '24px',
-        '4xl': '32px',
+        '3xl': 24,
+        '4xl': 32,
       },
       fontSize: {
         // Custom font sizes matching design system
-        'display': ['32px', { lineHeight: '1.1', fontWeight: '700' }],
-        'h1': ['24px', { lineHeight: '1.2', fontWeight: '600' }],
-        'h2': ['18px', { lineHeight: '1.3', fontWeight: '500' }],
-        'body': ['16px', { lineHeight: '1.5', fontWeight: '400' }],
-        'sub': ['14px', { lineHeight: '1.4', fontWeight: '400' }],
-        'mono': ['13px', { lineHeight: '1.4', fontWeight: '500' }],
-        'button': ['16px', { lineHeight: '1.0', fontWeight: '600' }],
+        'display': [32, { lineHeight: 35, fontWeight: '700' }],
+        'h1': [24, { lineHeight: 29, fontWeight: '600' }],
+        'h2': [18, { lineHeight: 23, fontWeight: '500' }],
+        'body': [16, { lineHeight: 24, fontWeight: '400' }],
+        'sub': [14, { lineHeight: 20, fontWeight: '400' }],
+        'mono-size': [13, { lineHeight: 18, fontWeight: '500' }],
+        'button': [16, { lineHeight: 16, fontWeight: '600' }],
       },
     },
   },

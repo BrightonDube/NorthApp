@@ -1,39 +1,12 @@
 import '../global.css';
 import { useEffect, useState } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, SplashScreen } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore, setupAuthListener } from '@/stores/authStore';
 
-/**
- * Auth state protection hook
- * Handles routing based on authentication state
- */
-function useProtectedRoute() {
-  const { user, isLoading } = useAuthStore();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inAuthGroup = segments[0] === '(auth)';
-    const inAuthCallback = segments[0] === 'auth';
-
-    if (!user && !inAuthGroup && !inAuthCallback) {
-      // Not authenticated, redirect to login
-      router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
-      // Authenticated, redirect to main app
-      // Check if user needs onboarding (no name set)
-      if (!user.name) {
-        router.replace('/(auth)/onboarding');
-      } else {
-        router.replace('/(tabs)');
-      }
-    }
-  }, [user, segments, isLoading]);
-}
+// Prevent the splash screen from auto-hiding until we're ready
+SplashScreen.preventAutoHideAsync();
 
 /**
  * Root Layout Component
@@ -46,7 +19,7 @@ function useProtectedRoute() {
  */
 export default function RootLayout() {
   const { restoreSession, isLoading } = useAuthStore();
-  const [isReady, setIsReady] = useState(false);
+  const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
   // Initialize auth on app start
   useEffect(() => {
@@ -60,18 +33,15 @@ export default function RootLayout() {
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
-        setIsReady(true);
+        setIsAuthInitialized(true);
       }
     };
 
     init();
   }, []);
 
-  // Apply protected route logic
-  useProtectedRoute();
-
-  // Show loading while initializing
-  if (!isReady || isLoading) {
+  // Show loading while initializing auth - render Slot to mount navigation
+  if (!isAuthInitialized || isLoading) {
     return (
       <SafeAreaProvider>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
@@ -83,17 +53,72 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'fade',
-        }}
-      >
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-      </Stack>
+      <RootLayoutNav />
     </SafeAreaProvider>
+  );
+}
+
+/**
+ * Root Layout Navigation
+ * Separated to ensure Stack is always mounted before useProtectedRoute runs
+ */
+function RootLayoutNav() {
+  const { user, isLoading } = useAuthStore();
+  const segments = useSegments();
+  const router = useRouter();
+  const [hasNavigated, setHasNavigated] = useState(false);
+
+  // Hide splash screen once we're ready
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
+  // Protected route logic - runs after Stack is mounted
+  useEffect(() => {
+    // Prevent multiple navigations
+    if (hasNavigated) return;
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthCallback = segments[0] === 'auth';
+    const inTabs = segments[0] === '(tabs)';
+
+    // Small delay to ensure navigation is fully ready
+    const timer = setTimeout(() => {
+      if (!user && !inAuthGroup && !inAuthCallback) {
+        // Not authenticated, redirect to login
+        setHasNavigated(true);
+        router.replace('/(auth)/login');
+      } else if (user && (inAuthGroup || (!inTabs && !inAuthCallback))) {
+        // Authenticated, redirect to main app
+        setHasNavigated(true);
+        if (!user.name || user.name.trim().length < 2) {
+          router.replace('/(auth)/onboarding');
+        } else {
+          router.replace('/(tabs)');
+        }
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [user, segments, isLoading, hasNavigated]);
+
+  // Reset hasNavigated when user changes (login/logout)
+  useEffect(() => {
+    setHasNavigated(false);
+  }, [user?.id]);
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="auth" options={{ headerShown: false }} />
+    </Stack>
   );
 }

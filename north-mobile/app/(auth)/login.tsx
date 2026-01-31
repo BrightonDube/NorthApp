@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
 import { Logo } from '@/components/Logo';
+import { AppleLogo } from '@/components/AppleLogo';
 import { GoogleLogo } from '@/components/GoogleLogo';
 
 /**
@@ -263,15 +264,16 @@ export default function LoginScreen() {
 
             {/* Apple Sign In Button */}
             <TouchableOpacity
-              className={`w-full py-4 rounded-lg border-2 border-gray-900 ${
+              className={`w-full py-4 rounded-lg border-2 border-gray-900 flex-row items-center justify-center ${
                 isLoading ? 'opacity-50' : ''
               }`}
               onPress={handleAppleSignIn}
               disabled={isLoading}
               testID="apple-signin-button"
             >
-              <Text className="text-gray-900 text-center text-base font-semibold">
-                🍎 Sign in with Apple
+              <AppleLogo size={20} color="#000000" />
+              <Text className="text-gray-900 text-center text-base font-semibold ml-2">
+                Sign in with Apple
               </Text>
             </TouchableOpacity>
 
