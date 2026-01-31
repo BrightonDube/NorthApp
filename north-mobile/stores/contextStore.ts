@@ -14,6 +14,32 @@ import { supabase } from '@/lib/supabase';
 import type { UserContext, ContextCategory } from '@/types';
 
 /**
+ * Database row type (snake_case from Supabase)
+ */
+interface DbContextRow {
+  id: string;
+  user_id: string;
+  category: ContextCategory;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Map database row to UserContext type
+ */
+function mapDbToContext(row: DbContextRow): UserContext {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    category: row.category,
+    content: row.content,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
  * Context store state
  */
 interface ContextState {
@@ -57,7 +83,7 @@ const FREE_TIER_LIMIT = 3;
  * - Persistence to AsyncStorage for offline access
  * - Free tier limit enforcement
  * - Category-based filtering
- * 
+ *
  * @example
  * ```typescript
  * import { useContextStore } from '@/stores/contextStore';
@@ -125,7 +151,7 @@ export const useContextStore = create<ContextStore>()(
           if (error) throw error;
 
           set({
-            items: data || [],
+            items: ((data || []) as DbContextRow[]).map(mapDbToContext),
             lastSynced: Date.now(),
             isLoading: false,
           });
@@ -157,10 +183,17 @@ export const useContextStore = create<ContextStore>()(
        * ```
        */
       createContext: async (category, content) => {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
         const tempId = `temp-${Date.now()}`;
         const tempItem: UserContext = {
           id: tempId,
-          userId: '',
+          userId: user.id,
           category,
           content,
           createdAt: new Date().toISOString(),
@@ -173,20 +206,22 @@ export const useContextStore = create<ContextStore>()(
         try {
           const { data, error } = await supabase
             .from('user_context')
-            .insert({ category, content })
+            .insert({ user_id: user.id, category, content })
             .select()
             .single();
 
           if (error) throw error;
 
+          const mappedItem = mapDbToContext(data as DbContextRow);
+
           // Replace temp item with real item from server
           set((state) => ({
             items: state.items.map((item) =>
-              item.id === tempId ? data : item
+              item.id === tempId ? mappedItem : item
             ),
           }));
 
-          return data;
+          return mappedItem;
         } catch (error) {
           // Rollback - remove temp item on error
           set((state) => ({
@@ -201,7 +236,7 @@ export const useContextStore = create<ContextStore>()(
        * Update an existing context item
        * 
        * Validates: Requirements 3.5
-       * 
+       *
        * Implements optimistic updates: the item is updated in the UI immediately,
        * then synced with the server. If the request fails, the previous state
        * is restored (rollback).

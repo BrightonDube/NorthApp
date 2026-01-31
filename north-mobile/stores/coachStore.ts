@@ -14,6 +14,36 @@ import { supabase } from '@/lib/supabase';
 import type { Coach } from '@/types';
 
 /**
+ * Database row type (snake_case from Supabase)
+ */
+interface DbCoachRow {
+  id: string;
+  name: string;
+  icon: string;
+  system_prompt: string;
+  creator_id: string | null;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Map database row to Coach type
+ */
+function mapDbToCoach(row: DbCoachRow): Coach {
+  return {
+    id: row.id,
+    name: row.name,
+    icon: row.icon,
+    systemPrompt: row.system_prompt,
+    creatorId: row.creator_id,
+    isPublic: row.is_public,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
  * Coach store state
  */
 interface CoachState {
@@ -128,7 +158,7 @@ export const useCoachStore = create<CoachStore>()(
           if (error) throw error;
 
           set({
-            coaches: data || [],
+            coaches: ((data || []) as DbCoachRow[]).map(mapDbToCoach),
             lastSynced: Date.now(),
             isLoading: false,
           });
@@ -142,7 +172,7 @@ export const useCoachStore = create<CoachStore>()(
 
       /**
        * Create a new private coach
-       * 
+       *
        * Validates: Requirements 6.4, 6.5, 7.2
        * 
        * Implements optimistic updates: the coach is added to the UI immediately
@@ -196,32 +226,16 @@ export const useCoachStore = create<CoachStore>()(
 
           if (error) throw error;
 
+          const mappedCoach = mapDbToCoach(data as DbCoachRow);
+
           // Replace temp coach with real coach from server
           set((state) => ({
             coaches: state.coaches.map((coach) =>
-              coach.id === tempId ? {
-                id: data.id,
-                name: data.name,
-                icon: data.icon,
-                systemPrompt: data.system_prompt,
-                creatorId: data.creator_id,
-                isPublic: data.is_public,
-                createdAt: data.created_at,
-                updatedAt: data.updated_at,
-              } : coach
+              coach.id === tempId ? mappedCoach : coach
             ),
           }));
 
-          return {
-            id: data.id,
-            name: data.name,
-            icon: data.icon,
-            systemPrompt: data.system_prompt,
-            creatorId: data.creator_id,
-            isPublic: data.is_public,
-            createdAt: data.created_at,
-            updatedAt: data.updated_at,
-          };
+          return mappedCoach;
         } catch (error) {
           // Rollback - remove temp coach on error
           set((state) => ({
