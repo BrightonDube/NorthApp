@@ -5,7 +5,7 @@ module.exports = {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { configFile: './babel.config.js' }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|expo|@expo|@supabase|zustand|react-native-purchases)/)',
+    'node_modules/(?!(react-native|@react-native|expo|@expo|expo-web-browser|expo-auth-session|expo-crypto|expo-modules-core|expo-linking|expo-constants|@supabase|zustand|react-native-purchases|react-native-safe-area-context|react-native-css-interop|react-native-svg)/)',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testMatch: [

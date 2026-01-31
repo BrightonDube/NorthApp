@@ -90,13 +90,22 @@ import { useAuthStore } from '@/stores/authStore';
 
 ### Styling with NativeWind
 
-Use Tailwind CSS classes directly in your components:
+Use Tailwind CSS classes directly in your components. See the [Design System](./DESIGN_SYSTEM.md) and [Styling Guide](./STYLING_GUIDE.md) for detailed styling instructions.
 
 ```tsx
-<View className="flex-1 bg-white p-4">
-  <Text className="text-2xl font-bold text-gray-900">Hello World</Text>
+<View className="flex-1 bg-background p-4">
+  <Text className="text-2xl font-bold text-primary">Hello World</Text>
 </View>
 ```
+
+**Important:** Always use semantic color tokens (e.g., `bg-background`, `text-primary`) instead of arbitrary colors (e.g., `bg-white`, `text-gray-900`).
+
+## Design System
+
+The app follows a strict design system for consistency:
+
+- **[DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md)** - Complete design system documentation including colors, typography, components
+- **[STYLING_GUIDE.md](./STYLING_GUIDE.md)** - Implementation guide for AI coding agents with code examples
 
 ## Architecture
 

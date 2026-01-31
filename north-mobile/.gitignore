@@ -25,12 +25,18 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
 # macOS
 .DS_Store
 *.pem
 
+# Windows
+Thumbs.db
+
 # local env files
+.env
+.env.local
 .env*.local
 
 # typescript
@@ -39,3 +45,19 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Development utility scripts
+verify-*.js
+test-*.js
+!__tests__/**
+run-*.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+.nyc_output/

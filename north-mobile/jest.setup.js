@@ -11,6 +11,33 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
+// Mock react-native-safe-area-context
+jest.mock('react-native-safe-area-context', () => require('./__mocks__/react-native-safe-area-context'));
+
+// Mock Expo Web Browser
+jest.mock('expo-web-browser', () => ({
+  openAuthSessionAsync: jest.fn(() => Promise.resolve({ type: 'cancel' })),
+  openBrowserAsync: jest.fn(() => Promise.resolve({ type: 'cancel' })),
+  maybeCompleteAuthSession: jest.fn(),
+  dismissBrowser: jest.fn(),
+}));
+
+// Mock Expo Auth Session
+jest.mock('expo-auth-session', () => ({
+  makeRedirectUri: jest.fn(() => 'north://auth/callback'),
+  useAuthRequest: jest.fn(() => [null, null, jest.fn()]),
+  ResponseType: { Token: 'token' },
+  Prompt: { Login: 'login' },
+}));
+
+// Mock Expo Linking
+jest.mock('expo-linking', () => ({
+  createURL: jest.fn((path) => `north://${path}`),
+  getInitialURL: jest.fn(() => Promise.resolve(null)),
+  addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+  openURL: jest.fn(),
+}));
+
 // Mock Expo Router
 jest.mock('expo-router', () => ({
   useRouter: jest.fn(() => ({
@@ -21,13 +48,13 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: jest.fn(() => ({})),
   useSegments: jest.fn(() => []),
   usePathname: jest.fn(() => '/'),
-  Link: ({ children }) => children,
-  Redirect: () => null,
+  Link: jest.fn(({ children }) => children),
+  Redirect: jest.fn(() => null),
   Stack: {
-    Screen: () => null,
+    Screen: jest.fn(() => null),
   },
   Tabs: {
-    Screen: () => null,
+    Screen: jest.fn(() => null),
   },
 }));
 
@@ -37,9 +64,11 @@ jest.mock('@supabase/supabase-js', () => ({
     auth: {
       signInWithPassword: jest.fn(),
       signInWithOAuth: jest.fn(),
+      signUp: jest.fn(),
       signOut: jest.fn(),
       getSession: jest.fn(),
       getUser: jest.fn(),
+      setSession: jest.fn(),
       onAuthStateChange: jest.fn(() => ({
         data: { subscription: { unsubscribe: jest.fn() } },
       })),

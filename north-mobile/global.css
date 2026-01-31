@@ -1,3 +1,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* ===================================
+     NORTH DESIGN SYSTEM - Color Tokens
+     =================================== */
+  
+  /* Light Mode (Default) */
+  :root {
+    /* Background colors */
+    --background: #FFFFFF;
+    --foreground: #09090B;
+    
+    /* Surface colors (cards, inputs, modals) */
+    --surface: #F4F4F5;
+    --surface-highlight: #E4E4E7;
+    
+    /* Brand colors */
+    --brand-primary: #09090B;
+    --brand-inverse: #FFFFFF;
+    
+    /* Text colors */
+    --text-primary: #09090B;
+    --text-secondary: #71717A;
+    --text-tertiary: #D4D4D8;
+    
+    /* Border colors */
+    --border-subtle: #E4E4E7;
+  }
+
+  /* Dark Mode */
+  .dark {
+    /* Background colors */
+    --background: #050505;
+    --foreground: #FAFAFA;
+    
+    /* Surface colors (cards, inputs, modals) */
+    --surface: #18181B;
+    --surface-highlight: #27272A;
+    
+    /* Brand colors */
+    --brand-primary: #FAFAFA;
+    --brand-inverse: #09090B;
+    
+    /* Text colors */
+    --text-primary: #FAFAFA;
+    --text-secondary: #A1A1AA;
+    --text-tertiary: #52525B;
+    
+    /* Border colors */
+    --border-subtle: #27272A;
+  }
+}
