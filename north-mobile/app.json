@@ -16,13 +16,19 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.north.mobile",
       "usesAppleSignIn": true,
+      "buildNumber": "1",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
         ],
         "NSCameraUsageDescription": "This app does not use the camera.",
         "NSMicrophoneUsageDescription": "This app does not use the microphone.",
-        "NSPhotoLibraryUsageDescription": "This app does not access your photo library."
+        "NSPhotoLibraryUsageDescription": "This app does not access your photo library.",
+        "SKAdNetworkItems": [
+          {
+            "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
+          }
+        ]
       }
     },
     "android": {
@@ -31,6 +37,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.north.mobile",
+      "versionCode": 1,
+      "permissions": [
+        "com.android.vending.BILLING"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -51,7 +61,30 @@
     },
     "plugins": [
       "expo-router",
-      "expo-web-browser"
-    ]
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "14.0"
+          },
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    },
+    "owner": "your-expo-username",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/your-eas-project-id"
+    }
   }
 }
