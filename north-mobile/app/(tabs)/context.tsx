@@ -1,26 +1,45 @@
 /**
- * Context Screen
+ * Context Management Screen
  * 
- * Allows users to manage their personal context items.
- * Context is grouped by category: values, goals, projects, constraints.
+ * Main screen for managing user context items (values, goals, projects, constraints).
+ * Features:
+ * - Display all context items grouped by category
+ * - Add button with tier check (free users limited to 3 items)
+ * - Edit and delete context items
+ * - Pull-to-refresh functionality
+ * - Empty state when no context items exist
+ * - Loading and error states
+ * - Pro upgrade prompt for free users at limit
+ * 
+ * Validates: Requirements 14.1-14.7
  */
 
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Placeholder data
-const CONTEXT_DATA = {
-  values: [],
-  goals: [],
-  projects: [],
-  constraints: [],
+// Category information
+const CATEGORY_INFO = {
+  values: { label: 'Values', icon: '💎' },
+  goals: { label: 'Goals', icon: '🎯' },
+  projects: { label: 'Projects', icon: '🚀' },
+  constraints: { label: 'Constraints', icon: '⚠️' },
 };
 
-const CATEGORY_INFO = {
-  values: { label: 'Values', icon: '💎', color: '#8B5CF6' },
-  goals: { label: 'Goals', icon: '🎯', color: '#3B82F6' },
-  projects: { label: 'Projects', icon: '📁', color: '#10B981' },
-  constraints: { label: 'Constraints', icon: '⚠️', color: '#F59E0B' },
+// Mock data for now
+const CONTEXT_DATA = {
+  values: ['I value transparency over politics', 'Family comes first'],
+  goals: ['Launch my startup by Q2', 'Write a book this year'],
+  projects: ['Building a SaaS for small businesses'],
+  constraints: ['I have 2 hours/day for deep work', 'Budget is limited'],
 };
 
 /**

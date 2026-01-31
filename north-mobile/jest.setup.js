@@ -94,6 +94,67 @@ jest.mock('react-native-purchases', () => ({
   setDebugLogsEnabled: jest.fn(),
 }));
 
+// Mock react-native-reanimated
+jest.mock('react-native-reanimated', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  
+  return {
+    __esModule: true,
+    default: {
+      View,
+      Text,
+      ScrollView: require('react-native').ScrollView,
+    },
+    FadeIn: jest.fn(),
+    FadeOut: jest.fn(),
+    FadeInDown: jest.fn(),
+    FadeInUp: jest.fn(),
+    SlideInRight: jest.fn(),
+    SlideOutLeft: jest.fn(),
+    useSharedValue: jest.fn(() => ({ value: 0 })),
+    useAnimatedStyle: jest.fn(() => ({})),
+    withTiming: jest.fn((value) => value),
+    withSpring: jest.fn((value) => value),
+    runOnJS: jest.fn((fn) => fn),
+  };
+});
+
+// Mock react-native-gesture-handler
+jest.mock('react-native-gesture-handler', () => {
+  const View = require('react-native').View;
+  return {
+    Swipeable: ({ children, renderRightActions }: any) => (
+      <View>
+        {children}
+        {renderRightActions && renderRightActions()}
+      </View>
+    ),
+    GestureHandlerRootView: View,
+    PanGestureHandler: View,
+    TapGestureHandler: View,
+    State: {},
+    Directions: {},
+  };
+});
+
+// Mock expo-haptics
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+}));
+
 // Silence console warnings in tests
 global.console = {
   ...console,
