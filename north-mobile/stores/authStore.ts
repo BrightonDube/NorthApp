@@ -8,15 +8,32 @@
  */
 
 import { create } from 'zustand';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { makeRedirectUri } from 'expo-auth-session';
+import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import type { AuthStore, User, Session } from '@/types';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
 
 // Required for OAuth to work properly on native - completes the auth session
 WebBrowser.maybeCompleteAuthSession();
+
+/**
+ * Get the correct redirect URI for OAuth
+ * In Expo Go, we need to use the exp:// scheme
+ * In production builds, we use the north:// scheme
+ */
+function getRedirectUri(): string {
+  // For Expo Go development, use Linking.createURL which handles the exp:// scheme
+  const redirectUri = Linking.createURL('auth/callback');
+  console.log('===========================================');
+  console.log('IMPORTANT: Add this URL to Supabase Redirect URLs:');
+  console.log(redirectUri);
+  console.log('===========================================');
+  return redirectUri;
+}
 
 // Storage keys for session persistence
 const SESSION_STORAGE_KEY = '@north/session';
@@ -247,105 +264,69 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Create the redirect URI using the app scheme
-      // This MUST match what's configured in Supabase Auth settings
-      const redirectUrl = 'north://auth/callback';
-      
-      console.log('Google OAuth - Using redirect URL:', redirectUrl);
-      
+      // Get the correct redirect URI for the current environment
+      const redirectTo = getRedirectUri();
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
+          redirectTo,
           skipBrowserRedirect: true,
         },
       });
 
       if (error) {
-        console.error('Google OAuth error:', error);
         set({ error: error.message, isLoading: false });
         return;
       }
 
       if (data?.url) {
-        console.log('Opening OAuth URL:', data.url);
-        
-        // Open the OAuth URL in the system browser
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
-          redirectUrl,
-          {
-            showInRecents: true,
-            preferEphemeralSession: false,
-          }
+          redirectTo,
+          { showInRecents: true }
         );
-        
-        console.log('WebBrowser result:', result.type);
-        
-        if (result.type === 'success' && result.url) {
-          console.log('Success URL:', result.url);
-          
-          // Extract tokens from the callback URL
+
+        if (result.type === 'success') {
           const url = result.url;
+
+          // Try to extract tokens from hash fragment first (implicit flow)
           let accessToken: string | null = null;
           let refreshToken: string | null = null;
-          
-          // Parse hash fragment (Supabase uses implicit grant by default)
+
+          // Check hash fragment (for implicit grant)
           if (url.includes('#')) {
-            const hashPart = url.split('#')[1];
-            if (hashPart) {
-              const hashParams = new URLSearchParams(hashPart);
-              accessToken = hashParams.get('access_token');
-              refreshToken = hashParams.get('refresh_token');
-              console.log('Found tokens in hash fragment');
-            }
+            const hashParams = new URLSearchParams(url.split('#')[1]);
+            accessToken = hashParams.get('access_token');
+            refreshToken = hashParams.get('refresh_token');
           }
-          
-          // Also check query params as fallback
+
+          // Check query params (for authorization code flow)
           if (!accessToken && url.includes('?')) {
-            const queryPart = url.split('?')[1]?.split('#')[0];
-            if (queryPart) {
-              const queryParams = new URLSearchParams(queryPart);
-              accessToken = queryParams.get('access_token');
-              refreshToken = queryParams.get('refresh_token');
-              console.log('Found tokens in query params');
-            }
+            const queryParams = new URLSearchParams(url.split('?')[1].split('#')[0]);
+            accessToken = queryParams.get('access_token');
+            refreshToken = queryParams.get('refresh_token');
           }
-          
+
           if (accessToken && refreshToken) {
-            console.log('Setting session with tokens...');
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            const { error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
-            
+
             if (sessionError) {
-              console.error('Session error:', sessionError);
               set({ error: sessionError.message, isLoading: false });
               return;
             }
-            
-            if (sessionData.session && sessionData.user) {
-              console.log('Session set successfully');
-              // The auth state listener will handle updating the store
-            }
           } else {
-            console.log('No tokens found in URL, attempting to get session...');
-            // Try to get the session anyway (in case of cookie-based auth)
-            const { data: sessionCheck } = await supabase.auth.getSession();
-            if (!sessionCheck.session) {
-              set({ error: 'Failed to complete authentication', isLoading: false });
-              return;
-            }
+            // If no tokens in URL, the auth state listener should handle it
+            console.log('No tokens in redirect URL, checking session...');
+            await supabase.auth.getSession();
           }
-        } else if (result.type === 'cancel' || result.type === 'dismiss') {
-          console.log('User cancelled OAuth');
+        } else if (result.type === 'cancel') {
           set({ error: null, isLoading: false });
           return;
         }
-      } else {
-        set({ error: 'Failed to start OAuth flow', isLoading: false });
-        return;
       }
 
       set({ isLoading: false });
@@ -370,15 +351,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Use web-based OAuth flow - works in Expo Go
-      const redirectUrl = 'north://auth/callback';
-      
-      console.log('Apple OAuth - Using redirect URL:', redirectUrl);
-      
+      // Get the correct redirect URI for the current environment
+      const redirectTo = getRedirectUri();
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: redirectUrl,
+          redirectTo,
           skipBrowserRedirect: true,
         },
       });
@@ -390,82 +369,52 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }
 
       if (data?.url) {
-        console.log('Opening Apple OAuth URL:', data.url);
-        
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
-          redirectUrl,
-          {
-            showInRecents: true,
-            preferEphemeralSession: false,
-          }
+          redirectTo,
+          { showInRecents: true }
         );
-        
-        console.log('WebBrowser result:', result.type);
-        
-        if (result.type === 'success' && result.url) {
-          console.log('Success URL:', result.url);
-          
-          // Extract tokens from the callback URL
+
+        if (result.type === 'success') {
           const url = result.url;
+
+          // Try to extract tokens from hash fragment first (implicit flow)
           let accessToken: string | null = null;
           let refreshToken: string | null = null;
-          
-          // Parse hash fragment (Supabase uses implicit grant by default)
+
+          // Check hash fragment (for implicit grant)
           if (url.includes('#')) {
-            const hashPart = url.split('#')[1];
-            if (hashPart) {
-              const hashParams = new URLSearchParams(hashPart);
-              accessToken = hashParams.get('access_token');
-              refreshToken = hashParams.get('refresh_token');
-              console.log('Found tokens in hash fragment');
-            }
+            const hashParams = new URLSearchParams(url.split('#')[1]);
+            accessToken = hashParams.get('access_token');
+            refreshToken = hashParams.get('refresh_token');
           }
-          
-          // Also check query params as fallback
+
+          // Check query params (for authorization code flow)
           if (!accessToken && url.includes('?')) {
-            const queryPart = url.split('?')[1]?.split('#')[0];
-            if (queryPart) {
-              const queryParams = new URLSearchParams(queryPart);
-              accessToken = queryParams.get('access_token');
-              refreshToken = queryParams.get('refresh_token');
-              console.log('Found tokens in query params');
-            }
+            const queryParams = new URLSearchParams(url.split('?')[1].split('#')[0]);
+            accessToken = queryParams.get('access_token');
+            refreshToken = queryParams.get('refresh_token');
           }
-          
+
           if (accessToken && refreshToken) {
-            console.log('Setting session with tokens...');
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            const { error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
-            
+
             if (sessionError) {
-              console.error('Session error:', sessionError);
               set({ error: sessionError.message, isLoading: false });
               return;
             }
-            
-            if (sessionData.session && sessionData.user) {
-              console.log('Session set successfully');
-              // The auth state listener will handle updating the store
-            }
           } else {
-            console.log('No tokens found in URL, attempting to get session...');
-            const { data: sessionCheck } = await supabase.auth.getSession();
-            if (!sessionCheck.session) {
-              set({ error: 'Failed to complete authentication', isLoading: false });
-              return;
-            }
+            // If no tokens in URL, the auth state listener should handle it
+            console.log('No tokens in redirect URL, checking session...');
+            await supabase.auth.getSession();
           }
-        } else if (result.type === 'cancel' || result.type === 'dismiss') {
-          console.log('User cancelled OAuth');
+        } else if (result.type === 'cancel') {
           set({ error: null, isLoading: false });
           return;
         }
-      } else {
-        set({ error: 'Failed to start OAuth flow', isLoading: false });
-        return;
       }
 
       set({ isLoading: false });

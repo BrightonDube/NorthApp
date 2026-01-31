@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/stores/authStore';
 import { useCoachStore } from '@/stores/coachStore';
+import { useProFeature } from '@/stores/billingStore';
 import { CoachCard } from '@/components/coach';
 import type { Coach } from '@/types';
 
@@ -109,6 +110,9 @@ export default function HomeScreen() {
   } = useCoachStore();
   
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Pro feature check for coach creation
+  const { canAccess: isProUser, requirePro } = useProFeature('coach_creation');
 
   // Fetch coaches on mount
   useEffect(() => {
@@ -128,8 +132,13 @@ export default function HomeScreen() {
   };
 
   const handleCreateCoach = () => {
-    // TODO: Open coach creation modal or show paywall
-    console.log('Create coach pressed - TODO: implement modal');
+    // Show paywall if not Pro, otherwise open creation modal
+    if (!requirePro()) {
+      return; // Paywall will be shown
+    }
+    // TODO: Open coach creation modal
+    console.log('Create coach pressed - user is Pro, opening modal');
+    router.push('/coach/create');
   };
 
   // Separate coaches by type

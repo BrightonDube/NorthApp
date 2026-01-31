@@ -4,6 +4,8 @@ import { Stack, useRouter, useSegments, SplashScreen } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore, setupAuthListener } from '@/stores/authStore';
+import { useBillingStore } from '@/stores/billingStore';
+import { PaywallModal } from '@/components/billing';
 
 // Prevent the splash screen from auto-hiding until we're ready
 SplashScreen.preventAutoHideAsync();
@@ -18,7 +20,8 @@ SplashScreen.preventAutoHideAsync();
  * - Global navigation structure
  */
 export default function RootLayout() {
-  const { restoreSession, isLoading } = useAuthStore();
+  const { restoreSession, isLoading, user } = useAuthStore();
+  const { initialize: initializeBilling } = useBillingStore();
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
   // Initialize auth on app start
@@ -40,6 +43,13 @@ export default function RootLayout() {
     init();
   }, []);
 
+  // Initialize RevenueCat when user is authenticated
+  useEffect(() => {
+    if (user?.id) {
+      initializeBilling(user.id);
+    }
+  }, [user?.id]);
+
   // Show loading while initializing auth - render Slot to mount navigation
   if (!isAuthInitialized || isLoading) {
     return (
@@ -54,7 +64,24 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <RootLayoutNav />
+      <GlobalPaywall />
     </SafeAreaProvider>
+  );
+}
+
+/**
+ * Global Paywall Component
+ * Renders the paywall modal that can be triggered from anywhere in the app
+ */
+function GlobalPaywall() {
+  const { isPaywallVisible, paywallFeature, hidePaywall } = useBillingStore();
+  
+  return (
+    <PaywallModal
+      visible={isPaywallVisible}
+      feature={paywallFeature || undefined}
+      onClose={hidePaywall}
+    />
   );
 }
 
@@ -119,6 +146,15 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="auth" options={{ headerShown: false }} />
+      <Stack.Screen name="chat" options={{ headerShown: false }} />
+      <Stack.Screen 
+        name="coach/create" 
+        options={{ 
+          headerShown: false,
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }} 
+      />
     </Stack>
   );
 }
