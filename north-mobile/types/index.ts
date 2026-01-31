@@ -233,7 +233,9 @@ export interface AuthState {
  */
 export interface AuthActions {
   login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<{ needsConfirmation: boolean } | undefined>;
   loginWithApple: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
   clearError: () => void;

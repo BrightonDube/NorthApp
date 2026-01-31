@@ -9,9 +9,14 @@
 
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '@/lib/supabase';
 import type { AuthStore, User, Session } from '@/types';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
+
+// Required for OAuth to work properly on native
+WebBrowser.maybeCompleteAuthSession();
 
 // Storage keys for session persistence
 const SESSION_STORAGE_KEY = '@north/session';
@@ -145,6 +150,173 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      set({ error: errorMessage, isLoading: false });
+    }
+  },
+
+  /**
+   * Sign up with email and password
+   * 
+   * @param email - User's email address
+   * @param password - User's password
+   * @param name - User's display name
+   * @throws Error if registration fails
+   */
+  signup: async (email: string, password: string, name: string) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+      if (error) {
+        // Handle rate limiting specifically
+        if (error.message.includes('429') || error.message.toLowerCase().includes('rate limit')) {
+          set({ 
+            error: 'Too many signup attempts. Please wait a few minutes and try again.', 
+            isLoading: false 
+          });
+          return;
+        }
+        
+        set({ error: error.message, isLoading: false });
+        return;
+      }
+
+      if (!data.session || !data.user) {
+        // Email confirmation might be required
+        set({ 
+          error: null, 
+          isLoading: false,
+        });
+        return { needsConfirmation: true };
+      }
+
+      // Convert to our types
+      const session = convertSession(data.session);
+      const user = await convertUser(data.user);
+
+      // Persist session to AsyncStorage
+      await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+
+      // Update state
+      set({
+        user,
+        session,
+        isLoading: false,
+        error: null,
+      });
+      
+      return { needsConfirmation: false };
+    } catch (error) {
+      let errorMessage = 'Registration failed';
+      
+      if (error instanceof Error) {
+        // Handle rate limiting
+        if (error.message.includes('429') || error.message.toLowerCase().includes('rate limit')) {
+          errorMessage = 'Too many signup attempts. Please wait a few minutes and try again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      set({ error: errorMessage, isLoading: false });
+      return { needsConfirmation: false };
+    }
+  },
+
+  /**
+   * Login with Google Sign In
+   * 
+   * Validates: Requirements 1.1, 1.2
+   * 
+   * @throws Error if authentication fails
+   */
+  loginWithGoogle: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // Use the app scheme for redirect - must match what's configured in Supabase
+      const redirectTo = makeRedirectUri({
+        scheme: 'north',
+        path: 'auth/callback',
+      });
+      
+      console.log('Google OAuth redirect URI:', redirectTo);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        set({ error: error.message, isLoading: false });
+        return;
+      }
+
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectTo,
+          { showInRecents: true }
+        );
+        
+        if (result.type === 'success') {
+          const url = result.url;
+          
+          // Try to extract tokens from hash fragment first (implicit flow)
+          let accessToken: string | null = null;
+          let refreshToken: string | null = null;
+          
+          // Check hash fragment (for implicit grant)
+          if (url.includes('#')) {
+            const hashParams = new URLSearchParams(url.split('#')[1]);
+            accessToken = hashParams.get('access_token');
+            refreshToken = hashParams.get('refresh_token');
+          }
+          
+          // Check query params (for authorization code flow)
+          if (!accessToken && url.includes('?')) {
+            const queryParams = new URLSearchParams(url.split('?')[1].split('#')[0]);
+            accessToken = queryParams.get('access_token');
+            refreshToken = queryParams.get('refresh_token');
+          }
+          
+          if (accessToken && refreshToken) {
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            
+            if (sessionError) {
+              set({ error: sessionError.message, isLoading: false });
+              return;
+            }
+          } else {
+            // If no tokens in URL, the auth state listener should handle it
+            console.log('No tokens in redirect URL, checking session...');
+            await supabase.auth.getSession();
+          }
+        } else if (result.type === 'cancel') {
+          set({ error: null, isLoading: false });
+          return;
+        }
+      }
+
+      set({ isLoading: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Google Sign In failed';
       set({ error: errorMessage, isLoading: false });
     }
   },

@@ -1,8 +1,8 @@
-import { registerRootComponent } from 'expo';
+/**
+ * Entry point for Expo Router
+ * 
+ * This file registers the Expo Router as the root component,
+ * enabling file-based routing from the /app directory.
+ */
 
-import App from './App';
-
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App);
+import 'expo-router/entry';
