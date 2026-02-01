@@ -58,3 +58,4 @@ coverage/
 *.tmp
 *.temp
 .cache/
+fix-tasks-comprehensive.ps1

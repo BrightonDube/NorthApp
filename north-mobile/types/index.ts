@@ -225,6 +225,7 @@ export interface AuthState {
   session: Session | null;
   isLoading: boolean;
   error: string | null;
+  lastSynced: number | null;
 }
 
 /**

@@ -5,6 +5,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore, setupAuthListener } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
+import { useNetworkStore } from '@/stores/networkStore';
 import { PaywallModal } from '@/components/billing';
 
 // Prevent the splash screen from auto-hiding until we're ready
@@ -22,6 +23,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const { restoreSession, isLoading, user } = useAuthStore();
   const { initialize: initializeBilling } = useBillingStore();
+  const { initialize: initializeNetwork, cleanup: cleanupNetwork } = useNetworkStore();
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
   // Initialize auth on app start
@@ -41,6 +43,15 @@ export default function RootLayout() {
     };
 
     init();
+  }, []);
+
+  // Initialize network monitoring on app start
+  useEffect(() => {
+    initializeNetwork();
+    
+    return () => {
+      cleanupNetwork();
+    };
   }, []);
 
   // Initialize RevenueCat when user is authenticated

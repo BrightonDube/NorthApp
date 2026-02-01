@@ -45,13 +45,26 @@ jest.mock('@/lib/supabase', () => ({
   },
 }));
 
-// Mock AsyncStorage
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  setItem: jest.fn(() => Promise.resolve()),
-  getItem: jest.fn(() => Promise.resolve(null)),
-  removeItem: jest.fn(() => Promise.resolve()),
-  clear: jest.fn(() => Promise.resolve()),
+// Mock logout helper
+jest.mock('@/lib/logout', () => ({
+  resetAllStores: jest.fn().mockResolvedValue(undefined),
+  clearStorageExceptTheme: jest.fn().mockResolvedValue(undefined),
 }));
+
+// Mock AsyncStorage
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const mockImpl = {
+    setItem: jest.fn(() => Promise.resolve()),
+    getItem: jest.fn(() => Promise.resolve(null)),
+    removeItem: jest.fn(() => Promise.resolve()),
+    clear: jest.fn(() => Promise.resolve()),
+  };
+  return {
+    __esModule: true,
+    default: mockImpl,
+    ...mockImpl,
+  };
+});
 
 describe('AuthStore Property-Based Tests', () => {
   beforeEach(() => {

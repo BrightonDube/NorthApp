@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.north.mobile",
+      "bundleIdentifier": "com.brighton.northapp",
       "usesAppleSignIn": true,
       "buildNumber": "1",
       "infoPlist": {
@@ -36,7 +36,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.north.mobile",
+      "package": "com.brighton.northapp",
       "versionCode": 1,
       "permissions": [
         "com.android.vending.BILLING"
@@ -66,13 +66,14 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "14.0"
+            "deploymentTarget": "15.1"
           },
           "android": {
             "minSdkVersion": 24
           }
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {

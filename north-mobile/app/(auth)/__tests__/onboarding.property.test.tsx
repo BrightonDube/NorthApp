@@ -92,7 +92,7 @@ describe('Onboarding Property-Based Tests', () => {
           // Generate user data without a name (new user)
           fc.uuid(),
           fc.emailAddress(),
-          fc.date({ min: new Date('2020-01-01'), max: new Date() }),
+          fc.date({ min: new Date('2020-01-01'), max: new Date() }).filter(d => !isNaN(d.getTime())),
           async (userId, email, createdAt) => {
             // Create a new user WITHOUT a name (should trigger onboarding)
             const newUser: User = {
@@ -148,7 +148,7 @@ describe('Onboarding Property-Based Tests', () => {
           fc.uuid(),
           fc.emailAddress(),
           fc.string({ minLength: 2, maxLength: 50 }).filter(s => s.trim().length >= 2),
-          fc.date({ min: new Date('2020-01-01'), max: new Date() }),
+          fc.date({ min: new Date('2020-01-01'), max: new Date() }).filter(d => !isNaN(d.getTime())),
           async (userId, email, name, createdAt) => {
             // Create a returning user WITH a name (should skip onboarding)
             const returningUser: User = {

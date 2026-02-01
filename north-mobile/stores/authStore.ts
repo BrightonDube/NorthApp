@@ -10,10 +10,9 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
 import { makeRedirectUri } from 'expo-auth-session';
-import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
+import { clearStorageExceptTheme, resetAllStores } from '@/lib/logout';
 import type { AuthStore, User, Session } from '@/types';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
 
@@ -22,15 +21,21 @@ WebBrowser.maybeCompleteAuthSession();
 
 /**
  * Get the correct redirect URI for OAuth
- * In Expo Go, we need to use the exp:// scheme
+ * In Expo Go, we need to use the exp:// scheme with /--/ prefix
  * In production builds, we use the north:// scheme
  */
 function getRedirectUri(): string {
-  // For Expo Go development, use Linking.createURL which handles the exp:// scheme
-  const redirectUri = Linking.createURL('auth/callback');
+  // Use makeRedirectUri which properly handles Expo Go vs standalone apps
+  // For Expo Go: exp://host/--/path
+  // For standalone: north://path
+  const redirectUri = makeRedirectUri({
+    scheme: 'north',
+    path: 'auth/callback',
+  });
+  
   console.log('===========================================');
-  console.log('IMPORTANT: Add this URL to Supabase Redirect URLs:');
-  console.log(redirectUri);
+  console.log('OAuth Redirect URI:', redirectUri);
+  console.log('Add this EXACT URL to Supabase Redirect URLs if not already added');
   console.log('===========================================');
   return redirectUri;
 }
@@ -110,6 +115,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   session: null,
   isLoading: false,
   error: null,
+  lastSynced: null,
 
   // ============================================================================
   // Actions
@@ -164,6 +170,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         session,
         isLoading: false,
         error: null,
+        lastSynced: Date.now(),
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -230,6 +237,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         session,
         isLoading: false,
         error: null,
+        lastSynced: Date.now(),
       });
       
       return { needsConfirmation: false };
@@ -271,7 +279,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         provider: 'google',
         options: {
           redirectTo,
-          skipBrowserRedirect: true,
         },
       });
 
@@ -358,7 +365,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         provider: 'apple',
         options: {
           redirectTo,
-          skipBrowserRedirect: true,
         },
       });
 
@@ -431,17 +437,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
    * Validates: Requirements 15.3, 15.6, 48
    * 
    * Clears session from storage and signs out from Supabase.
+   * Also clears all Zustand stores and AsyncStorage (except theme preference).
    * 
    * @example
    * ```typescript
    * await logout();
-   * // User is now signed out
+   * // User is now signed out, all data cleared
    * ```
    */
   logout: async () => {
     set({ isLoading: true, error: null });
 
     try {
+      // Reset all other stores FIRST (Requirement 15.3)
+      // This must happen before clearing AsyncStorage to prevent rehydration issues
+      await resetAllStores();
+
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
 
@@ -450,16 +461,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         return;
       }
 
-      // Clear local storage (Requirement 15.6, 48)
+      // Clear session from AsyncStorage
       await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
       await AsyncStorage.removeItem(USER_STORAGE_KEY);
 
-      // Clear state
+      // Clear all AsyncStorage keys except theme preference (Requirement 15.3, 15.6, 48)
+      await clearStorageExceptTheme();
+
+      // Clear authStore state
       set({
         user: null,
         session: null,
         isLoading: false,
         error: null,
+        lastSynced: null,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Logout failed';
@@ -530,6 +545,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         session,
         isLoading: false,
         error: null,
+        lastSynced: Date.now(),
       });
     } catch (error) {
       // Don't show error to user for session restoration failures
@@ -596,6 +612,7 @@ export function setupAuthListener() {
         session: convertedSession,
         isLoading: false,
         error: null,
+        lastSynced: Date.now(),
       });
     } else if (event === 'SIGNED_OUT') {
       // User signed out, clear state

@@ -6,7 +6,17 @@
  * 
  * Design: "Beautiful, minimal, clean" - Premium feel, not "techy"
  * 
- * Validates: Requirements 6.2, 6.3, 13.1
+ * Features:
+ * - 2-column grid layout using CoachGrid component
+ * - Floating action button for creating coaches (Pro feature)
+ * - Pull-to-refresh functionality
+ * - Navigation to chat on coach tap
+ * - Long-press to edit user coaches
+ * - Pro upgrade prompt for free users
+ * - Empty state handling
+ * - Target: Load within 2 seconds on cold start
+ * 
+ * Validates: Requirements 6.2, 6.3, 13.1-13.7
  */
 
 import { View, Text, ScrollView, Pressable, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
@@ -16,8 +26,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/stores/authStore';
 import { useCoachStore } from '@/stores/coachStore';
-import { useProFeature } from '@/stores/billingStore';
-import { CoachCard } from '@/components/coach';
+import { useBillingStore } from '@/stores/billingStore';
+import { CoachGrid, CoachCreateModal, CoachEditModal } from '@/components/coach';
+import { PaywallModal } from '@/components/billing/PaywallModal';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 import type { Coach } from '@/types';
 
 /**
@@ -106,13 +118,18 @@ export default function HomeScreen() {
     fetchCoaches,
     getDefaultCoaches,
     getUserCoaches,
+    createCoach,
+    updateCoach,
+    deleteCoach,
     clearError,
   } = useCoachStore();
   
-  const [refreshing, setRefreshing] = useState(false);
+  const { isProUser, isPaywallVisible, paywallFeature, hidePaywall } = useBillingStore();
   
-  // Pro feature check for coach creation
-  const { canAccess: isProUser, requirePro } = useProFeature('coach_creation');
+  const [refreshing, setRefreshing] = useState(false);
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
 
   // Fetch coaches on mount
   useEffect(() => {
@@ -131,14 +148,39 @@ export default function HomeScreen() {
     router.push(`/chat/${coach.id}`);
   };
 
-  const handleCreateCoach = () => {
-    // Show paywall if not Pro, otherwise open creation modal
-    if (!requirePro()) {
-      return; // Paywall will be shown
+  const handleCoachLongPress = (coach: Coach) => {
+    // Only allow editing user's own coaches
+    if (coach.creatorId === user?.id) {
+      setSelectedCoach(coach);
+      setIsEditModalVisible(true);
     }
-    // TODO: Open coach creation modal
-    console.log('Create coach pressed - user is Pro, opening modal');
-    router.push('/coach/create');
+  };
+
+  const handleCreateCoach = () => {
+    // Check Pro access
+    if (!isProUser) {
+      // Paywall will be shown via billingStore
+      useBillingStore.getState().showPaywall('coach_creation');
+      return;
+    }
+    setIsCreateModalVisible(true);
+  };
+
+  const handleCreateSubmit = async (name: string, icon: string, systemPrompt: string) => {
+    await createCoach(name, icon, systemPrompt);
+    setIsCreateModalVisible(false);
+  };
+
+  const handleEditSubmit = async (id: string, updates: { name?: string; icon?: string; systemPrompt?: string }) => {
+    await updateCoach(id, updates);
+    setIsEditModalVisible(false);
+    setSelectedCoach(null);
+  };
+
+  const handleDeleteCoach = async (id: string) => {
+    await deleteCoach(id);
+    setIsEditModalVisible(false);
+    setSelectedCoach(null);
   };
 
   // Separate coaches by type
@@ -159,6 +201,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <OfflineIndicator />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -186,14 +229,11 @@ export default function HomeScreen() {
             {defaultCoaches.length > 0 && (
               <View style={styles.section}>
                 <SectionHeader title="Your Board of Directors" count={defaultCoaches.length} />
-                {defaultCoaches.map((coach) => (
-                  <CoachCard
-                    key={coach.id}
-                    coach={coach}
-                    onPress={() => handleCoachPress(coach)}
-                    testID={`coach-card-${coach.id}`}
-                  />
-                ))}
+                <CoachGrid
+                  coaches={defaultCoaches}
+                  onCoachPress={handleCoachPress}
+                  testID="default-coaches-grid"
+                />
               </View>
             )}
 
@@ -201,14 +241,12 @@ export default function HomeScreen() {
             {myCoaches.length > 0 && (
               <View style={styles.section}>
                 <SectionHeader title="My Coaches" count={myCoaches.length} />
-                {myCoaches.map((coach) => (
-                  <CoachCard
-                    key={coach.id}
-                    coach={coach}
-                    onPress={() => handleCoachPress(coach)}
-                    testID={`coach-card-${coach.id}`}
-                  />
-                ))}
+                <CoachGrid
+                  coaches={myCoaches}
+                  onCoachPress={handleCoachPress}
+                  onCoachLongPress={handleCoachLongPress}
+                  testID="my-coaches-grid"
+                />
               </View>
             )}
 
@@ -222,6 +260,34 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Coach Creation Modal */}
+      <CoachCreateModal
+        visible={isCreateModalVisible}
+        onCreate={handleCreateSubmit}
+        onClose={() => setIsCreateModalVisible(false)}
+      />
+
+      {/* Coach Edit Modal */}
+      {selectedCoach && (
+        <CoachEditModal
+          visible={isEditModalVisible}
+          coach={selectedCoach}
+          onSave={handleEditSubmit}
+          onDelete={handleDeleteCoach}
+          onClose={() => {
+            setIsEditModalVisible(false);
+            setSelectedCoach(null);
+          }}
+        />
+      )}
+
+      {/* Paywall Modal */}
+      <PaywallModal
+        visible={isPaywallVisible}
+        feature={paywallFeature || 'coach_creation'}
+        onClose={hidePaywall}
+      />
     </SafeAreaView>
   );
 }

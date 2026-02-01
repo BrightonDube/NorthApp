@@ -124,7 +124,7 @@ export const useCoachStore = create<CoachStore>()(
       /**
        * Fetch all coaches available to the authenticated user
        * 
-       * Validates: Requirements 6.2, 6.3
+       * Validates: Requirements 6.2, 6.3, 16.2
        * 
        * Fetches:
        * - All default coaches (creator_id IS NULL)
@@ -138,6 +138,17 @@ export const useCoachStore = create<CoachStore>()(
        * ```
        */
       fetchCoaches: async () => {
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({
+            error: "You're offline. Please check your connection.",
+            isLoading: false,
+          });
+          return;
+        }
+
         set({ isLoading: true, error: null });
         
         try {
@@ -173,7 +184,7 @@ export const useCoachStore = create<CoachStore>()(
       /**
        * Create a new private coach
        *
-       * Validates: Requirements 6.4, 6.5, 7.2
+       * Validates: Requirements 6.4, 6.5, 7.2, 16.2
        * 
        * Implements optimistic updates: the coach is added to the UI immediately
        * with a temporary ID, then replaced with the real coach from the server.
@@ -197,6 +208,27 @@ export const useCoachStore = create<CoachStore>()(
        * ```
        */
       createCoach: async (name, icon, systemPrompt) => {
+        // Validate inputs
+        if (!name || name.trim().length === 0) {
+          const error = new Error('Coach name cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+        
+        if (!systemPrompt || systemPrompt.trim().length === 0) {
+          const error = new Error('System prompt cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({ error: "You're offline. Please check your connection." });
+          throw new Error("You're offline. Please check your connection.");
+        }
+
         const tempId = `temp-${Date.now()}`;
         const tempCoach: Coach = {
           id: tempId,
@@ -249,7 +281,7 @@ export const useCoachStore = create<CoachStore>()(
       /**
        * Update an existing private coach
        * 
-       * Validates: Requirements 7.6
+       * Validates: Requirements 7.6, 16.2
        * 
        * Implements optimistic updates: the coach is updated in the UI immediately,
        * then synced with the server. If the request fails, the previous state
@@ -271,6 +303,35 @@ export const useCoachStore = create<CoachStore>()(
        * ```
        */
       updateCoach: async (id, updates) => {
+        // Check if trying to update a default coach
+        const coach = get().coaches.find(c => c.id === id);
+        if (coach && coach.creatorId === null) {
+          const error = new Error('Cannot update default coach');
+          set({ error: error.message });
+          throw error;
+        }
+
+        // Validate inputs
+        if (updates.name !== undefined && (!updates.name || updates.name.trim().length === 0)) {
+          const error = new Error('Coach name cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+        
+        if (updates.systemPrompt !== undefined && (!updates.systemPrompt || updates.systemPrompt.trim().length === 0)) {
+          const error = new Error('System prompt cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({ error: "You're offline. Please check your connection." });
+          throw new Error("You're offline. Please check your connection.");
+        }
+
         const previousCoaches = get().coaches;
 
         // Optimistic update - update coach immediately
@@ -305,7 +366,7 @@ export const useCoachStore = create<CoachStore>()(
       /**
        * Delete a private coach
        * 
-       * Validates: Requirements 7.7
+       * Validates: Requirements 7.7, 16.2
        * 
        * Implements optimistic updates: the coach is removed from the UI immediately,
        * then deleted from the server. If the request fails, the coach is restored
@@ -323,6 +384,22 @@ export const useCoachStore = create<CoachStore>()(
        * ```
        */
       deleteCoach: async (id) => {
+        // Check if trying to delete a default coach
+        const coach = get().coaches.find(c => c.id === id);
+        if (coach && coach.creatorId === null) {
+          const error = new Error('Cannot delete default coach');
+          set({ error: error.message });
+          throw error;
+        }
+
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({ error: "You're offline. Please check your connection." });
+          throw new Error("You're offline. Please check your connection.");
+        }
+
         const previousCoaches = get().coaches;
 
         // Optimistic update - remove coach immediately
@@ -456,7 +533,14 @@ export const useCoachStore = create<CoachStore>()(
        * reset();
        * ```
        */
-      reset: () => set({ coaches: [], isLoading: false, error: null, lastSynced: null }),
+      reset: () => {
+        // Clear persisted storage first (synchronously start the operation)
+        AsyncStorage.removeItem('north-coach-storage')?.catch((error) => {
+          console.error('[CoachStore] Error clearing storage:', error);
+        });
+        // Then set state to initial values
+        set({ coaches: [], isLoading: false, error: null, lastSynced: null });
+      },
     }),
     {
       name: 'north-coach-storage',

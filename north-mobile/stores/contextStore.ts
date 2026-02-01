@@ -128,7 +128,7 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Fetch all context items for the authenticated user
        * 
-       * Validates: Requirements 3.6, 3.7
+       * Validates: Requirements 3.6, 3.7, 16.2
        * 
        * Items are ordered by category first, then by creation date.
        * This ensures consistent grouping in the UI.
@@ -139,6 +139,17 @@ export const useContextStore = create<ContextStore>()(
        * ```
        */
       fetchContexts: async () => {
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({
+            error: "You're offline. Please check your connection.",
+            isLoading: false,
+          });
+          return;
+        }
+
         set({ isLoading: true, error: null });
         
         try {
@@ -166,7 +177,7 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Create a new context item
        * 
-       * Validates: Requirements 3.3, 3.4
+       * Validates: Requirements 3.3, 3.4, 16.2
        * 
        * Implements optimistic updates: the item is added to the UI immediately
        * with a temporary ID, then replaced with the real item from the server.
@@ -183,6 +194,14 @@ export const useContextStore = create<ContextStore>()(
        * ```
        */
       createContext: async (category, content) => {
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({ error: "You're offline. Please check your connection." });
+          throw new Error("You're offline. Please check your connection.");
+        }
+
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         
@@ -235,7 +254,7 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Update an existing context item
        * 
-       * Validates: Requirements 3.5
+       * Validates: Requirements 3.5, 16.2
        *
        * Implements optimistic updates: the item is updated in the UI immediately,
        * then synced with the server. If the request fails, the previous state
@@ -251,6 +270,14 @@ export const useContextStore = create<ContextStore>()(
        * ```
        */
       updateContext: async (id, content) => {
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({ error: "You're offline. Please check your connection." });
+          throw new Error("You're offline. Please check your connection.");
+        }
+
         const previousItems = get().items;
 
         // Optimistic update - update item immediately
@@ -279,7 +306,7 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Delete a context item
        * 
-       * Validates: Requirements 3.6
+       * Validates: Requirements 3.6, 16.2
        * 
        * Implements optimistic updates: the item is removed from the UI immediately,
        * then deleted from the server. If the request fails, the item is restored
@@ -294,6 +321,14 @@ export const useContextStore = create<ContextStore>()(
        * ```
        */
       deleteContext: async (id) => {
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({ error: "You're offline. Please check your connection." });
+          throw new Error("You're offline. Please check your connection.");
+        }
+
         const previousItems = get().items;
 
         // Optimistic update - remove item immediately
@@ -391,7 +426,14 @@ export const useContextStore = create<ContextStore>()(
        * reset();
        * ```
        */
-      reset: () => set({ items: [], isLoading: false, error: null, lastSynced: null }),
+      reset: () => {
+        // Clear persisted storage first (synchronously start the operation)
+        AsyncStorage.removeItem('north-context-storage')?.catch((error) => {
+          console.error('[ContextStore] Error clearing storage:', error);
+        });
+        // Then set state to initial values
+        set({ items: [], isLoading: false, error: null, lastSynced: null });
+      },
     }),
     {
       name: 'north-context-storage',

@@ -33,6 +33,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useContextStore } from '@/stores/contextStore';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 import type { UserContext, ContextCategory } from '@/types';
 
 // Category information with icons and colors
@@ -502,6 +503,7 @@ export default function ContextScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <OfflineIndicator />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

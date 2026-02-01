@@ -25,6 +25,7 @@ interface ChatState {
   isSending: boolean;
   isLoading: boolean;
   error: string | null;
+  lastSynced: number | null;
 }
 
 /**
@@ -110,6 +111,7 @@ export const useChatStore = create<ChatStore>()(
       isSending: false,
       isLoading: false,
       error: null,
+      lastSynced: null,
 
       // ============================================================================
       // Actions
@@ -118,7 +120,7 @@ export const useChatStore = create<ChatStore>()(
       /**
        * Fetch or create a chat session for a user-coach pair
        * 
-       * Validates: Requirements 8.2, 8.3
+       * Validates: Requirements 8.2, 8.3, 16.2
        * 
        * Each user-coach pair has exactly one chat session. This function
        * retrieves the existing session or creates a new one if it doesn't exist.
@@ -134,6 +136,17 @@ export const useChatStore = create<ChatStore>()(
        * ```
        */
       fetchOrCreateSession: async (coachId) => {
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({
+            error: "You're offline. Please check your connection.",
+            isLoading: false,
+          });
+          throw new Error("You're offline. Please check your connection.");
+        }
+
         set({ isLoading: true, error: null });
 
         try {
@@ -173,6 +186,7 @@ export const useChatStore = create<ChatStore>()(
                 [session.id]: session,
               },
               isLoading: false,
+              lastSynced: Date.now(),
             }));
 
             return session;
@@ -204,6 +218,7 @@ export const useChatStore = create<ChatStore>()(
               [session.id]: session,
             },
             isLoading: false,
+            lastSynced: Date.now(),
           }));
 
           return session;
@@ -219,7 +234,7 @@ export const useChatStore = create<ChatStore>()(
       /**
        * Fetch all messages for a chat session
        * 
-       * Validates: Requirements 8.6
+       * Validates: Requirements 8.6, 16.2
        * 
        * Messages are ordered by created_at ascending (oldest first) for
        * chronological display in the chat interface.
@@ -234,6 +249,17 @@ export const useChatStore = create<ChatStore>()(
        * ```
        */
       fetchMessages: async (sessionId) => {
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({
+            error: "You're offline. Please check your connection.",
+            isLoading: false,
+          });
+          return;
+        }
+
         set({ isLoading: true, error: null });
 
         try {
@@ -259,6 +285,7 @@ export const useChatStore = create<ChatStore>()(
               [sessionId]: messages,
             },
             isLoading: false,
+            lastSynced: Date.now(),
           }));
         } catch (error) {
           set({
@@ -272,7 +299,7 @@ export const useChatStore = create<ChatStore>()(
       /**
        * Send a message and receive AI response with streaming
        * 
-       * Validates: Requirements 8.4, 8.5, 9.1, 9.2, 9.4, 9.5, 9.6
+       * Validates: Requirements 8.4, 8.5, 9.1, 9.2, 9.4, 9.5, 9.6, 16.2
        * 
        * This function:
        * 1. Optimistically adds the user message to the UI
@@ -294,6 +321,17 @@ export const useChatStore = create<ChatStore>()(
        * ```
        */
       sendMessage: async (sessionId, coachId, content) => {
+        // Check network status
+        const { useNetworkStore } = require('./networkStore');
+        const { isOnline } = useNetworkStore.getState();
+        if (!isOnline) {
+          set({ 
+            error: "You're offline. Please check your connection.",
+            isSending: false,
+          });
+          throw new Error("You're offline. Please check your connection.");
+        }
+
         set({ isSending: true, error: null });
 
         const tempMessageId = `temp-${Date.now()}`;
@@ -595,23 +633,32 @@ export const useChatStore = create<ChatStore>()(
        * reset();
        * ```
        */
-      reset: () => set({
-        sessions: {},
-        messages: {},
-        streamingMessage: null,
-        streamingSessionId: null,
-        isSending: false,
-        isLoading: false,
-        error: null,
-      }),
+      reset: () => {
+        // Clear persisted storage first (synchronously start the operation)
+        AsyncStorage.removeItem('north-chat-storage')?.catch((error) => {
+          console.error('[ChatStore] Error clearing storage:', error);
+        });
+        // Then set state to initial values
+        set({
+          sessions: {},
+          messages: {},
+          streamingMessage: null,
+          streamingSessionId: null,
+          isSending: false,
+          isLoading: false,
+          error: null,
+          lastSynced: null,
+        });
+      },
     }),
     {
       name: 'north-chat-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      // Only persist sessions and messages, not streaming/loading states
+      // Only persist sessions, messages, and lastSynced, not streaming/loading states
       partialize: (state) => ({
         sessions: state.sessions,
         messages: state.messages,
+        lastSynced: state.lastSynced,
       }),
     }
   )

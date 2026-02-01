@@ -10,7 +10,9 @@
  */
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Platform, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases, {
   PurchasesPackage,
   CustomerInfo,
@@ -25,14 +27,17 @@ const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || '';
 // Entitlement identifier configured in RevenueCat dashboard
 const PRO_ENTITLEMENT_ID = 'pro';
 
-// Storage key for caching entitlements
-const ENTITLEMENTS_CACHE_KEY = '@north/entitlements';
-
 /**
  * Initialize RevenueCat SDK
  * Should be called once at app startup
+ * 
+ * Validates: Requirements 12.1
  */
 let isInitialized = false;
+/**
+ * Network status listener unsubscribe function
+ */
+let customerInfoUpdateListener: (() => void) | null = null;
 
 export async function initializeRevenueCat(userId?: string): Promise<void> {
   if (isInitialized) {
@@ -65,12 +70,45 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
       appUserID: userId, // Optional: Supabase user ID for cross-platform sync
     });
 
+    // Set up listener for entitlement changes (Requirement 12.7)
+    setupCustomerInfoUpdateListener();
+
     isInitialized = true;
     console.log('[BillingStore] RevenueCat initialized successfully');
   } catch (error) {
     console.error('[BillingStore] Error initializing RevenueCat:', error);
     throw error;
   }
+}
+
+/**
+ * Setup listener for customer info updates
+ * This listens for entitlement changes from RevenueCat (e.g., purchases, renewals, expirations)
+ * 
+ * Validates: Requirement 12.7 - Listen for entitlement changes
+ */
+function setupCustomerInfoUpdateListener() {
+  if (customerInfoUpdateListener) {
+    return; // Already set up
+  }
+
+  // The listener returns void, so we wrap it to match our type
+  Purchases.addCustomerInfoUpdateListener((customerInfo) => {
+    console.log('[BillingStore] Customer info updated from RevenueCat');
+    const entitlements = convertToEntitlements(customerInfo);
+    
+    // Update store with new entitlements
+    useBillingStore.setState({
+      entitlements,
+      isProUser: entitlements.pro.isActive,
+      lastSynced: Date.now(),
+    });
+  });
+  
+  // Mark as initialized (RevenueCat doesn't provide an unsubscribe function)
+  customerInfoUpdateListener = () => {
+    // No-op: RevenueCat manages listener lifecycle internally
+  };
 }
 
 /**
@@ -96,6 +134,7 @@ interface BillingStoreInternal extends BillingStore {
   paywallFeature: string | null;
   isPaywallVisible: boolean;
   error: string | null;
+  lastSynced: number | null;
   
   // Additional internal actions
   initialize: (userId?: string) => Promise<void>;
@@ -104,6 +143,7 @@ interface BillingStoreInternal extends BillingStore {
   hidePaywall: () => void;
   logout: () => Promise<void>;
   checkProAccess: () => boolean;
+  reset: () => void;
 }
 
 /**
@@ -111,21 +151,26 @@ interface BillingStoreInternal extends BillingStore {
  * 
  * Manages all subscription and in-app purchase functionality:
  * - RevenueCat SDK initialization
- * - Entitlement fetching and caching
+ * - Entitlement fetching and caching (Requirement 12.7)
  * - Paywall display for gated features
  * - Purchase flow handling
  * - Subscription restoration
+ * - Offline entitlement caching (Requirement 12.7)
+ * - Real-time entitlement change listening (Requirement 12.7)
  */
-export const useBillingStore = create<BillingStoreInternal>((set, get) => ({
-  // State
-  entitlements: null,
-  isProUser: false,
-  isLoading: false,
-  offerings: null,
-  currentPackage: null,
-  paywallFeature: null,
-  isPaywallVisible: false,
-  error: null,
+export const useBillingStore = create<BillingStoreInternal>()(
+  persist(
+    (set, get) => ({
+      // State
+      entitlements: null,
+      isProUser: false,
+      isLoading: false,
+      offerings: null,
+      currentPackage: null,
+      paywallFeature: null,
+      isPaywallVisible: false,
+      error: null,
+      lastSynced: null,
 
   /**
    * Initialize RevenueCat and fetch initial entitlements
@@ -169,6 +214,7 @@ export const useBillingStore = create<BillingStoreInternal>((set, get) => ({
         entitlements,
         isProUser: entitlements.pro.isActive,
         isLoading: false,
+        lastSynced: Date.now(),
       });
 
       console.log('[BillingStore] Entitlements fetched:', {
@@ -247,6 +293,7 @@ export const useBillingStore = create<BillingStoreInternal>((set, get) => ({
         isLoading: false,
         isPaywallVisible: false,
         paywallFeature: null,
+        lastSynced: Date.now(),
       });
 
       if (entitlements.pro.isActive) {
@@ -298,6 +345,7 @@ export const useBillingStore = create<BillingStoreInternal>((set, get) => ({
         entitlements,
         isProUser: entitlements.pro.isActive,
         isLoading: false,
+        lastSynced: Date.now(),
       });
 
       if (entitlements.pro.isActive) {
@@ -346,13 +394,48 @@ export const useBillingStore = create<BillingStoreInternal>((set, get) => ({
   },
 
   /**
+   * Reset store to initial state
+   * Called during app logout to clear all billing data
+   */
+  reset: () => {
+    // Clear persisted storage first (synchronously start the operation)
+    AsyncStorage.removeItem('north-billing-storage').catch((error) => {
+      console.error('[BillingStore] Error clearing storage:', error);
+    });
+    // Then set state to initial values
+    set({
+      entitlements: null,
+      isProUser: false,
+      isLoading: false,
+      offerings: null,
+      currentPackage: null,
+      paywallFeature: null,
+      isPaywallVisible: false,
+      error: null,
+      lastSynced: null,
+    });
+  },
+
+  /**
    * Quick check if user has Pro access
    * Useful for feature gating without async calls
    */
   checkProAccess: () => {
     return get().isProUser;
   },
-}));
+    }),
+    {
+      name: 'north-billing-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      // Only persist entitlements, isProUser, and lastSynced for offline access (Requirement 12.7)
+      partialize: (state) => ({
+        entitlements: state.entitlements,
+        isProUser: state.isProUser,
+        lastSynced: state.lastSynced,
+      }),
+    }
+  )
+);
 
 /**
  * Hook to check if a feature requires Pro and show paywall if needed

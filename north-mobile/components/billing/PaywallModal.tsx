@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useBillingStore } from '@/stores/billingStore';
@@ -104,28 +105,29 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View className="flex-1 bg-background">
-        {/* Header */}
-        <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
-          <View className="w-10" />
-          <Text className="text-lg font-semibold text-text-primary">
-            North Pro
-          </Text>
-          <Pressable
-            onPress={handleClose}
-            className="w-10 h-10 items-center justify-center rounded-full bg-surface"
-            accessibilityLabel="Close paywall"
-            accessibilityRole="button"
-          >
-            <Ionicons name="close" size={24} color="#71717A" />
-          </Pressable>
-        </View>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+        <View className="flex-1 bg-background">
+          {/* Header */}
+          <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
+            <View className="w-10" />
+            <Text className="text-lg font-semibold text-text-primary">
+              North Pro
+            </Text>
+            <Pressable
+              onPress={handleClose}
+              className="w-10 h-10 items-center justify-center rounded-full bg-surface"
+              accessibilityLabel="Close paywall"
+              accessibilityRole="button"
+            >
+              <Ionicons name="close" size={24} color="#71717A" />
+            </Pressable>
+          </View>
 
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-6 pb-8"
-          showsVerticalScrollIndicator={false}
-        >
+          <ScrollView
+            className="flex-1"
+            contentContainerClassName="px-6 pb-8"
+            showsVerticalScrollIndicator={false}
+          >
           {/* Hero Section */}
           <View className="items-center py-8">
             <View className="w-20 h-20 rounded-full bg-brand-primary items-center justify-center mb-4">
@@ -212,6 +214,7 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
           </Text>
         </ScrollView>
       </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -230,7 +233,9 @@ function PackageCard({ pkg, onPurchase, isLoading }: PackageCardProps) {
   const isAnnual = pkg.packageType === 'ANNUAL';
   
   // Calculate savings for annual plan
-  const monthlySavings = isAnnual ? 'Save 33%' : null;
+  // Annual: $79.99/year vs Monthly: $9.99/month * 12 = $119.88
+  // Savings: $119.88 - $79.99 = $39.89 ≈ $40
+  const monthlySavings = isAnnual ? 'Save $40' : null;
 
   return (
     <Pressable

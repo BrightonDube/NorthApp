@@ -7,130 +7,66 @@
  * Validates: Requirements 13.1, 13.2, 13.6
  */
 
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import type { Coach } from '@/types';
 
 interface CoachCardProps {
   coach: Coach;
   onPress: () => void;
+  onLongPress?: () => void;
   testID?: string;
 }
 
 /**
- * CoachCard displays a coach with icon, name, and description.
+ * CoachCard displays a coach with icon, name, and custom badge.
  * Provides haptic feedback on press for premium feel.
+ * Shows "Custom" badge for user-created coaches.
  * 
  * @example
  * ```tsx
  * <CoachCard
  *   coach={strategyCoach}
  *   onPress={() => router.push(`/chat/${coach.id}`)}
+ *   onLongPress={() => handleEditCoach(coach)}
  * />
  * ```
  */
-export function CoachCard({ coach, onPress, testID }: CoachCardProps) {
+export function CoachCard({ coach, onPress, onLongPress, testID }: CoachCardProps) {
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress();
   };
 
-  // Extract first sentence of system prompt as description
-  const description = coach.systemPrompt
-    .split('.')[0]
-    .replace(/^You are /i, '')
-    .trim();
+  const handleLongPress = () => {
+    if (onLongPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onLongPress();
+    }
+  };
 
   return (
-    <Pressable
+    <TouchableOpacity
       onPress={handlePress}
-      style={({ pressed }) => [
-        styles.container,
-        pressed && styles.pressed,
-      ]}
+      onLongPress={handleLongPress}
+      className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl p-5 flex-1 min-h-[120px]"
+      accessible
       accessibilityRole="button"
       accessibilityLabel={`Chat with ${coach.name}`}
-      accessibilityHint="Opens chat conversation with this coach"
+      accessibilityHint={onLongPress ? "Long press to edit" : "Opens chat conversation with this coach"}
       testID={testID}
     >
-      <View style={styles.iconContainer}>
-        <Text style={styles.icon}>{coach.icon}</Text>
-      </View>
-      
-      <View style={styles.content}>
-        <Text style={styles.name} numberOfLines={1}>
-          {coach.name}
-        </Text>
-        <Text style={styles.description} numberOfLines={2}>
-          {description}
-        </Text>
-      </View>
-      
-      <View style={styles.arrowContainer}>
-        <Text style={styles.arrow}>→</Text>
-      </View>
-    </Pressable>
+      <Text className="text-4xl mb-3">{coach.icon}</Text>
+      <Text className="text-base font-semibold text-zinc-900 dark:text-white">
+        {coach.name}
+      </Text>
+      {coach.creatorId && (
+        <View className="absolute top-3 right-3 bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 rounded-full">
+          <Text className="text-xs text-purple-600 dark:text-purple-400">Custom</Text>
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#F4F4F5', // surface color from design system
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    // Subtle shadow for premium feel
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  icon: {
-    fontSize: 28,
-  },
-  content: {
-    flex: 1,
-    marginRight: 8,
-  },
-  name: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#09090B', // text-primary from design system
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: '#71717A', // text-secondary from design system
-    lineHeight: 18,
-  },
-  arrowContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E4E4E7', // surface-highlight from design system
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arrow: {
-    fontSize: 16,
-    color: '#71717A',
-  },
-});
 
 export default CoachCard;
