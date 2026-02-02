@@ -664,6 +664,8 @@ export const useChatStore = create<ChatStore>()(
   )
 );
 
+const EMPTY_MESSAGES: Message[] = [];
+
 /**
  * Helper hook to get messages for a specific session
  * 
@@ -685,7 +687,7 @@ export const useChatStore = create<ChatStore>()(
  * ```
  */
 export function useSessionMessages(sessionId: string): Message[] {
-  return useChatStore((state) => state.messages[sessionId] || []);
+  return useChatStore((state) => state.messages[sessionId] || EMPTY_MESSAGES);
 }
 
 /**

@@ -33,6 +33,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useContextStore } from '@/stores/contextStore';
+import { useBillingStore } from '@/stores/billingStore';
+import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import type { UserContext, ContextCategory } from '@/types';
 
@@ -430,6 +432,8 @@ export default function ContextScreen() {
     clearError,
   } = useContextStore();
 
+  const { isProUser, showPaywall, isPaywallVisible, paywallFeature, hidePaywall } = useBillingStore();
+
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -451,10 +455,12 @@ export default function ContextScreen() {
   }, [fetchContexts, clearError]);
 
   const handleAddItem = (category: ContextCategory) => {
-    // Check tier limit (assuming free tier for now)
-    if (!canAddMore(false)) {
-      // TODO: Show paywall
-      console.log('Free tier limit reached - show paywall');
+    // Check tier limit - free users limited to 3 items
+    // Validates: Requirements 4.1, 14.5
+    if (!canAddMore(isProUser)) {
+      // Show paywall for free users at limit
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showPaywall('context_creation');
       return;
     }
     setSelectedCategory(category);
@@ -522,6 +528,19 @@ export default function ContextScreen() {
           <Text style={styles.subtitle}>
             Define your context once. Your coaches will use it automatically.
           </Text>
+          
+          {/* Tier Status Indicator */}
+          <View style={[
+            styles.tierIndicator,
+            isProUser ? styles.tierIndicatorPro : styles.tierIndicatorFree
+          ]}>
+            <Text style={styles.tierIndicatorText}>
+              {isProUser 
+                ? '✨ Pro: Unlimited context items' 
+                : `📊 Free: ${items.length}/3 context items used`
+              }
+            </Text>
+          </View>
         </View>
 
         {/* Error Banner */}
@@ -567,6 +586,12 @@ export default function ContextScreen() {
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteModalVisible(false)}
       />
+
+      <PaywallModal
+        visible={isPaywallVisible}
+        feature={paywallFeature || 'unlimited_context'}
+        onClose={hidePaywall}
+      />
     </SafeAreaView>
   );
 }
@@ -608,6 +633,24 @@ const styles = StyleSheet.create({
     color: '#71717A',
     marginTop: 6,
     lineHeight: 20,
+  },
+  tierIndicator: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  tierIndicatorPro: {
+    backgroundColor: '#DCFCE7',
+  },
+  tierIndicatorFree: {
+    backgroundColor: '#FEF3C7',
+  },
+  tierIndicatorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#09090B',
   },
   section: {
     marginBottom: 28,

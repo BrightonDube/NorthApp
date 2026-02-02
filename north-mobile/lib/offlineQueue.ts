@@ -1,11 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useContextStore } from '@/stores/contextStore';
-import { useCoachStore } from '@/stores/coachStore';
-import { useChatStore } from '@/stores/chatStore';
 
-export type OfflineActionType = 
+export type OfflineActionType =
   | 'create_context' 
   | 'update_context' 
   | 'delete_context'
@@ -66,6 +63,11 @@ export const useOfflineQueue = create<OfflineQueueStore>()(
         const { queue, isProcessing } = get();
         if (queue.length === 0 || isProcessing) return;
 
+        // Dynamically import stores to avoid circular dependencies
+        const { useContextStore } = require('@/stores/contextStore');
+        const { useCoachStore } = require('@/stores/coachStore');
+        // const { useChatStore } = require('@/stores/chatStore'); // Future use
+
         set({ isProcessing: true });
 
         // Clone queue to avoid mutation issues during iteration
@@ -84,7 +86,13 @@ export const useOfflineQueue = create<OfflineQueueStore>()(
                 await useContextStore.getState().deleteContext(action.payload.id);
                 break;
               case 'create_coach':
-                await useCoachStore.getState().createCoach(action.payload.name, action.payload.icon, action.payload.systemPrompt, action.payload.optimisticId);
+                await useCoachStore.getState().createCoach(
+                  action.payload.name, 
+                  action.payload.icon, 
+                  action.payload.systemPrompt, 
+                  action.payload.optimisticId,
+                  action.payload.isProUser
+                );
                 break;
               case 'update_coach':
                 await useCoachStore.getState().updateCoach(action.payload.id, action.payload.updates);

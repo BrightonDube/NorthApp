@@ -320,20 +320,35 @@ export default function SettingsScreen() {
           <Text style={styles.headerTitle}>Settings</Text>
         </View>
 
-        {/* Pro Badge (if subscribed) */}
-        {isProUser && (
-          <View style={styles.proBadgeContainer}>
-            <View style={styles.proBadge}>
-              <Ionicons name="diamond" size={20} color="#FFFFFF" />
-              <Text style={styles.proBadgeText}>North Pro</Text>
-            </View>
-            {formattedExpiration && (
-              <Text style={styles.proExpiration}>
-                Renews on {formattedExpiration}
-              </Text>
-            )}
+        {/* Tier Status Badge */}
+        <View style={[
+          styles.tierBadgeContainer,
+          isProUser ? styles.tierBadgeContainerPro : styles.tierBadgeContainerFree
+        ]}>
+          <View style={styles.tierBadge}>
+            <Ionicons 
+              name={isProUser ? "diamond" : "star-outline"} 
+              size={20} 
+              color={isProUser ? "#FFFFFF" : "#71717A"} 
+            />
+            <Text style={[
+              styles.tierBadgeText,
+              isProUser ? styles.tierBadgeTextPro : styles.tierBadgeTextFree
+            ]}>
+              {isProUser ? 'North Pro' : 'North Free'}
+            </Text>
           </View>
-        )}
+          {isProUser && formattedExpiration && (
+            <Text style={styles.tierExpiration}>
+              Renews on {formattedExpiration}
+            </Text>
+          )}
+          {!isProUser && (
+            <Text style={styles.tierDescription}>
+              Upgrade to unlock unlimited context and custom coaches
+            </Text>
+          )}
+        </View>
 
         {/* Account Section */}
         <Text style={styles.sectionTitle}>Account</Text>
@@ -470,6 +485,47 @@ const styles = StyleSheet.create({
   proExpiration: {
     fontSize: 14,
     color: '#A1A1AA',
+  },
+  tierBadgeContainer: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  tierBadgeContainerPro: {
+    backgroundColor: '#09090B',
+  },
+  tierBadgeContainerFree: {
+    backgroundColor: '#F4F4F5',
+    borderWidth: 2,
+    borderColor: '#E4E4E7',
+  },
+  tierBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  tierBadgeTextPro: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  tierBadgeTextFree: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#09090B',
+    marginLeft: 8,
+  },
+  tierExpiration: {
+    fontSize: 14,
+    color: '#A1A1AA',
+  },
+  tierDescription: {
+    fontSize: 13,
+    color: '#71717A',
+    textAlign: 'center',
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 12,

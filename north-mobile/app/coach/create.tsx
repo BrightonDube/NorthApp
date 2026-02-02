@@ -31,6 +31,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useCoachStore } from '@/stores/coachStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useBillingStore } from '@/stores/billingStore';
 
 // Available avatars (emoji-based for simplicity)
 const AVATARS = ['🧠', '💡', '🎯', '🚀', '💪', '🌟', '📚', '🎨', '⚡', '🔥', '💎', '🌈'];
@@ -62,6 +63,7 @@ export default function CreateCoachScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { createCoach, isLoading } = useCoachStore();
+  const { isProUser } = useBillingStore();
 
   // Form state
   const [name, setName] = useState('');
@@ -84,6 +86,19 @@ export default function CreateCoachScreen() {
   const handleCreate = async () => {
     if (!user?.id || !isValid) return;
 
+    // Check Pro status before creating
+    if (!isProUser) {
+      Alert.alert(
+        'Pro Feature',
+        'Creating custom coaches requires a Pro subscription. Upgrade to unlock this feature.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade to Pro', onPress: () => router.back() }
+        ]
+      );
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const selectedStyle = COACHING_STYLES.find(s => s.id === style);
@@ -94,7 +109,7 @@ export default function CreateCoachScreen() {
       `You are ${name}, an expert ${finalExpertise} coach. Your coaching style is ${selectedStyle?.label?.toLowerCase() || 'supportive'} - ${selectedStyle?.description?.toLowerCase() || 'warm and encouraging'}. ${description ? `About you: ${description}` : ''}`;
 
     try {
-      await createCoach(name.trim(), avatar, finalSystemPrompt);
+      await createCoach(name.trim(), avatar, finalSystemPrompt, undefined, isProUser);
 
       Alert.alert(
         'Coach Created! 🎉',

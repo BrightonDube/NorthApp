@@ -51,7 +51,7 @@ function SectionHeader({ title, count }: { title: string; count?: number }) {
 /**
  * Create Coach Button (Pro Feature)
  */
-function CreateCoachButton({ onPress }: { onPress: () => void }) {
+function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProUser: boolean }) {
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress();
@@ -73,7 +73,14 @@ function CreateCoachButton({ onPress }: { onPress: () => void }) {
       </View>
       <View style={styles.createContent}>
         <Text style={styles.createTitle}>Create Custom Coach</Text>
-        <Text style={styles.createSubtitle}>Pro Feature</Text>
+        <View style={styles.createSubtitleContainer}>
+          <Text style={[
+            styles.createSubtitle,
+            isProUser && styles.createSubtitleActive
+          ]}>
+            {isProUser ? '✨ Pro Feature - Unlocked' : '🔒 Pro Feature'}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -167,7 +174,7 @@ export default function HomeScreen() {
   };
 
   const handleCreateSubmit = async (name: string, icon: string, systemPrompt: string) => {
-    await createCoach(name, icon, systemPrompt);
+    await createCoach(name, icon, systemPrompt, undefined, isProUser);
     setIsCreateModalVisible(false);
   };
 
@@ -255,7 +262,7 @@ export default function HomeScreen() {
 
             {/* Create Coach Button */}
             <View style={styles.section}>
-              <CreateCoachButton onPress={handleCreateCoach} />
+              <CreateCoachButton onPress={handleCreateCoach} isProUser={isProUser} />
             </View>
           </>
         )}
@@ -388,9 +395,17 @@ const styles = StyleSheet.create({
     color: '#09090B',
     marginBottom: 2,
   },
+  createSubtitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   createSubtitle: {
     fontSize: 14,
     color: '#71717A',
+  },
+  createSubtitleActive: {
+    color: '#22C55E',
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',

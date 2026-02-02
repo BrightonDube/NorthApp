@@ -32,6 +32,10 @@ const FEATURE_DESCRIPTIONS: Record<string, { title: string; description: string 
     title: 'Unlimited Coaches',
     description: 'Access unlimited coaches to build your complete Board of Directors.',
   },
+  context_creation: {
+    title: 'Unlimited Context',
+    description: 'Add unlimited personal context items to help your coaches understand you better. Free users are limited to 3 items.',
+  },
   unlimited_context: {
     title: 'Unlimited Context',
     description: 'Add unlimited personal context for more personalized coaching.',
@@ -66,6 +70,7 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
   const {
     offerings,
     isLoading,
+    isProUser,
     fetchOfferings,
     purchasePackage,
     restorePurchases,
@@ -130,6 +135,15 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
           >
           {/* Hero Section */}
           <View className="items-center py-8">
+            {/* Current Tier Badge */}
+            {!isProUser && (
+              <View className="mb-3 px-3 py-1 bg-surface rounded-full">
+                <Text className="text-xs font-semibold text-text-secondary">
+                  Currently on Free Plan
+                </Text>
+              </View>
+            )}
+            
             <View className="w-20 h-20 rounded-full bg-brand-primary items-center justify-center mb-4">
               <Ionicons name="diamond" size={40} color="#FFFFFF" />
             </View>

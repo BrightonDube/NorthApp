@@ -613,6 +613,10 @@ describe('ContextStore Property-Based Tests', () => {
             // Mock fetch returning items - need to chain order() calls
             const mockOrder = jest.fn();
             const mockSelect = jest.fn();
+
+            // Mock network store
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.setState({ isOnline: true });
             
             // First order() call returns an object with another order() method
             // Second order() call resolves with the data
@@ -629,7 +633,7 @@ describe('ContextStore Property-Based Tests', () => {
             const { result } = renderHook(() => useContextStore());
 
             await act(async () => {
-              await result.current.fetchContexts();
+              await result.current.fetchContexts(true);
             });
 
             // Verify the order calls were made correctly
@@ -959,10 +963,14 @@ describe('ContextStore Property-Based Tests', () => {
 
             const { result } = renderHook(() => useContextStore());
 
+            // Mock network store
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.setState({ isOnline: true });
+
             const beforeFetch = Date.now();
 
             await act(async () => {
-              await result.current.fetchContexts();
+              await result.current.fetchContexts(true);
             });
 
             const afterFetch = Date.now();

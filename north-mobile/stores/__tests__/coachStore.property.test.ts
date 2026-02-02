@@ -392,6 +392,81 @@ describe('coachStore - Property-Based Tests', () => {
         )
       );
     });
+
+    it('should enforce Pro requirement in createCoach function', async () => {
+      // Reset for this test
+      jest.clearAllMocks();
+      useCoachStore.getState().reset();
+      
+      const { useNetworkStore } = require('../networkStore');
+      useNetworkStore.getState.mockReturnValue({ isOnline: true });
+
+      // Test that Free users cannot create coaches
+      await expect(
+        useCoachStore.getState().createCoach('Test Coach', '🚀', 'Test prompt', undefined, false)
+      ).rejects.toThrow('Coach creation requires Pro subscription');
+
+      // Verify error was set in store
+      const state = useCoachStore.getState();
+      expect(state.error).toBe('Coach creation requires Pro subscription');
+
+      // Verify no coach was added to store
+      expect(state.coaches.length).toBe(0);
+    });
+
+    it('should allow Pro users to create coaches', async () => {
+      // Reset for this test
+      jest.clearAllMocks();
+      useCoachStore.getState().reset();
+      
+      const { useNetworkStore } = require('../networkStore');
+      useNetworkStore.getState.mockReturnValue({ isOnline: true });
+
+      const { supabase } = require('@/lib/supabase');
+      
+      const mockCoachId = fc.sample(uuidArbitrary, 1)[0];
+      const mockCreatedAt = new Date().toISOString();
+      const mockUpdatedAt = new Date().toISOString();
+      
+      // Mock successful creation
+      supabase.from = jest.fn().mockReturnValue({
+        insert: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: {
+                id: mockCoachId,
+                name: 'Pro Coach',
+                icon: '🚀',
+                system_prompt: 'Test prompt for Pro user',
+                creator_id: null,
+                is_public: false,
+                created_at: mockCreatedAt,
+                updated_at: mockUpdatedAt,
+              },
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      // Test that Pro users can create coaches
+      const result = await useCoachStore.getState().createCoach(
+        'Pro Coach',
+        '🚀',
+        'Test prompt for Pro user',
+        undefined,
+        true
+      );
+
+      // Verify coach was created successfully
+      expect(result).toBeDefined();
+      expect(result.name).toBe('Pro Coach');
+      expect(result.icon).toBe('🚀');
+
+      // Verify no error was set
+      const state = useCoachStore.getState();
+      expect(state.error).toBeNull();
+    });
   });
 
   /**
@@ -1109,12 +1184,13 @@ describe('coachStore - Property-Based Tests', () => {
             // Verify coach was not modified
             const state = useCoachStore.getState();
             expect(state.coaches.length).toBe(1);
-            const coach = state.coaches.find(c => c.id === defaultCoach.id);
+            const coach = state.coaches[0]; // Use index access since length is 1
             expect(coach).toBeDefined();
-            expect(coach?.name).toBe(defaultCoach.name);
-            expect(coach?.icon).toBe(defaultCoach.icon);
-            expect(coach?.systemPrompt).toBe(defaultCoach.systemPrompt);
-            expect(coach?.creatorId).toBeNull();
+            expect(coach.id).toBe(defaultCoach.id);
+            expect(coach.name).toBe(defaultCoach.name);
+            expect(coach.icon).toBe(defaultCoach.icon);
+            expect(coach.systemPrompt).toBe(defaultCoach.systemPrompt);
+            expect(coach.creatorId).toBeNull();
           }
         )
       );
@@ -1483,7 +1559,7 @@ describe('coachStore - Property-Based Tests', () => {
         }),
       });
       
-      await useCoachStore.getState().fetchCoaches();
+      await useCoachStore.getState().fetchCoaches(true);
       
       const userACoaches = useCoachStore.getState().coaches;
       
@@ -1547,7 +1623,7 @@ describe('coachStore - Property-Based Tests', () => {
         }),
       });
       
-      await useCoachStore.getState().fetchCoaches();
+      await useCoachStore.getState().fetchCoaches(true);
       
       const userBCoaches = useCoachStore.getState().coaches;
       

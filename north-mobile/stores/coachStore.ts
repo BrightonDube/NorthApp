@@ -59,7 +59,7 @@ interface CoachState {
  */
 interface CoachActions {
   fetchCoaches: (force?: boolean) => Promise<void>;
-  createCoach: (name: string, icon: string, systemPrompt: string, optimisticId?: string) => Promise<Coach>;
+  createCoach: (name: string, icon: string, systemPrompt: string, optimisticId?: string, isProUser?: boolean) => Promise<Coach>;
   updateCoach: (id: string, updates: Partial<Omit<Coach, 'id' | 'creatorId' | 'isPublic' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
   deleteCoach: (id: string) => Promise<void>;
   canCreateCoach: (isProUser: boolean) => boolean;
@@ -198,30 +198,42 @@ export const useCoachStore = create<CoachStore>()(
       /**
        * Create a new private coach
        *
-       * Validates: Requirements 6.4, 6.5, 7.2, 16.2
+       * Validates: Requirements 6.4, 6.5, 7.2, 7.4, 16.2
        * 
        * Implements optimistic updates: the coach is added to the UI immediately
        * with a temporary ID, then replaced with the real coach from the server.
        * If the request fails, the temporary coach is removed (rollback).
        * 
-       * Only Pro users can create coaches.
+       * Only Pro users can create coaches. This is enforced at the store level
+       * to ensure the business rule is respected regardless of UI state.
        * 
        * @param name - The coach's display name
        * @param icon - The coach's icon (emoji or icon identifier)
        * @param systemPrompt - The coach's role definition
+       * @param optimisticId - Optional ID for optimistic updates
+       * @param isProUser - Whether the user has Pro subscription (required for enforcement)
        * @returns The created coach
-       * @throws Error if creation fails
+       * @throws Error if creation fails or user is not Pro
        * 
        * @example
        * ```typescript
        * const newCoach = await createCoach(
        *   'My Coach',
        *   '🚀',
-       *   'You are a helpful coach...'
+       *   'You are a helpful coach...',
+       *   undefined,
+       *   true
        * );
        * ```
        */
-      createCoach: async (name, icon, systemPrompt, optimisticId) => {
+      createCoach: async (name, icon, systemPrompt, optimisticId, isProUser) => {
+        // Enforce Pro tier requirement
+        if (isProUser !== undefined && !isProUser) {
+          const error = new Error('Coach creation requires Pro subscription');
+          set({ error: error.message });
+          throw error;
+        }
+
         // Validate inputs
         if (!name || name.trim().length === 0) {
           const error = new Error('Coach name cannot be empty');
@@ -258,7 +270,13 @@ export const useCoachStore = create<CoachStore>()(
         });
 
         if (!isOnline) {
-             useOfflineQueue.getState().enqueue('create_coach', { name, icon, systemPrompt, optimisticId: tempId });
+             useOfflineQueue.getState().enqueue('create_coach', { 
+               name, 
+               icon, 
+               systemPrompt, 
+               optimisticId: tempId,
+               isProUser 
+             });
              return tempCoach;
         }
 

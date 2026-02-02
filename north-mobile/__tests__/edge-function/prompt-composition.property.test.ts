@@ -205,7 +205,8 @@ describe('Edge Function Property-Based Tests', () => {
 
                 // Verify all items for this category appear after the header
                 categoryItems.forEach(content => {
-                  const itemIndex = systemPrompt.indexOf(`- ${content}`);
+                  // Search starting from the header position to avoid finding content earlier in the prompt
+                  const itemIndex = systemPrompt.indexOf(`- ${content}`, headerIndex);
                   expect(itemIndex).toBeGreaterThan(headerIndex);
                 });
               }
@@ -265,7 +266,8 @@ describe('Edge Function Property-Based Tests', () => {
             // Verify items appear in the same order they were provided
             let lastIndex = -1;
             contents.forEach(content => {
-              const currentIndex = systemPrompt.indexOf(`- ${content}`);
+              // Search starting from the last found index
+              const currentIndex = systemPrompt.indexOf(`- ${content}`, lastIndex + 1);
               expect(currentIndex).toBeGreaterThan(lastIndex);
               lastIndex = currentIndex;
             });

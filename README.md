@@ -1,5 +1,8 @@
 # North
 
+[![EAS Update](https://github.com/BrightonDube/NorthApp/actions/workflows/eas-update.yml/badge.svg)](https://github.com/BrightonDube/NorthApp/actions/workflows/eas-update.yml)
+[![Test](https://github.com/BrightonDube/NorthApp/actions/workflows/test.yml/badge.svg)](https://github.com/BrightonDube/NorthApp/actions/workflows/test.yml)
+
 > Your personal board of directors
 
 North is a mobile application that provides context-aware AI coaching to help you make clearer decisions, think faster, and build better systems. Define your personal operating system once, then receive instant guidance from specialized AI coaches without setup friction.
@@ -120,6 +123,8 @@ REVENUECAT_API_KEY=your_revenuecat_api_key
 ### Running the App
 
 ```bash
+cd north-mobile
+
 # Start Expo dev server
 npm start
 
@@ -133,6 +138,8 @@ npm run android
 ### Testing
 
 ```bash
+cd north-mobile
+
 # Run all tests
 npm test
 
@@ -145,6 +152,30 @@ npm run test:pbt
 # Generate coverage report
 npm run test:coverage
 ```
+
+## CI/CD Pipeline
+
+This project uses GitHub Actions for automated builds and deployments:
+
+- **Automatic Updates**: Push to `main` → EAS Update publishes automatically
+- **Manual Builds**: Trigger builds from GitHub Actions when needed
+- **Automated Tests**: Tests run on every PR and push to `main`
+
+### Quick Setup
+
+1. Get your Expo token: `eas whoami --json`
+2. Add GitHub secrets (see `north-mobile/CI_CD_QUICKSTART.md`)
+3. Push to `main` - updates deploy automatically!
+
+**📚 Full Documentation:**
+- Quick Start: `north-mobile/CI_CD_QUICKSTART.md`
+- Complete Guide: `north-mobile/CI_CD_SETUP.md`
+
+### Workflows
+
+- `.github/workflows/eas-update.yml` - Automatic OTA updates
+- `.github/workflows/eas-build.yml` - Manual native builds
+- `.github/workflows/test.yml` - Automated testing
 
 ### Database Setup
 

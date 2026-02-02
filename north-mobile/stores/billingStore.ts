@@ -274,6 +274,8 @@ export const useBillingStore = create<BillingStoreInternal>()(
   /**
    * Purchase a specific package
    * @returns true if purchase succeeded, false otherwise
+   * 
+   * Validates: Requirement 12.6 - Refresh entitlements immediately after purchase
    */
   purchasePackage: async (pkg: PurchasesPackage) => {
     if (!isInitialized) {
@@ -295,6 +297,10 @@ export const useBillingStore = create<BillingStoreInternal>()(
         paywallFeature: null,
         lastSynced: Date.now(),
       });
+
+      // Explicitly refresh entitlements to ensure we have the latest state (Requirement 12.6)
+      // This provides an additional layer of verification beyond the purchase response
+      await get().fetchEntitlements();
 
       if (entitlements.pro.isActive) {
         console.log('[BillingStore] Purchase successful - user is now Pro');
@@ -328,6 +334,8 @@ export const useBillingStore = create<BillingStoreInternal>()(
   /**
    * Restore previous purchases
    * Useful for users who reinstall the app or switch devices
+   * 
+   * Validates: Requirement 12.6 - Refresh entitlements immediately after purchase/restore
    */
   restorePurchases: async () => {
     if (!isInitialized) {
@@ -347,6 +355,9 @@ export const useBillingStore = create<BillingStoreInternal>()(
         isLoading: false,
         lastSynced: Date.now(),
       });
+
+      // Explicitly refresh entitlements to ensure we have the latest state (Requirement 12.6)
+      await get().fetchEntitlements();
 
       if (entitlements.pro.isActive) {
         Alert.alert('Success', 'Your Pro subscription has been restored!');
