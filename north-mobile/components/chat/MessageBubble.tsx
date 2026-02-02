@@ -50,8 +50,9 @@ export function MessageBubble({ message, isStreaming = false }: MessageBubblePro
 
   return (
     <Animated.View
-      entering={FadeIn.duration(200)}
+      entering={FadeIn}
       className={`mb-4 ${isUser ? 'items-end' : 'items-start'}`}
+      testID={`message-bubble-${message.id}`}
       accessible
       accessibilityRole="text"
       accessibilityLabel={`${isUser ? 'You' : 'Assistant'} said: ${message.content}`}

@@ -9,6 +9,7 @@
 
 import { create } from 'zustand';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+import { useOfflineQueue } from '@/lib/offlineQueue';
 
 /**
  * Network store state
@@ -65,7 +66,7 @@ let unsubscribe: (() => void) | null = null;
  * }
  * ```
  */
-export const useNetworkStore = create<NetworkStore>((set) => ({
+export const useNetworkStore = create<NetworkStore>((set, get) => ({
   // ============================================================================
   // State
   // ============================================================================
@@ -103,11 +104,19 @@ export const useNetworkStore = create<NetworkStore>((set) => ({
 
     // Subscribe to network state changes
     unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+      const wasOffline = !get().isOnline;
+      const isOnline = state.isConnected ?? false;
+
       set({
-        isOnline: state.isConnected ?? false,
+        isOnline,
         isInternetReachable: state.isInternetReachable,
         type: state.type,
       });
+
+      // If we came back online, process queue
+      if (wasOffline && isOnline) {
+        useOfflineQueue.getState().processQueue();
+      }
     });
 
     // Fetch initial network state

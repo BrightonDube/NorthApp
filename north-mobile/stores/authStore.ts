@@ -15,9 +15,12 @@ import { supabase } from '@/lib/supabase';
 import { clearStorageExceptTheme, resetAllStores } from '@/lib/logout';
 import type { AuthStore, User, Session } from '@/types';
 import type { Session as SupabaseSession } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 // Required for OAuth to work properly on native - completes the auth session
-WebBrowser.maybeCompleteAuthSession();
+if (Platform.OS !== 'web') {
+    WebBrowser.maybeCompleteAuthSession();
+}
 
 /**
  * Get the correct redirect URI for OAuth
@@ -43,6 +46,18 @@ function getRedirectUri(): string {
 // Storage keys for session persistence
 const SESSION_STORAGE_KEY = '@north/session';
 const USER_STORAGE_KEY = '@north/user';
+
+/**
+ * Helper to add timeout to promises
+ */
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+    ),
+  ]);
+};
 
 /**
  * Convert Supabase session to our Session type
@@ -502,32 +517,65 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Supabase automatically restores session from AsyncStorage
-      // We just need to get the current session
-      const { data: { session: supabaseSession }, error } = await supabase.auth.getSession();
+      // 1. FAST RESTORE: Try to load from AsyncStorage first
+      // This allows the app to start immediately while verifying in background
+      const storedSessionStr = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
+      const storedUserStr = await AsyncStorage.getItem(USER_STORAGE_KEY);
 
-      if (error) {
-        // Session restoration failed, clear any stale data
-        await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-        await AsyncStorage.removeItem(USER_STORAGE_KEY);
-        set({ isLoading: false, error: null });
-        return;
+      if (storedSessionStr && storedUserStr) {
+        try {
+          const session = JSON.parse(storedSessionStr);
+          const user = JSON.parse(storedUserStr);
+          
+          // Optimistically set state immediately
+          set({
+            user,
+            session,
+            isLoading: false, // Stop loading spinner immediately
+            error: null,
+            lastSynced: Date.now(),
+          });
+        } catch (parseError) {
+          // If parsing fails, ignore and proceed to standard restore
+          console.error('Failed to parse stored session/user:', parseError);
+        }
       }
 
-      if (!supabaseSession) {
-        // No session to restore
-        set({ isLoading: false, error: null });
+      // 2. BACKGROUND VERIFY: Validate with Supabase
+      // Supabase automatically restores session from AsyncStorage
+      // We just need to get the current session
+      // Add timeout to prevent hanging indefinitely
+      const { data: { session: supabaseSession }, error } = await withTimeout(
+        supabase.auth.getSession(), 
+        5000 // 5s timeout for session check
+      );
+
+      if (error || !supabaseSession) {
+        // Session invalid or expired - clear local state if we had it
+        if (storedSessionStr) {
+          await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+          await AsyncStorage.removeItem(USER_STORAGE_KEY);
+          // Only reset if we optimistically set it
+          if (get().session) {
+            set({ user: null, session: null, isLoading: false, error: null });
+          }
+        } else {
+          set({ isLoading: false, error: null });
+        }
         return;
       }
 
       // Get current user
-      const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
+      const { data: { user: supabaseUser }, error: userError } = await withTimeout(
+        supabase.auth.getUser(),
+        5000 // 5s timeout for user check
+      );
 
       if (userError || !supabaseUser) {
         // User data unavailable, clear session
         await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
         await AsyncStorage.removeItem(USER_STORAGE_KEY);
-        set({ isLoading: false, error: null });
+        set({ user: null, session: null, isLoading: false, error: null });
         return;
       }
 
@@ -539,7 +587,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
       await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
 
-      // Update state
+      // Update state with verified data
       set({
         user,
         session,

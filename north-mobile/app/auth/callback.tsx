@@ -32,12 +32,19 @@ export default function AuthCallback() {
           console.log('Native callback URL:', url);
         }
         
-        if (url) {
-          let accessToken: string | null = null;
-          let refreshToken: string | null = null;
-          
-          // Check hash fragment (Supabase uses implicit grant by default)
-          if (url.includes('#')) {
+        // If there's no URL, or if it's just the root/tunnel URL without auth params,
+        // we shouldn't be here or we should just redirect to login/home
+        if (!url) {
+            console.log('No URL found, redirecting to login');
+            router.replace('/(auth)/login');
+            return;
+        }
+
+        let accessToken: string | null = null;
+        let refreshToken: string | null = null;
+        
+        // Check hash fragment (Supabase uses implicit grant by default)
+        if (url.includes('#')) {
             const hashPart = url.split('#')[1];
             if (hashPart) {
               const hashParams = new URLSearchParams(hashPart);
@@ -45,10 +52,10 @@ export default function AuthCallback() {
               refreshToken = hashParams.get('refresh_token');
               console.log('Found tokens in hash fragment');
             }
-          }
+        }
           
-          // Check query params as fallback
-          if (!accessToken && url.includes('?')) {
+        // Check query params as fallback
+        if (!accessToken && url.includes('?')) {
             const queryPart = url.split('?')[1]?.split('#')[0];
             if (queryPart) {
               const queryParams = new URLSearchParams(queryPart);
@@ -56,9 +63,9 @@ export default function AuthCallback() {
               refreshToken = queryParams.get('refresh_token');
               console.log('Found tokens in query params');
             }
-          }
+        }
           
-          if (accessToken && refreshToken) {
+        if (accessToken && refreshToken) {
             console.log('Setting session with tokens...');
             const { error } = await supabase.auth.setSession({
               access_token: accessToken,
@@ -70,7 +77,6 @@ export default function AuthCallback() {
             } else {
               console.log('Session set successfully');
             }
-          }
         }
         
         // Check if we have a valid session now

@@ -405,157 +405,603 @@ describe('coachStore - Property-Based Tests', () => {
     beforeEach(() => {
       // Reset mocks before each test in this suite
       jest.clearAllMocks();
-      // jest.resetAllMocks();
       
       // Reset store
       useCoachStore.getState().reset();
+      
+      // Ensure network is online
+      const { useNetworkStore } = require('../networkStore');
+      useNetworkStore.getState.mockReturnValue({ isOnline: true });
     });
 
-    it('should reject coaches with empty name', async () => {
-      // Manual test instead of property test for debugging
-      jest.clearAllMocks();
+    it('should reject coaches with empty or whitespace-only names', async () => {
+      // Test with various empty/whitespace strings
+      const emptyNames = ['', '   ', '\t', '\n', '  \t\n  '];
       
-      const { useNetworkStore } = require('../networkStore');
-      useNetworkStore.getState = jest.fn().mockReturnValue({ isOnline: true });
-      
-      try {
-        await useCoachStore.getState().createCoach('', 'icon', 'prompt');
-        fail('Should have thrown');
-      } catch (error) {
-        expect(error).toBeDefined();
+      for (const emptyName of emptyNames) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Attempt to create coach with empty name
+        await expect(
+          useCoachStore.getState().createCoach(emptyName, '🚀', 'Valid prompt')
+        ).rejects.toThrow('Coach name cannot be empty');
+        
+        // Verify error was set in store
+        const state = useCoachStore.getState();
+        expect(state.error).toBe('Coach name cannot be empty');
+        
+        // Verify no coach was added to store
+        expect(state.coaches.length).toBe(0);
       }
     });
 
-    it('should reject coaches with empty system prompt', async () => {
-       // Manual test
-       jest.clearAllMocks();
-       
-       const { useNetworkStore } = require('../networkStore');
-       useNetworkStore.getState = jest.fn().mockReturnValue({ isOnline: true });
-       
-       try {
-         await useCoachStore.getState().createCoach('name', 'icon', '');
-         fail('Should have thrown');
-       } catch (error) {
-         expect(error).toBeDefined();
-       }
+    it('should reject coaches with empty or whitespace-only system prompts', async () => {
+      // Test with various empty/whitespace strings
+      const emptyPrompts = ['', '   ', '\t', '\n', '  \t\n  '];
+      
+      for (const emptyPrompt of emptyPrompts) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Attempt to create coach with empty system prompt
+        await expect(
+          useCoachStore.getState().createCoach('Valid Name', '🚀', emptyPrompt)
+        ).rejects.toThrow('System prompt cannot be empty');
+        
+        // Verify error was set in store
+        const state = useCoachStore.getState();
+        expect(state.error).toBe('System prompt cannot be empty');
+        
+        // Verify no coach was added to store
+        expect(state.coaches.length).toBe(0);
+      }
     });
 
-    it('should accept coaches with valid non-empty fields', async () => {
-      // Manual test
-      jest.clearAllMocks();
-      useCoachStore.getState().reset();
+    it('should accept coaches with valid non-empty fields using property-based testing', async () => {
+      // Generate test cases using fast-check
+      const testCases = fc.sample(
+        fc.tuple(coachNameArbitrary, coachIconArbitrary, systemPromptArbitrary),
+        10 // Generate 10 test cases
+      );
       
-      const { useNetworkStore } = require('../networkStore');
-      useNetworkStore.getState.mockReturnValue({ isOnline: true });
-      
-      const { supabase } = require('@/lib/supabase');
-      const mockCoach = generateMockCoach({ 
-        name: 'Valid Name', 
-        icon: '🚀', 
-        systemPrompt: 'Valid Prompt',
-      });
-      
-      supabase.from = jest.fn().mockReturnValue({
-        insert: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: {
-                id: mockCoach.id,
-                name: mockCoach.name,
-                icon: mockCoach.icon,
-                system_prompt: mockCoach.systemPrompt,
-                creator_id: mockCoach.creatorId,
-                is_public: mockCoach.isPublic,
-                created_at: mockCoach.createdAt,
-                updated_at: mockCoach.updatedAt,
-              },
-              error: null,
+      for (const [name, icon, systemPrompt] of testCases) {
+        // Complete reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        const { supabase } = require('@/lib/supabase');
+        
+        // Generate a unique mock coach for this iteration
+        const mockCoachId = fc.sample(uuidArbitrary, 1)[0];
+        const mockCreatedAt = new Date().toISOString();
+        const mockUpdatedAt = new Date().toISOString();
+        
+        // Mock successful creation - return the exact values passed in
+        supabase.from = jest.fn().mockReturnValue({
+          insert: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: {
+                  id: mockCoachId,
+                  name: name,
+                  icon: icon,
+                  system_prompt: systemPrompt,
+                  creator_id: null,
+                  is_public: false,
+                  created_at: mockCreatedAt,
+                  updated_at: mockUpdatedAt,
+                },
+                error: null,
+              }),
             }),
           }),
-        }),
-      });
+        });
 
-      const result = await useCoachStore.getState().createCoach('Valid Name', '🚀', 'Valid Prompt');
-      expect(result).toBeDefined();
-      expect(result.name).toBe('Valid Name');
-      expect(result.icon).toBe('🚀');
-      expect(result.systemPrompt).toBe('Valid Prompt');
+        // Create coach with valid fields
+        const result = await useCoachStore.getState().createCoach(name, icon, systemPrompt);
+        
+        // Verify coach was created successfully
+        expect(result).toBeDefined();
+        expect(result.name).toBe(name);
+        expect(result.icon).toBe(icon);
+        expect(result.systemPrompt).toBe(systemPrompt);
+        
+        // Verify no error was set
+        const state = useCoachStore.getState();
+        expect(state.error).toBeNull();
+      }
+    });
+
+    it('should validate name field during update operations', async () => {
+      // Test with various empty/whitespace strings
+      const emptyNames = ['', '   ', '\t'];
+      
+      for (const emptyName of emptyNames) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Create a user coach in the store
+        const coachId = fc.sample(uuidArbitrary, 1)[0];
+        const userId = fc.sample(uuidArbitrary, 1)[0];
+        const coach = {
+          id: coachId,
+          name: 'Original Name',
+          icon: '🚀',
+          systemPrompt: 'Original Prompt',
+          creatorId: userId,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [coach] });
+        
+        // Attempt to update with empty name
+        await expect(
+          useCoachStore.getState().updateCoach(coachId, { name: emptyName })
+        ).rejects.toThrow('Coach name cannot be empty');
+        
+        // Verify error was set
+        const state = useCoachStore.getState();
+        expect(state.error).toBe('Coach name cannot be empty');
+        
+        // Verify original coach name was not changed
+        expect(state.coaches[0].name).toBe('Original Name');
+      }
+    });
+
+    it('should validate system prompt field during update operations', async () => {
+      // Test with various empty/whitespace strings
+      const emptyPrompts = ['', '   ', '\n\n'];
+      
+      for (const emptyPrompt of emptyPrompts) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Create a user coach in the store
+        const coachId = fc.sample(uuidArbitrary, 1)[0];
+        const userId = fc.sample(uuidArbitrary, 1)[0];
+        const coach = {
+          id: coachId,
+          name: 'Test Coach',
+          icon: '🚀',
+          systemPrompt: 'Original Prompt',
+          creatorId: userId,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [coach] });
+        
+        // Attempt to update with empty system prompt
+        await expect(
+          useCoachStore.getState().updateCoach(coachId, { systemPrompt: emptyPrompt })
+        ).rejects.toThrow('System prompt cannot be empty');
+        
+        // Verify error was set
+        const state = useCoachStore.getState();
+        expect(state.error).toBe('System prompt cannot be empty');
+        
+        // Verify original system prompt was not changed
+        expect(state.coaches[0].systemPrompt).toBe('Original Prompt');
+      }
     });
   });
 
   /**
    * Property 20: Coach Creator Association
-   * **Validates: Requirements 6.6**
+   * **Validates: Requirements 6.1-6.7, 7.2-7.7, 18.4**
    * 
    * For any user-created coach, the creator_id should match the authenticated
-   * user's ID.
+   * user's ID. This property ensures:
+   * 1. User-created coaches have creatorId set to the user's ID
+   * 2. Default coaches have creatorId = null
+   * 3. A coach's creatorId never changes after creation
+   * 4. Only the creator can edit or delete their private coaches
    */
   describe('Property 20: Coach Creator Association', () => {
     beforeEach(() => {
       jest.clearAllMocks();
-      // jest.resetAllMocks();
       useCoachStore.getState().reset();
     });
 
     it('should associate created coaches with the authenticated user', async () => {
-      // Manual test
-      jest.clearAllMocks();
-      useCoachStore.getState().reset();
+      // Use a simpler approach with fewer iterations for debugging
+      const testCases = fc.sample(
+        fc.tuple(uuidArbitrary, coachNameArbitrary, coachIconArbitrary, systemPromptArbitrary),
+        5 // Just 5 test cases for now
+      );
       
-      const { useNetworkStore } = require('../networkStore');
-      useNetworkStore.getState.mockReturnValue({ isOnline: true });
-      
-      const userId = 'user-123';
-      const { supabase } = require('@/lib/supabase');
-      
-      // Mock authenticated user
-      supabase.auth.getUser = jest.fn().mockResolvedValue({
-        data: { user: { id: userId } },
-        error: null,
-      });
+      for (const [userId, name, icon, systemPrompt] of testCases) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        const { supabase } = require('@/lib/supabase');
+        
+        // Mock authenticated user
+        supabase.auth.getUser = jest.fn().mockResolvedValue({
+          data: { user: { id: userId } },
+          error: null,
+        });
 
-      const mockCoach = generateMockCoach({ 
-        name: 'Test Coach', 
-        icon: '🚀', 
-        systemPrompt: 'Prompt',
-        creatorId: userId,
-      });
+        const mockCoach = generateMockCoach({ 
+          name, 
+          icon, 
+          systemPrompt,
+          creatorId: userId,
+        });
+        
+        supabase.from = jest.fn().mockReturnValue({
+          insert: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: {
+                  id: mockCoach.id,
+                  name: mockCoach.name,
+                  icon: mockCoach.icon,
+                  system_prompt: mockCoach.systemPrompt,
+                  creator_id: userId,
+                  is_public: mockCoach.isPublic,
+                  created_at: mockCoach.createdAt,
+                  updated_at: mockCoach.updatedAt,
+                },
+                error: null,
+              }),
+            }),
+          }),
+        });
+
+        const result = await useCoachStore.getState().createCoach(name, icon, systemPrompt);
+        
+        // Verify the created coach has the correct creatorId
+        expect(result).toBeDefined();
+        expect(result.creatorId).toBe(userId);
+        expect(result.creatorId).not.toBeNull();
+        
+        // Verify the coach is in the store with correct creatorId
+        const coaches = useCoachStore.getState().coaches;
+        expect(coaches.length).toBeGreaterThan(0);
+        const storeCoach = coaches.find(c => c.id === result.id);
+        expect(storeCoach).toBeDefined();
+        expect(storeCoach?.creatorId).toBe(userId);
+      }
+    });
+
+    it('should maintain default coaches with null creatorId', () => {
+      runPropertyTest(
+        property(
+          fc.array(
+            fc.record({
+              id: uuidArbitrary,
+              name: coachNameArbitrary,
+              icon: coachIconArbitrary,
+              systemPrompt: systemPromptArbitrary,
+              creatorId: fc.constant(null), // Default coaches have null creatorId
+              isPublic: fc.constant(true),
+              createdAt: timestampArbitrary,
+              updatedAt: timestampArbitrary,
+            }),
+            { minLength: 1, maxLength: 5 }
+          ),
+          (defaultCoaches) => {
+            // Set default coaches in store
+            useCoachStore.setState({ coaches: defaultCoaches });
+
+            // Verify all default coaches have null creatorId
+            const coaches = useCoachStore.getState().coaches;
+            coaches.forEach(coach => {
+              expect(coach.creatorId).toBeNull();
+            });
+
+            // Verify getDefaultCoaches returns all coaches
+            const defaults = useCoachStore.getState().getDefaultCoaches();
+            expect(defaults.length).toBe(defaultCoaches.length);
+            defaults.forEach(coach => {
+              expect(coach.creatorId).toBeNull();
+            });
+          }
+        )
+      );
+    });
+
+    it('should never change a coach\'s creatorId after creation', async () => {
+      // Use a simpler approach with fewer iterations
+      const testCases = fc.sample(
+        fc.tuple(uuidArbitrary, coachNameArbitrary, coachIconArbitrary, systemPromptArbitrary, coachNameArbitrary),
+        5
+      );
       
-      supabase.from = jest.fn().mockReturnValue({
-        insert: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: {
-                id: mockCoach.id,
-                name: mockCoach.name,
-                icon: mockCoach.icon,
-                system_prompt: mockCoach.systemPrompt,
-                creator_id: userId,
-                is_public: mockCoach.isPublic,
-                created_at: mockCoach.createdAt,
-                updated_at: mockCoach.updatedAt,
-              },
+      for (const [userId, name, icon, systemPrompt, newName] of testCases) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Create a coach with a specific creatorId
+        const coachId = fc.sample(uuidArbitrary, 1)[0];
+        const originalCoach = {
+          id: coachId,
+          name,
+          icon,
+          systemPrompt,
+          creatorId: userId,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [originalCoach] });
+        
+        const { supabase } = require('@/lib/supabase');
+        supabase.from = jest.fn().mockReturnValue({
+          update: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue({
+              data: [{ ...originalCoach, name: newName }],
               error: null,
             }),
           }),
-        }),
-      });
+        });
 
-      const result = await useCoachStore.getState().createCoach('Test Coach', '🚀', 'Prompt');
-      expect(result.creatorId).toBe(userId);
+        // Update the coach
+        await useCoachStore.getState().updateCoach(coachId, { name: newName });
+        
+        // Verify creatorId remains unchanged
+        const coaches = useCoachStore.getState().coaches;
+        const updatedCoach = coaches.find(c => c.id === coachId);
+        expect(updatedCoach).toBeDefined();
+        expect(updatedCoach?.creatorId).toBe(userId);
+        expect(updatedCoach?.name).toBe(newName);
+      }
+    });
+
+    it('should only allow creator to access their private coaches via getUserCoaches', () => {
+      runPropertyTest(
+        property(
+          uuidArbitrary, // creator userId
+          uuidArbitrary, // other userId
+          fc.array(
+            fc.record({
+              id: uuidArbitrary,
+              name: coachNameArbitrary,
+              icon: coachIconArbitrary,
+              systemPrompt: systemPromptArbitrary,
+              isPublic: fc.constant(false),
+              createdAt: timestampArbitrary,
+              updatedAt: timestampArbitrary,
+            }),
+            { minLength: 1, maxLength: 5 }
+          ),
+          (creatorId, otherId, coachTemplates) => {
+            // Ensure creator and other user are different
+            fc.pre(creatorId !== otherId);
+            
+            // Create coaches with creatorId
+            const creatorCoaches = coachTemplates.map(template => ({
+              ...template,
+              creatorId,
+            }));
+            
+            useCoachStore.setState({ coaches: creatorCoaches });
+
+            // Creator should see their coaches
+            const creatorView = useCoachStore.getState().getUserCoaches(creatorId);
+            expect(creatorView.length).toBe(creatorCoaches.length);
+            creatorView.forEach(coach => {
+              expect(coach.creatorId).toBe(creatorId);
+            });
+
+            // Other user should NOT see creator's coaches
+            const otherView = useCoachStore.getState().getUserCoaches(otherId);
+            expect(otherView.length).toBe(0);
+          }
+        )
+      );
+    });
+
+    it('should prevent editing coaches with null creatorId (default coaches)', async () => {
+      // Use a simpler approach with fewer iterations
+      const testCases = fc.sample(
+        fc.tuple(
+          fc.record({
+            id: uuidArbitrary,
+            name: coachNameArbitrary,
+            icon: coachIconArbitrary,
+            systemPrompt: systemPromptArbitrary,
+            creatorId: fc.constant(null), // Default coach
+            isPublic: fc.constant(true),
+            createdAt: timestampArbitrary,
+            updatedAt: timestampArbitrary,
+          }),
+          coachNameArbitrary // new name
+        ),
+        5
+      );
+      
+      for (const [defaultCoach, newName] of testCases) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
+
+        // Attempt to update default coach should throw error
+        try {
+          await useCoachStore.getState().updateCoach(defaultCoach.id, { name: newName });
+          throw new Error('Should have thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toBe('Cannot update default coach');
+        }
+        
+        // Verify coach was not modified
+        const coaches = useCoachStore.getState().coaches;
+        expect(coaches.length).toBe(1);
+        const coach = coaches.find(c => c.id === defaultCoach.id);
+        expect(coach).toBeDefined();
+        expect(coach?.name).toBe(defaultCoach.name);
+        expect(coach?.creatorId).toBeNull();
+      }
+    });
+
+    it('should prevent deleting coaches with null creatorId (default coaches)', async () => {
+      // Use a simpler approach with fewer iterations
+      const testCases = fc.sample(
+        fc.record({
+          id: uuidArbitrary,
+          name: coachNameArbitrary,
+          icon: coachIconArbitrary,
+          systemPrompt: systemPromptArbitrary,
+          creatorId: fc.constant(null), // Default coach
+          isPublic: fc.constant(true),
+          createdAt: timestampArbitrary,
+          updatedAt: timestampArbitrary,
+        }),
+        5
+      );
+      
+      for (const defaultCoach of testCases) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
+
+        // Attempt to delete default coach should throw error
+        try {
+          await useCoachStore.getState().deleteCoach(defaultCoach.id);
+          throw new Error('Should have thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toBe('Cannot delete default coach');
+        }
+        
+        // Verify coach still exists
+        const coaches = useCoachStore.getState().coaches;
+        expect(coaches.length).toBe(1);
+        const coach = coaches.find(c => c.id === defaultCoach.id);
+        expect(coach).toBeDefined();
+        expect(coach?.creatorId).toBeNull();
+      }
+    });
+
+    it('should correctly separate default and user coaches in mixed collections', () => {
+      runPropertyTest(
+        property(
+          uuidArbitrary, // userId
+          fc.array(
+            fc.record({
+              id: uuidArbitrary,
+              name: coachNameArbitrary,
+              icon: coachIconArbitrary,
+              systemPrompt: systemPromptArbitrary,
+              creatorId: fc.constant(null),
+              isPublic: fc.constant(true),
+              createdAt: timestampArbitrary,
+              updatedAt: timestampArbitrary,
+            }),
+            { minLength: 1, maxLength: 5 }
+          ), // Default coaches
+          fc.array(
+            fc.record({
+              id: uuidArbitrary,
+              name: coachNameArbitrary,
+              icon: coachIconArbitrary,
+              systemPrompt: systemPromptArbitrary,
+              isPublic: fc.constant(false),
+              createdAt: timestampArbitrary,
+              updatedAt: timestampArbitrary,
+            }),
+            { minLength: 1, maxLength: 5 }
+          ), // User coaches
+          (userId, defaultCoaches, userCoachTemplates) => {
+            // Add creatorId to user coaches
+            const userCoaches = userCoachTemplates.map(template => ({
+              ...template,
+              creatorId: userId,
+            }));
+            
+            // Mix coaches in store
+            const allCoaches = [...defaultCoaches, ...userCoaches];
+            useCoachStore.setState({ coaches: allCoaches, isLoading: false, error: null, lastSynced: Date.now() });
+
+            // Verify total count
+            expect(useCoachStore.getState().coaches.length).toBe(
+              defaultCoaches.length + userCoaches.length
+            );
+
+            // Verify default coaches are correctly filtered
+            const defaults = useCoachStore.getState().getDefaultCoaches();
+            expect(defaults.length).toBe(defaultCoaches.length);
+            defaults.forEach(coach => {
+              expect(coach.creatorId).toBeNull();
+            });
+
+            // Verify user coaches are correctly filtered
+            const userFiltered = useCoachStore.getState().getUserCoaches(userId);
+            expect(userFiltered.length).toBe(userCoaches.length);
+            userFiltered.forEach(coach => {
+              expect(coach.creatorId).toBe(userId);
+            });
+
+            // Verify no overlap
+            const defaultIds = new Set(defaults.map(c => c.id));
+            const userIds = new Set(userFiltered.map(c => c.id));
+            defaultIds.forEach(id => {
+              expect(userIds.has(id)).toBe(false);
+            });
+          }
+        )
+      );
     });
   });
 
   /**
    * Property 21: Default Coach Immutability
-   * **Validates: Requirements 6.7**
+   * **Validates: Requirements 6.7, 7.2-7.7**
    * 
-   * For any default coach (creator_id = null), edit and delete operations
-   * should be prevented by the database (RLS policies).
+   * For any default coach (creatorId = null), edit and delete operations
+   * should be prevented. This property ensures:
+   * 1. Default coaches cannot be updated (name, icon, systemPrompt)
+   * 2. Default coaches cannot be deleted
+   * 3. Attempts to modify default coaches are rejected with clear error messages
+   * 4. Default coaches remain unchanged after failed modification attempts
    * 
-   * Note: This property tests that errors from the database are properly
-   * propagated. The actual immutability is enforced by RLS policies.
+   * The immutability is enforced at two levels:
+   * - Client-side validation in coachStore (tested here)
+   * - Database RLS policies (enforced by Supabase)
    */
   describe('Property 21: Default Coach Immutability', () => {
     beforeEach(() => {
@@ -563,8 +1009,8 @@ describe('coachStore - Property-Based Tests', () => {
       useCoachStore.getState().reset();
     });
 
-    it('should propagate errors when attempting to edit default coaches', async () => {
-      // Manual test
+    it('should prevent updating any field of default coaches (simple test)', async () => {
+      // Simple manual test first
       jest.clearAllMocks();
       useCoachStore.getState().reset();
       
@@ -572,79 +1018,379 @@ describe('coachStore - Property-Based Tests', () => {
       useNetworkStore.getState.mockReturnValue({ isOnline: true });
       
       const defaultCoach = {
-        id: 'default-1',
-        name: 'Default',
-        icon: 'D',
-        systemPrompt: 'Prompt',
+        id: 'test-id-123',
+        name: 'Default Coach',
+        icon: '🎯',
+        systemPrompt: 'I am a default coach',
         creatorId: null,
         isPublic: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       
-      useCoachStore.setState({ coaches: [defaultCoach] });
-
-      const { supabase } = require('@/lib/supabase');
-      const error = new Error('Cannot update default coach');
+      // Set coach in store
+      useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
       
-      supabase.from = jest.fn().mockReturnValue({
-        update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: null,
-            error,
-          }),
-        }),
-      });
-
-      await expect(
-        useCoachStore.getState().updateCoach(defaultCoach.id, { name: 'New Name' })
-      ).rejects.toThrow('Cannot update default coach');
+      // Verify coach is in store
+      let state = useCoachStore.getState();
+      expect(state.coaches.length).toBe(1);
+      expect(state.coaches[0].id).toBe('test-id-123');
+      
+      // Attempt to update
+      try {
+        await useCoachStore.getState().updateCoach('test-id-123', { name: 'New Name' });
+        throw new Error('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe('Cannot update default coach');
+      }
+      
+      // Verify coach still exists and is unchanged
+      state = useCoachStore.getState();
+      expect(state.coaches.length).toBe(1);
+      const coach = state.coaches.find(c => c.id === 'test-id-123');
+      expect(coach).toBeDefined();
+      expect(coach?.name).toBe('Default Coach');
+      expect(coach?.creatorId).toBeNull();
     });
 
-    it('should propagate errors when attempting to delete default coaches', async () => {
-      // Manual test
+    it('should prevent updating any field of default coaches (property-based)', async () => {
+      await runPropertyTest(
+        property(
+          fc.record({
+            id: uuidArbitrary,
+            name: coachNameArbitrary,
+            icon: coachIconArbitrary,
+            systemPrompt: systemPromptArbitrary,
+            creatorId: fc.constant(null), // Default coach
+            isPublic: fc.constant(true),
+            createdAt: timestampArbitrary,
+            updatedAt: timestampArbitrary,
+          }),
+          fc.record({
+            name: fc.option(coachNameArbitrary),
+            icon: fc.option(coachIconArbitrary),
+            systemPrompt: fc.option(systemPromptArbitrary),
+          }),
+          async (defaultCoach, updates) => {
+            // Reset for each iteration
+            jest.clearAllMocks();
+            useCoachStore.getState().reset();
+            
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.getState.mockReturnValue({ isOnline: true });
+            
+            // Set default coach in store
+            useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
+
+            // Filter out undefined updates
+            const filteredUpdates: any = {};
+            if (updates.name !== null) filteredUpdates.name = updates.name;
+            if (updates.icon !== null) filteredUpdates.icon = updates.icon;
+            if (updates.systemPrompt !== null) filteredUpdates.systemPrompt = updates.systemPrompt;
+
+            // Skip if no updates
+            if (Object.keys(filteredUpdates).length === 0) return;
+
+            // Verify coach exists before update attempt
+            const beforeState = useCoachStore.getState();
+            expect(beforeState.coaches.length).toBe(1);
+            expect(beforeState.coaches[0].id).toBe(defaultCoach.id);
+
+            // Attempt to update default coach should throw error
+            try {
+              await useCoachStore.getState().updateCoach(defaultCoach.id, filteredUpdates);
+              throw new Error('Should have thrown');
+            } catch (error) {
+              expect(error).toBeInstanceOf(Error);
+              expect((error as Error).message).toBe('Cannot update default coach');
+            }
+            
+            // Verify coach was not modified
+            const state = useCoachStore.getState();
+            expect(state.coaches.length).toBe(1);
+            const coach = state.coaches.find(c => c.id === defaultCoach.id);
+            expect(coach).toBeDefined();
+            expect(coach?.name).toBe(defaultCoach.name);
+            expect(coach?.icon).toBe(defaultCoach.icon);
+            expect(coach?.systemPrompt).toBe(defaultCoach.systemPrompt);
+            expect(coach?.creatorId).toBeNull();
+          }
+        )
+      );
+    });
+
+    it('should prevent deleting default coaches (property-based)', async () => {
+      await runPropertyTest(
+        property(
+          fc.record({
+            id: uuidArbitrary,
+            name: coachNameArbitrary,
+            icon: coachIconArbitrary,
+            systemPrompt: systemPromptArbitrary,
+            creatorId: fc.constant(null), // Default coach
+            isPublic: fc.constant(true),
+            createdAt: timestampArbitrary,
+            updatedAt: timestampArbitrary,
+          }),
+          async (defaultCoach) => {
+            // Reset for each iteration
+            jest.clearAllMocks();
+            useCoachStore.getState().reset();
+            
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.getState.mockReturnValue({ isOnline: true });
+            
+            // Set default coach in store
+            useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
+
+            // Attempt to delete default coach should throw error
+            try {
+              await useCoachStore.getState().deleteCoach(defaultCoach.id);
+              throw new Error('Should have thrown');
+            } catch (error) {
+              expect(error).toBeInstanceOf(Error);
+              expect((error as Error).message).toBe('Cannot delete default coach');
+            }
+            
+            // Verify coach still exists
+            const state = useCoachStore.getState();
+            expect(state.coaches.length).toBe(1);
+            const coach = state.coaches.find(c => c.id === defaultCoach.id);
+            expect(coach).toBeDefined();
+            expect(coach?.id).toBe(defaultCoach.id);
+            expect(coach?.creatorId).toBeNull();
+          }
+        )
+      );
+    });
+
+    it('should maintain default coach immutability in mixed collections', async () => {
+      await runPropertyTest(
+        property(
+          uuidArbitrary, // userId for user coaches
+          fc.array(
+            fc.record({
+              id: uuidArbitrary,
+              name: coachNameArbitrary,
+              icon: coachIconArbitrary,
+              systemPrompt: systemPromptArbitrary,
+              creatorId: fc.constant(null), // Default coaches
+              isPublic: fc.constant(true),
+              createdAt: timestampArbitrary,
+              updatedAt: timestampArbitrary,
+            }),
+            { minLength: 1, maxLength: 3 }
+          ),
+          fc.array(
+            fc.record({
+              id: uuidArbitrary,
+              name: coachNameArbitrary,
+              icon: coachIconArbitrary,
+              systemPrompt: systemPromptArbitrary,
+              isPublic: fc.constant(false),
+              createdAt: timestampArbitrary,
+              updatedAt: timestampArbitrary,
+            }),
+            { minLength: 1, maxLength: 3 }
+          ),
+          async (userId, defaultCoaches, userCoachTemplates) => {
+            // Reset for each iteration
+            jest.clearAllMocks();
+            useCoachStore.getState().reset();
+            
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.getState.mockReturnValue({ isOnline: true });
+            
+            // Add creatorId to user coaches
+            const userCoaches = userCoachTemplates.map(template => ({
+              ...template,
+              creatorId: userId,
+            }));
+            
+            // Mix coaches in store
+            const allCoaches = [...defaultCoaches, ...userCoaches];
+            useCoachStore.setState({ coaches: allCoaches, isLoading: false, error: null, lastSynced: Date.now() });
+
+            // Try to update a default coach
+            const defaultCoach = defaultCoaches[0];
+            try {
+              await useCoachStore.getState().updateCoach(defaultCoach.id, { name: 'New Name' });
+              throw new Error('Should have thrown');
+            } catch (error) {
+              expect(error).toBeInstanceOf(Error);
+              expect((error as Error).message).toBe('Cannot update default coach');
+            }
+
+            // Try to delete a default coach
+            try {
+              await useCoachStore.getState().deleteCoach(defaultCoach.id);
+              throw new Error('Should have thrown');
+            } catch (error) {
+              expect(error).toBeInstanceOf(Error);
+              expect((error as Error).message).toBe('Cannot delete default coach');
+            }
+
+            // Verify default coach is unchanged
+            const state = useCoachStore.getState();
+            const unchangedCoach = state.coaches.find(c => c.id === defaultCoach.id);
+            expect(unchangedCoach).toBeDefined();
+            expect(unchangedCoach?.name).toBe(defaultCoach.name);
+            expect(unchangedCoach?.creatorId).toBeNull();
+
+            // Verify user coaches can still be modified (mock successful update)
+            const { supabase } = require('@/lib/supabase');
+            const userCoach = userCoaches[0];
+            
+            supabase.from = jest.fn().mockReturnValue({
+              update: jest.fn().mockReturnValue({
+                eq: jest.fn().mockResolvedValue({
+                  data: [{ ...userCoach, name: 'Updated User Coach' }],
+                  error: null,
+                }),
+              }),
+            });
+
+            // User coach update should succeed
+            await expect(
+              useCoachStore.getState().updateCoach(userCoach.id, { name: 'Updated User Coach' })
+            ).resolves.not.toThrow();
+          }
+        )
+      );
+    });
+
+    it('should consistently reject all modification attempts on default coaches', async () => {
+      // Test multiple modification attempts on the same default coach
+      const defaultCoach = {
+        id: fc.sample(uuidArbitrary, 1)[0],
+        name: 'Default Coach',
+        icon: '🎯',
+        systemPrompt: 'I am a default coach',
+        creatorId: null,
+        isPublic: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Reset
       jest.clearAllMocks();
       useCoachStore.getState().reset();
       
       const { useNetworkStore } = require('../networkStore');
       useNetworkStore.getState.mockReturnValue({ isOnline: true });
       
-      const defaultCoach = {
-        id: 'default-1',
-        name: 'Default',
-        icon: 'D',
-        systemPrompt: 'Prompt',
-        creatorId: null,
-        isPublic: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      useCoachStore.setState({ coaches: [defaultCoach] });
+      useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
 
-      const { supabase } = require('@/lib/supabase');
-      const error = new Error('Cannot delete default coach');
+      // Try multiple update operations
+      const updateAttempts = [
+        { name: 'New Name 1' },
+        { icon: '🚀' },
+        { systemPrompt: 'New prompt' },
+        { name: 'New Name 2', icon: '💡' },
+      ];
+
+      for (const update of updateAttempts) {
+        try {
+          await useCoachStore.getState().updateCoach(defaultCoach.id, update);
+          throw new Error('Should have thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(Error);
+          expect((error as Error).message).toBe('Cannot update default coach');
+        }
+        
+        // Verify coach remains unchanged
+        const state = useCoachStore.getState();
+        const coach = state.coaches.find(c => c.id === defaultCoach.id);
+        expect(coach?.name).toBe(defaultCoach.name);
+        expect(coach?.icon).toBe(defaultCoach.icon);
+        expect(coach?.systemPrompt).toBe(defaultCoach.systemPrompt);
+      }
+
+      // Try delete operation
+      try {
+        await useCoachStore.getState().deleteCoach(defaultCoach.id);
+        throw new Error('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe('Cannot delete default coach');
+      }
       
-      supabase.from = jest.fn().mockReturnValue({
-        delete: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: null,
-            error,
+      // Verify coach still exists
+      const finalState = useCoachStore.getState();
+      const coach = finalState.coaches.find(c => c.id === defaultCoach.id);
+      expect(coach).toBeDefined();
+    });
+
+    it('should preserve default coach data integrity after failed modification attempts', async () => {
+      await runPropertyTest(
+        property(
+          fc.record({
+            id: uuidArbitrary,
+            name: coachNameArbitrary,
+            icon: coachIconArbitrary,
+            systemPrompt: systemPromptArbitrary,
+            creatorId: fc.constant(null),
+            isPublic: fc.constant(true),
+            createdAt: timestampArbitrary,
+            updatedAt: timestampArbitrary,
           }),
-        }),
-      });
+          async (defaultCoach) => {
+            // Reset for each iteration
+            jest.clearAllMocks();
+            useCoachStore.getState().reset();
+            
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.getState.mockReturnValue({ isOnline: true });
+            
+            // Store original values
+            const originalName = defaultCoach.name;
+            const originalIcon = defaultCoach.icon;
+            const originalPrompt = defaultCoach.systemPrompt;
+            const originalCreatorId = defaultCoach.creatorId;
+            
+            useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
 
-      await expect(
-        useCoachStore.getState().deleteCoach(defaultCoach.id)
-      ).rejects.toThrow('Cannot delete default coach');
+            // Attempt update
+            try {
+              await useCoachStore.getState().updateCoach(defaultCoach.id, { 
+                name: 'Modified Name' 
+              });
+              throw new Error('Should have thrown');
+            } catch (error) {
+              expect(error).toBeInstanceOf(Error);
+              expect((error as Error).message).toBe('Cannot update default coach');
+            }
+
+            // Verify ALL fields remain unchanged
+            const state = useCoachStore.getState();
+            expect(state.coaches.length).toBe(1);
+            const coach = state.coaches.find(c => c.id === defaultCoach.id);
+            expect(coach).toBeDefined();
+            expect(coach?.name).toBe(originalName);
+            expect(coach?.icon).toBe(originalIcon);
+            expect(coach?.systemPrompt).toBe(originalPrompt);
+            expect(coach?.creatorId).toBe(originalCreatorId);
+            expect(coach?.creatorId).toBeNull();
+            expect(coach?.isPublic).toBe(true);
+          }
+        )
+      );
     });
   });
 
   /**
    * Property 22: Private Coach Privacy
-   * **Validates: Requirements 7.3**
+   * **Validates: Requirements 6.1-6.7, 7.2-7.7**
    * 
-   * For any newly created coach, is_public should be set to false.
+   * For any private coach (creatorId !== null), it should only be visible to
+   * the creator user. This property ensures:
+   * 1. Private coaches are only returned by fetchCoaches() for their creator
+   * 2. Other users cannot see private coaches they didn't create
+   * 3. The fetchCoaches() method filters correctly based on user ID
+   * 
+   * This is a critical security property that prevents users from accessing
+   * other users' private coaches.
    */
   describe('Property 22: Private Coach Privacy', () => {
     beforeEach(() => {
@@ -652,8 +1398,179 @@ describe('coachStore - Property-Based Tests', () => {
       useCoachStore.getState().reset();
     });
 
+    it('should only return private coaches for their creator via fetchCoaches', async () => {
+      // Manual test with specific data to debug
+      jest.clearAllMocks();
+      useCoachStore.getState().reset();
+      
+      const { useNetworkStore } = require('../networkStore');
+      useNetworkStore.getState.mockReturnValue({ isOnline: true });
+      
+      const userAId = 'user-a-123';
+      const userBId = 'user-b-456';
+      
+      const defaultCoach = {
+        id: 'default-1',
+        name: 'Default Coach',
+        icon: '🎯',
+        systemPrompt: 'I am a default coach',
+        creatorId: null,
+        isPublic: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      const userACoach = {
+        id: 'user-a-coach-1',
+        name: 'User A Coach',
+        icon: '🚀',
+        systemPrompt: 'I am User A\'s coach',
+        creatorId: userAId,
+        isPublic: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      const userBCoach = {
+        id: 'user-b-coach-1',
+        name: 'User B Coach',
+        icon: '💼',
+        systemPrompt: 'I am User B\'s coach',
+        creatorId: userBId,
+        isPublic: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      const { supabase } = require('@/lib/supabase');
+      
+      // Test 1: User A fetches coaches
+      supabase.auth.getUser = jest.fn().mockResolvedValue({
+        data: { user: { id: userAId } },
+        error: null,
+      });
+      
+      // Mock should return default coach + User A's coach (NOT User B's coach)
+      supabase.from = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          or: jest.fn().mockReturnValue({
+            order: jest.fn().mockResolvedValue({
+              data: [
+                {
+                  id: defaultCoach.id,
+                  name: defaultCoach.name,
+                  icon: defaultCoach.icon,
+                  system_prompt: defaultCoach.systemPrompt,
+                  creator_id: defaultCoach.creatorId,
+                  is_public: defaultCoach.isPublic,
+                  created_at: defaultCoach.createdAt,
+                  updated_at: defaultCoach.updatedAt,
+                },
+                {
+                  id: userACoach.id,
+                  name: userACoach.name,
+                  icon: userACoach.icon,
+                  system_prompt: userACoach.systemPrompt,
+                  creator_id: userACoach.creatorId,
+                  is_public: userACoach.isPublic,
+                  created_at: userACoach.createdAt,
+                  updated_at: userACoach.updatedAt,
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+      
+      await useCoachStore.getState().fetchCoaches();
+      
+      const userACoaches = useCoachStore.getState().coaches;
+      
+      // Verify User A sees exactly 2 coaches: default + their own
+      expect(userACoaches.length).toBe(2);
+      
+      // Verify default coach is present
+      const foundDefault = userACoaches.find(c => c.id === defaultCoach.id);
+      expect(foundDefault).toBeDefined();
+      expect(foundDefault?.creatorId).toBeNull();
+      
+      // Verify User A's coach is present
+      const foundUserA = userACoaches.find(c => c.id === userACoach.id);
+      expect(foundUserA).toBeDefined();
+      expect(foundUserA?.creatorId).toBe(userAId);
+      
+      // Verify User B's coach is NOT present
+      const foundUserB = userACoaches.find(c => c.id === userBCoach.id);
+      expect(foundUserB).toBeUndefined();
+      
+      // Test 2: User B fetches coaches
+      jest.clearAllMocks();
+      useCoachStore.getState().reset();
+      useNetworkStore.getState.mockReturnValue({ isOnline: true });
+      
+      supabase.auth.getUser = jest.fn().mockResolvedValue({
+        data: { user: { id: userBId } },
+        error: null,
+      });
+      
+      // Mock should return default coach + User B's coach (NOT User A's coach)
+      supabase.from = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          or: jest.fn().mockReturnValue({
+            order: jest.fn().mockResolvedValue({
+              data: [
+                {
+                  id: defaultCoach.id,
+                  name: defaultCoach.name,
+                  icon: defaultCoach.icon,
+                  system_prompt: defaultCoach.systemPrompt,
+                  creator_id: defaultCoach.creatorId,
+                  is_public: defaultCoach.isPublic,
+                  created_at: defaultCoach.createdAt,
+                  updated_at: defaultCoach.updatedAt,
+                },
+                {
+                  id: userBCoach.id,
+                  name: userBCoach.name,
+                  icon: userBCoach.icon,
+                  system_prompt: userBCoach.systemPrompt,
+                  creator_id: userBCoach.creatorId,
+                  is_public: userBCoach.isPublic,
+                  created_at: userBCoach.createdAt,
+                  updated_at: userBCoach.updatedAt,
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      });
+      
+      await useCoachStore.getState().fetchCoaches();
+      
+      const userBCoaches = useCoachStore.getState().coaches;
+      
+      // Verify User B sees exactly 2 coaches: default + their own
+      expect(userBCoaches.length).toBe(2);
+      
+      // Verify default coach is present
+      const foundDefaultB = userBCoaches.find(c => c.id === defaultCoach.id);
+      expect(foundDefaultB).toBeDefined();
+      expect(foundDefaultB?.creatorId).toBeNull();
+      
+      // Verify User B's coach is present
+      const foundUserBCoach = userBCoaches.find(c => c.id === userBCoach.id);
+      expect(foundUserBCoach).toBeDefined();
+      expect(foundUserBCoach?.creatorId).toBe(userBId);
+      
+      // Verify User A's coach is NOT present
+      const foundUserACoach = userBCoaches.find(c => c.id === userACoach.id);
+      expect(foundUserACoach).toBeUndefined();
+    });
+
     it('should create all new coaches as private (isPublic = false)', async () => {
-      // Manual test
+      // This test verifies that newly created coaches have isPublic = false
       jest.clearAllMocks();
       useCoachStore.getState().reset();
       
@@ -700,78 +1617,244 @@ describe('coachStore - Property-Based Tests', () => {
    * For any successful coach creation, the coach should appear in the user's
    * coach list immediately without requiring a refresh.
    * 
-   * Note: This test verifies that coaches are added to the store after creation,
-   * which demonstrates the optimistic update pattern. The actual timing of the
-   * optimistic update (before vs after server response) is implementation detail.
+   * This property tests the optimistic update pattern: coaches should appear
+   * in the store IMMEDIATELY when createCoach() is called, even before the
+   * server responds. This provides instant UI feedback to users.
    */
   describe('Property 23: Coach Creation Optimistic Update', () => {
     beforeEach(() => {
       jest.clearAllMocks();
-      // jest.resetAllMocks();
       useCoachStore.getState().reset();
     });
 
-    it('should add coach to store after successful creation', async () => {
-      // Manual test
-      jest.clearAllMocks();
-      useCoachStore.getState().reset();
-      
-      const { useNetworkStore } = require('../networkStore');
-      useNetworkStore.getState.mockReturnValue({ isOnline: true });
-      
-      const { supabase } = require('@/lib/supabase');
-      const mockCoach = generateMockCoach({ name: 'Test Coach', icon: '🚀', systemPrompt: 'Test Prompt' });
-      
-      supabase.from = jest.fn().mockReturnValue({
-        insert: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: {
-                id: mockCoach.id,
-                name: mockCoach.name,
-                icon: mockCoach.icon,
-                system_prompt: mockCoach.systemPrompt,
-                creator_id: mockCoach.creatorId,
-                is_public: mockCoach.isPublic,
-                created_at: mockCoach.createdAt,
-                updated_at: mockCoach.updatedAt,
-              },
-              error: null,
-            }),
-          }),
-        }),
-      });
+    it('should add coach to store immediately during creation (optimistic update)', async () => {
+      // Property-based test: For any valid coach data, the coach should appear
+      // in the store immediately when createCoach is called
+      await runPropertyTest(
+        property(
+          coachNameArbitrary,
+          coachIconArbitrary,
+          systemPromptArbitrary,
+          async (name, icon, systemPrompt) => {
+            // Reset for each iteration
+            jest.clearAllMocks();
+            useCoachStore.getState().reset();
+            
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.getState.mockReturnValue({ isOnline: true });
+            
+            const { supabase } = require('@/lib/supabase');
+            
+            // Track when the server responds
+            let serverResolved = false;
+            
+            // Mock a delayed server response to test optimistic update
+            const mockCoach = generateMockCoach({ name, icon, systemPrompt });
+            supabase.from = jest.fn().mockReturnValue({
+              insert: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockImplementation(() => {
+                    // Simulate server delay
+                    return new Promise((resolve) => {
+                      setTimeout(() => {
+                        serverResolved = true;
+                        resolve({
+                          data: {
+                            id: mockCoach.id,
+                            name: mockCoach.name,
+                            icon: mockCoach.icon,
+                            system_prompt: mockCoach.systemPrompt,
+                            creator_id: mockCoach.creatorId,
+                            is_public: mockCoach.isPublic,
+                            created_at: mockCoach.createdAt,
+                            updated_at: mockCoach.updatedAt,
+                          },
+                          error: null,
+                        });
+                      }, 100); // 100ms delay
+                    });
+                  }),
+                }),
+              }),
+            });
 
-      const result = await useCoachStore.getState().createCoach('Test Coach', '🚀', 'Test Prompt');
-      expect(result).toBeDefined();
-      expect(useCoachStore.getState().coaches.length).toBe(1);
+            // Start the creation (don't await yet)
+            const createPromise = useCoachStore.getState().createCoach(name, icon, systemPrompt);
+            
+            // Wait a tiny bit for the optimistic update to happen
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // CRITICAL: Verify coach appears in store BEFORE server responds
+            expect(serverResolved).toBe(false); // Server hasn't responded yet
+            const coachesDuringCreation = useCoachStore.getState().coaches;
+            expect(coachesDuringCreation.length).toBe(1); // Coach is already in store!
+            
+            // Verify the optimistic coach has the correct data
+            const optimisticCoach = coachesDuringCreation[0];
+            expect(optimisticCoach.name).toBe(name);
+            expect(optimisticCoach.icon).toBe(icon);
+            expect(optimisticCoach.systemPrompt).toBe(systemPrompt);
+            expect(optimisticCoach.id).toMatch(/^temp-/); // Temporary ID
+            
+            // Now wait for server response
+            const result = await createPromise;
+            
+            // Verify server response is valid
+            expect(result).toBeDefined();
+            expect(result.name).toBe(name);
+            expect(result.icon).toBe(icon);
+            expect(result.systemPrompt).toBe(systemPrompt);
+            
+            // Verify the temp coach was replaced with real coach
+            const coachesAfterCreation = useCoachStore.getState().coaches;
+            expect(coachesAfterCreation.length).toBe(1);
+            expect(coachesAfterCreation[0].id).not.toMatch(/^temp-/); // Real ID now
+            expect(coachesAfterCreation[0].id).toBe(mockCoach.id);
+          }
+        )
+      );
     });
 
-    it('should propagate server errors during coach creation', async () => {
-      // Manual test
-      jest.clearAllMocks();
-      useCoachStore.getState().reset();
-      
-      const { useNetworkStore } = require('../networkStore');
-      useNetworkStore.getState.mockReturnValue({ isOnline: true });
-      
-      const { supabase } = require('@/lib/supabase');
-      const error = new Error('Server error');
-      
-      supabase.from = jest.fn().mockReturnValue({
-        insert: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: null,
-              error,
-            }),
-          }),
-        }),
-      });
+    it('should rollback optimistic update on server error', async () => {
+      // Property-based test: If server returns error, the optimistic coach
+      // should be removed from the store (rollback)
+      await runPropertyTest(
+        property(
+          coachNameArbitrary,
+          coachIconArbitrary,
+          systemPromptArbitrary,
+          async (name, icon, systemPrompt) => {
+            // Reset for each iteration
+            jest.clearAllMocks();
+            useCoachStore.getState().reset();
+            
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.getState.mockReturnValue({ isOnline: true });
+            
+            const { supabase } = require('@/lib/supabase');
+            const error = new Error('Server error');
+            
+            // Mock server error
+            supabase.from = jest.fn().mockReturnValue({
+              insert: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockImplementation(() => {
+                    return new Promise((resolve) => {
+                      setTimeout(() => {
+                        resolve({
+                          data: null,
+                          error,
+                        });
+                      }, 100);
+                    });
+                  }),
+                }),
+              }),
+            });
 
-      await expect(
-        useCoachStore.getState().createCoach('Test Coach', '🚀', 'Test Prompt')
-      ).rejects.toThrow('Server error');
+            // Start the creation
+            const createPromise = useCoachStore.getState().createCoach(name, icon, systemPrompt);
+            
+            // Wait for optimistic update
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Verify coach appears optimistically
+            expect(useCoachStore.getState().coaches.length).toBe(1);
+            
+            // Wait for server error
+            await expect(createPromise).rejects.toThrow('Server error');
+            
+            // CRITICAL: Verify coach was removed from store (rollback)
+            const coachesAfterError = useCoachStore.getState().coaches;
+            expect(coachesAfterError.length).toBe(0); // Rolled back!
+            
+            // Verify error was set in store
+            expect(useCoachStore.getState().error).toBeTruthy();
+          }
+        )
+      );
+    });
+
+    it('should maintain coach list order after optimistic update completes', async () => {
+      // Property-based test: When adding a new coach optimistically, it should
+      // maintain proper ordering after server confirmation
+      await runPropertyTest(
+        property(
+          fc.array(
+            fc.record({
+              id: uuidArbitrary,
+              name: coachNameArbitrary,
+              icon: coachIconArbitrary,
+              systemPrompt: systemPromptArbitrary,
+              creatorId: fc.option(uuidArbitrary, { nil: null }),
+              isPublic: fc.boolean(),
+              createdAt: timestampArbitrary,
+              updatedAt: timestampArbitrary,
+            }),
+            { minLength: 0, maxLength: 3 }
+          ),
+          coachNameArbitrary,
+          coachIconArbitrary,
+          systemPromptArbitrary,
+          async (existingCoaches, newName, newIcon, newSystemPrompt) => {
+            // Reset for each iteration
+            jest.clearAllMocks();
+            useCoachStore.getState().reset();
+            
+            const { useNetworkStore } = require('../networkStore');
+            useNetworkStore.getState.mockReturnValue({ isOnline: true });
+            
+            // Set existing coaches
+            useCoachStore.setState({ coaches: existingCoaches });
+            
+            const { supabase } = require('@/lib/supabase');
+            const mockCoach = generateMockCoach({ 
+              name: newName, 
+              icon: newIcon, 
+              systemPrompt: newSystemPrompt 
+            });
+            
+            supabase.from = jest.fn().mockReturnValue({
+              insert: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({
+                    data: {
+                      id: mockCoach.id,
+                      name: mockCoach.name,
+                      icon: mockCoach.icon,
+                      system_prompt: mockCoach.systemPrompt,
+                      creator_id: mockCoach.creatorId,
+                      is_public: mockCoach.isPublic,
+                      created_at: mockCoach.createdAt,
+                      updated_at: mockCoach.updatedAt,
+                    },
+                    error: null,
+                  }),
+                }),
+              }),
+            });
+
+            // Create new coach
+            await useCoachStore.getState().createCoach(newName, newIcon, newSystemPrompt);
+            
+            // Verify coach was added to the list
+            const finalCoaches = useCoachStore.getState().coaches;
+            expect(finalCoaches.length).toBe(existingCoaches.length + 1);
+            
+            // Verify all existing coaches are still present
+            existingCoaches.forEach(existingCoach => {
+              const found = finalCoaches.find(c => c.id === existingCoach.id);
+              expect(found).toBeDefined();
+            });
+            
+            // Verify new coach is present with correct data
+            const newCoach = finalCoaches.find(c => c.name === newName);
+            expect(newCoach).toBeDefined();
+            expect(newCoach?.icon).toBe(newIcon);
+            expect(newCoach?.systemPrompt).toBe(newSystemPrompt);
+          }
+        )
+      );
     });
   });
 
@@ -781,90 +1864,393 @@ describe('coachStore - Property-Based Tests', () => {
    * 
    * For any user's private coach, that user should be able to edit and delete it.
    * 
+   * This property ensures:
+   * 1. Private coaches (creatorId !== null) can be updated by their creator
+   * 2. Private coaches can be deleted by their creator
+   * 3. Updates work correctly with optimistic updates
+   * 4. Deletes work correctly with optimistic updates
+   * 
    * Note: This property tests that update/delete operations complete successfully.
    * The actual authorization is enforced by RLS policies in the database.
    */
   describe('Property 24: Private Coach Mutability', () => {
     beforeEach(() => {
       jest.clearAllMocks();
-      // jest.resetAllMocks();
       useCoachStore.getState().reset();
     });
 
-    it('should allow users to edit their own private coaches', async () => {
-      // Manual test
-      jest.clearAllMocks();
-      useCoachStore.getState().reset();
+    it('should allow users to edit their own private coaches with any valid updates', async () => {
+      // Generate test cases using property-based testing
+      const testCases = fc.sample(
+        fc.tuple(
+          uuidArbitrary, // userId
+          uuidArbitrary, // coachId
+          coachNameArbitrary, // original name
+          coachIconArbitrary, // original icon
+          systemPromptArbitrary, // original prompt
+          fc.record({
+            name: fc.option(coachNameArbitrary, { nil: undefined }),
+            icon: fc.option(coachIconArbitrary, { nil: undefined }),
+            systemPrompt: fc.option(systemPromptArbitrary, { nil: undefined }),
+          }, { requiredKeys: [] }) // At least one field should be updated
+        ),
+        10 // Test 10 different update scenarios
+      );
       
-      const { useNetworkStore } = require('../networkStore');
-      useNetworkStore.getState.mockReturnValue({ isOnline: true });
-      
-      const userId = 'user-123';
-      const coachId = 'coach-123';
-      const coach = {
-        id: coachId,
-        name: 'Old Name',
-        icon: '🚀',
-        systemPrompt: 'Prompt',
-        creatorId: userId,
-        isPublic: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      useCoachStore.setState({ coaches: [coach] });
-      
-      const { supabase } = require('@/lib/supabase');
-      supabase.from = jest.fn().mockReturnValue({
-        update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: [{ ...coach, name: 'New Name' }],
-            error: null,
-          }),
-        }),
-      });
+      for (const [userId, coachId, origName, origIcon, origPrompt, updates] of testCases) {
+        // Skip if no updates provided
+        if (!updates.name && !updates.icon && !updates.systemPrompt) {
+          continue;
+        }
 
-      await expect(
-        useCoachStore.getState().updateCoach(coachId, { name: 'New Name' })
-      ).resolves.not.toThrow();
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Create a private coach owned by the user
+        const coach = {
+          id: coachId,
+          name: origName,
+          icon: origIcon,
+          systemPrompt: origPrompt,
+          creatorId: userId,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [coach] });
+        
+        // Mock successful update
+        const { supabase } = require('@/lib/supabase');
+        supabase.from = jest.fn().mockReturnValue({
+          update: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue({
+              data: [{ ...coach, ...updates }],
+              error: null,
+            }),
+          }),
+        });
+
+        // Attempt to update the coach
+        await expect(
+          useCoachStore.getState().updateCoach(coachId, updates)
+        ).resolves.not.toThrow();
+        
+        // Verify the coach was updated in the store
+        const state = useCoachStore.getState();
+        const updatedCoach = state.coaches.find(c => c.id === coachId);
+        expect(updatedCoach).toBeDefined();
+        
+        // Verify updates were applied
+        if (updates.name !== undefined) {
+          expect(updatedCoach?.name).toBe(updates.name);
+        }
+        if (updates.icon !== undefined) {
+          expect(updatedCoach?.icon).toBe(updates.icon);
+        }
+        if (updates.systemPrompt !== undefined) {
+          expect(updatedCoach?.systemPrompt).toBe(updates.systemPrompt);
+        }
+        
+        // Verify creatorId remains unchanged
+        expect(updatedCoach?.creatorId).toBe(userId);
+        
+        // Verify no error was set
+        expect(state.error).toBeNull();
+      }
     });
 
     it('should allow users to delete their own private coaches', async () => {
-      // Manual test
-      jest.clearAllMocks();
-      useCoachStore.getState().reset();
+      // Generate test cases using property-based testing
+      const testCases = fc.sample(
+        fc.tuple(
+          uuidArbitrary, // userId
+          uuidArbitrary, // coachId
+          coachNameArbitrary,
+          coachIconArbitrary,
+          systemPromptArbitrary
+        ),
+        10 // Test 10 different deletion scenarios
+      );
       
-      const { useNetworkStore } = require('../networkStore');
-      useNetworkStore.getState.mockReturnValue({ isOnline: true });
-      
-      const userId = 'user-123';
-      const coachId = 'coach-123';
-      const coach = {
-        id: coachId,
-        name: 'To Delete',
-        icon: '🚀',
-        systemPrompt: 'Prompt',
-        creatorId: userId,
-        isPublic: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      useCoachStore.setState({ coaches: [coach] });
-      
-      const { supabase } = require('@/lib/supabase');
-      supabase.from = jest.fn().mockReturnValue({
-        delete: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: [coach],
-            error: null,
+      for (const [userId, coachId, name, icon, systemPrompt] of testCases) {
+        // Reset for each iteration
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Create a private coach owned by the user
+        const coach = {
+          id: coachId,
+          name,
+          icon,
+          systemPrompt,
+          creatorId: userId,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [coach] });
+        
+        // Verify coach exists before deletion
+        expect(useCoachStore.getState().coaches.length).toBe(1);
+        
+        // Mock successful deletion
+        const { supabase } = require('@/lib/supabase');
+        supabase.from = jest.fn().mockReturnValue({
+          delete: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue({
+              data: [coach],
+              error: null,
+            }),
           }),
-        }),
-      });
+        });
 
-      await expect(
-        useCoachStore.getState().deleteCoach(coachId)
-      ).resolves.not.toThrow();
+        // Attempt to delete the coach
+        await expect(
+          useCoachStore.getState().deleteCoach(coachId)
+        ).resolves.not.toThrow();
+        
+        // Verify the coach was removed from the store
+        const state = useCoachStore.getState();
+        expect(state.coaches.length).toBe(0);
+        expect(state.coaches.find(c => c.id === coachId)).toBeUndefined();
+        
+        // Verify no error was set
+        expect(state.error).toBeNull();
+      }
+    });
+
+    it('should handle optimistic updates correctly when editing private coaches', async () => {
+      // Test that optimistic updates work: UI updates immediately, then syncs with server
+      const testCases = fc.sample(
+        fc.tuple(
+          uuidArbitrary,
+          uuidArbitrary,
+          coachNameArbitrary,
+          coachNameArbitrary // new name
+        ),
+        5
+      );
+      
+      for (const [userId, coachId, oldName, newName] of testCases) {
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        const coach = {
+          id: coachId,
+          name: oldName,
+          icon: '🚀',
+          systemPrompt: 'Test prompt',
+          creatorId: userId,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [coach] });
+        
+        // Mock a delayed server response
+        const { supabase } = require('@/lib/supabase');
+        let resolveUpdate: any;
+        const updatePromise = new Promise((resolve) => {
+          resolveUpdate = resolve;
+        });
+        
+        supabase.from = jest.fn().mockReturnValue({
+          update: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue(updatePromise),
+          }),
+        });
+
+        // Start the update (don't await yet)
+        const updatePromiseResult = useCoachStore.getState().updateCoach(coachId, { name: newName });
+        
+        // Immediately check that the UI was updated optimistically
+        // Note: In the actual implementation, the optimistic update happens synchronously
+        // before the async server call, so we can check it immediately
+        const stateBeforeServerResponse = useCoachStore.getState();
+        const coachBeforeServerResponse = stateBeforeServerResponse.coaches.find(c => c.id === coachId);
+        expect(coachBeforeServerResponse?.name).toBe(newName);
+        
+        // Now resolve the server response
+        resolveUpdate({ data: [{ ...coach, name: newName }], error: null });
+        
+        // Wait for the update to complete
+        await updatePromiseResult;
+        
+        // Verify final state
+        const finalState = useCoachStore.getState();
+        const finalCoach = finalState.coaches.find(c => c.id === coachId);
+        expect(finalCoach?.name).toBe(newName);
+        expect(finalState.error).toBeNull();
+      }
+    });
+
+    it('should handle optimistic updates correctly when deleting private coaches', async () => {
+      // Test that optimistic deletes work: coach removed from UI immediately
+      const testCases = fc.sample(
+        fc.tuple(
+          uuidArbitrary,
+          uuidArbitrary,
+          coachNameArbitrary
+        ),
+        5
+      );
+      
+      for (const [userId, coachId, name] of testCases) {
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        const coach = {
+          id: coachId,
+          name,
+          icon: '🚀',
+          systemPrompt: 'Test prompt',
+          creatorId: userId,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [coach] });
+        
+        // Mock a delayed server response
+        const { supabase } = require('@/lib/supabase');
+        let resolveDelete: any;
+        const deletePromise = new Promise((resolve) => {
+          resolveDelete = resolve;
+        });
+        
+        supabase.from = jest.fn().mockReturnValue({
+          delete: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue(deletePromise),
+          }),
+        });
+
+        // Start the delete (don't await yet)
+        const deletePromiseResult = useCoachStore.getState().deleteCoach(coachId);
+        
+        // Immediately check that the coach was removed optimistically
+        const stateBeforeServerResponse = useCoachStore.getState();
+        expect(stateBeforeServerResponse.coaches.find(c => c.id === coachId)).toBeUndefined();
+        
+        // Now resolve the server response
+        resolveDelete({ data: [coach], error: null });
+        
+        // Wait for the delete to complete
+        await deletePromiseResult;
+        
+        // Verify final state
+        const finalState = useCoachStore.getState();
+        expect(finalState.coaches.find(c => c.id === coachId)).toBeUndefined();
+        expect(finalState.error).toBeNull();
+      }
+    });
+
+    it('should not allow editing default coaches (creatorId = null)', async () => {
+      // Test that default coaches cannot be edited
+      const testCases = fc.sample(
+        fc.tuple(
+          uuidArbitrary, // coachId
+          coachNameArbitrary,
+          coachNameArbitrary // new name
+        ),
+        5
+      );
+      
+      for (const [coachId, oldName, newName] of testCases) {
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Create a default coach (creatorId = null)
+        const coach = {
+          id: coachId,
+          name: oldName,
+          icon: '🚀',
+          systemPrompt: 'Test prompt',
+          creatorId: null, // Default coach
+          isPublic: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [coach] });
+        
+        // Attempt to update the default coach
+        await expect(
+          useCoachStore.getState().updateCoach(coachId, { name: newName })
+        ).rejects.toThrow('Cannot update default coach');
+        
+        // Verify the coach was NOT updated
+        const state = useCoachStore.getState();
+        const unchangedCoach = state.coaches.find(c => c.id === coachId);
+        expect(unchangedCoach?.name).toBe(oldName);
+        
+        // Verify error was set
+        expect(state.error).toBe('Cannot update default coach');
+      }
+    });
+
+    it('should not allow deleting default coaches (creatorId = null)', async () => {
+      // Test that default coaches cannot be deleted
+      const testCases = fc.sample(
+        fc.tuple(
+          uuidArbitrary, // coachId
+          coachNameArbitrary
+        ),
+        5
+      );
+      
+      for (const [coachId, name] of testCases) {
+        jest.clearAllMocks();
+        useCoachStore.getState().reset();
+        
+        const { useNetworkStore } = require('../networkStore');
+        useNetworkStore.getState.mockReturnValue({ isOnline: true });
+        
+        // Create a default coach (creatorId = null)
+        const coach = {
+          id: coachId,
+          name,
+          icon: '🚀',
+          systemPrompt: 'Test prompt',
+          creatorId: null, // Default coach
+          isPublic: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        useCoachStore.setState({ coaches: [coach] });
+        
+        // Attempt to delete the default coach
+        await expect(
+          useCoachStore.getState().deleteCoach(coachId)
+        ).rejects.toThrow('Cannot delete default coach');
+        
+        // Verify the coach was NOT deleted
+        const state = useCoachStore.getState();
+        expect(state.coaches.find(c => c.id === coachId)).toBeDefined();
+        
+        // Verify error was set
+        expect(state.error).toBe('Cannot delete default coach');
+      }
     });
   });
 

@@ -33,10 +33,18 @@ export default function RootLayout() {
         // Setup auth state listener for real-time auth events
         setupAuthListener();
         
-        // Restore any existing session
-        await restoreSession();
+        // Restore any existing session with a safety timeout
+        // Even though store has timeouts, this ensures UI unblocks
+        const restorePromise = restoreSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Auth init timeout')), 8000)
+        );
+        
+        await Promise.race([restorePromise, timeoutPromise]);
       } catch (error) {
         console.error('Auth initialization error:', error);
+        // Force stop loading if timed out
+        useAuthStore.setState({ isLoading: false });
       } finally {
         setIsAuthInitialized(true);
       }

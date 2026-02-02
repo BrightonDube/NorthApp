@@ -12,6 +12,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import type { UserContext, ContextCategory } from '@/types';
+import { useOfflineQueue } from '@/lib/offlineQueue';
 
 /**
  * Database row type (snake_case from Supabase)
@@ -53,8 +54,8 @@ interface ContextState {
  * Context store actions
  */
 interface ContextActions {
-  fetchContexts: () => Promise<void>;
-  createContext: (category: ContextCategory, content: string) => Promise<UserContext>;
+  fetchContexts: (force?: boolean) => Promise<void>;
+  createContext: (category: ContextCategory, content: string, optimisticId?: string) => Promise<UserContext>;
   updateContext: (id: string, content: string) => Promise<void>;
   deleteContext: (id: string) => Promise<void>;
   canAddMore: (isProUser: boolean) => boolean;
@@ -138,16 +139,29 @@ export const useContextStore = create<ContextStore>()(
        * await fetchContexts();
        * ```
        */
-      fetchContexts: async () => {
+      fetchContexts: async (force = false) => {
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
+        
+        // Cache invalidation (24 hours)
+        const lastSynced = get().lastSynced;
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        const isStale = !lastSynced || (Date.now() - lastSynced > ONE_DAY_MS);
+
         if (!isOnline) {
-          set({
-            error: "You're offline. Please check your connection.",
-            isLoading: false,
-          });
+          if (get().items.length === 0) {
+            set({
+              error: "You're offline. Please check your connection.",
+              isLoading: false,
+            });
+          }
           return;
+        }
+
+        // If not stale and not forced, don't fetch
+        if (!isStale && !force) {
+            return;
         }
 
         set({ isLoading: true, error: null });
@@ -193,14 +207,10 @@ export const useContextStore = create<ContextStore>()(
        * const newContext = await createContext('goals', 'Launch my startup by Q2');
        * ```
        */
-      createContext: async (category, content) => {
+      createContext: async (category, content, optimisticId) => {
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
-        if (!isOnline) {
-          set({ error: "You're offline. Please check your connection." });
-          throw new Error("You're offline. Please check your connection.");
-        }
 
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
@@ -209,7 +219,7 @@ export const useContextStore = create<ContextStore>()(
           throw new Error('User not authenticated');
         }
 
-        const tempId = `temp-${Date.now()}`;
+        const tempId = optimisticId || `temp-${Date.now()}`;
         const tempItem: UserContext = {
           id: tempId,
           userId: user.id,
@@ -220,7 +230,17 @@ export const useContextStore = create<ContextStore>()(
         };
 
         // Optimistic update - add temp item immediately
-        set((state) => ({ items: [...state.items, tempItem] }));
+        // Only add if it doesn't exist (to prevent duplicates if called with existing optimisticId)
+        set((state) => {
+            if (state.items.some(i => i.id === tempId)) return state;
+            return { items: [...state.items, tempItem] };
+        });
+
+        if (!isOnline) {
+            // Queue for later
+            useOfflineQueue.getState().enqueue('create_context', { category, content, optimisticId: tempId });
+            return tempItem;
+        }
 
         try {
           const { data, error } = await supabase
@@ -273,11 +293,7 @@ export const useContextStore = create<ContextStore>()(
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
-        if (!isOnline) {
-          set({ error: "You're offline. Please check your connection." });
-          throw new Error("You're offline. Please check your connection.");
-        }
-
+        
         const previousItems = get().items;
 
         // Optimistic update - update item immediately
@@ -288,6 +304,11 @@ export const useContextStore = create<ContextStore>()(
               : item
           ),
         }));
+
+        if (!isOnline) {
+            useOfflineQueue.getState().enqueue('update_context', { id, content });
+            return;
+        }
 
         try {
           const { error } = await supabase
@@ -324,17 +345,18 @@ export const useContextStore = create<ContextStore>()(
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
-        if (!isOnline) {
-          set({ error: "You're offline. Please check your connection." });
-          throw new Error("You're offline. Please check your connection.");
-        }
-
+        
         const previousItems = get().items;
 
         // Optimistic update - remove item immediately
         set((state) => ({
           items: state.items.filter((item) => item.id !== id),
         }));
+
+        if (!isOnline) {
+            useOfflineQueue.getState().enqueue('delete_context', { id });
+            return;
+        }
 
         try {
           const { error } = await supabase

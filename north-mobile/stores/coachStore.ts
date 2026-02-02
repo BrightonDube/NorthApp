@@ -12,6 +12,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import type { Coach } from '@/types';
+import { useOfflineQueue } from '@/lib/offlineQueue';
 
 /**
  * Database row type (snake_case from Supabase)
@@ -57,8 +58,8 @@ interface CoachState {
  * Coach store actions
  */
 interface CoachActions {
-  fetchCoaches: () => Promise<void>;
-  createCoach: (name: string, icon: string, systemPrompt: string) => Promise<Coach>;
+  fetchCoaches: (force?: boolean) => Promise<void>;
+  createCoach: (name: string, icon: string, systemPrompt: string, optimisticId?: string) => Promise<Coach>;
   updateCoach: (id: string, updates: Partial<Omit<Coach, 'id' | 'creatorId' | 'isPublic' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
   deleteCoach: (id: string) => Promise<void>;
   canCreateCoach: (isProUser: boolean) => boolean;
@@ -137,16 +138,29 @@ export const useCoachStore = create<CoachStore>()(
        * await fetchCoaches();
        * ```
        */
-      fetchCoaches: async () => {
+      fetchCoaches: async (force = false) => {
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
+        
+        // Cache invalidation (24 hours)
+        const lastSynced = get().lastSynced;
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        const isStale = !lastSynced || (Date.now() - lastSynced > ONE_DAY_MS);
+
         if (!isOnline) {
-          set({
-            error: "You're offline. Please check your connection.",
-            isLoading: false,
-          });
+          if (get().coaches.length === 0) {
+            set({
+              error: "You're offline. Please check your connection.",
+              isLoading: false,
+            });
+          }
           return;
+        }
+
+        // If not stale and not forced, don't fetch
+        if (!isStale && !force) {
+            return;
         }
 
         set({ isLoading: true, error: null });
@@ -207,7 +221,7 @@ export const useCoachStore = create<CoachStore>()(
        * );
        * ```
        */
-      createCoach: async (name, icon, systemPrompt) => {
+      createCoach: async (name, icon, systemPrompt, optimisticId) => {
         // Validate inputs
         if (!name || name.trim().length === 0) {
           const error = new Error('Coach name cannot be empty');
@@ -224,12 +238,8 @@ export const useCoachStore = create<CoachStore>()(
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
-        if (!isOnline) {
-          set({ error: "You're offline. Please check your connection." });
-          throw new Error("You're offline. Please check your connection.");
-        }
 
-        const tempId = `temp-${Date.now()}`;
+        const tempId = optimisticId || `temp-${Date.now()}`;
         const tempCoach: Coach = {
           id: tempId,
           name,
@@ -242,7 +252,15 @@ export const useCoachStore = create<CoachStore>()(
         };
 
         // Optimistic update - add temp coach immediately
-        set((state) => ({ coaches: [...state.coaches, tempCoach] }));
+        set((state) => {
+            if (state.coaches.some(c => c.id === tempId)) return state;
+            return { coaches: [...state.coaches, tempCoach] };
+        });
+
+        if (!isOnline) {
+             useOfflineQueue.getState().enqueue('create_coach', { name, icon, systemPrompt, optimisticId: tempId });
+             return tempCoach;
+        }
 
         try {
           const { data, error } = await supabase
@@ -327,11 +345,7 @@ export const useCoachStore = create<CoachStore>()(
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
-        if (!isOnline) {
-          set({ error: "You're offline. Please check your connection." });
-          throw new Error("You're offline. Please check your connection.");
-        }
-
+        
         const previousCoaches = get().coaches;
 
         // Optimistic update - update coach immediately
@@ -342,6 +356,11 @@ export const useCoachStore = create<CoachStore>()(
               : coach
           ),
         }));
+
+        if (!isOnline) {
+            useOfflineQueue.getState().enqueue('update_coach', { id, updates });
+            return;
+        }
 
         try {
           // Convert camelCase to snake_case for database
@@ -395,17 +414,18 @@ export const useCoachStore = create<CoachStore>()(
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
-        if (!isOnline) {
-          set({ error: "You're offline. Please check your connection." });
-          throw new Error("You're offline. Please check your connection.");
-        }
-
+        
         const previousCoaches = get().coaches;
 
         // Optimistic update - remove coach immediately
         set((state) => ({
           coaches: state.coaches.filter((coach) => coach.id !== id),
         }));
+
+        if (!isOnline) {
+            useOfflineQueue.getState().enqueue('delete_coach', { id });
+            return;
+        }
 
         try {
           const { error } = await supabase
