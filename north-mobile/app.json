@@ -7,6 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "north",
+    "description": "Your personal board of directors. North helps you make better decisions by connecting you with AI coaches who understand your values, goals, and context.",
+    "primaryColor": "#09090B",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -17,18 +19,20 @@
       "bundleIdentifier": "com.brighton.northapp",
       "usesAppleSignIn": true,
       "buildNumber": "1",
+      "associatedDomains": [
+        "applinks:north.app",
+        "applinks:www.north.app"
+      ],
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification",
           "remote-notification"
         ],
-        "NSCameraUsageDescription": "This app does not use the camera.",
-        "NSMicrophoneUsageDescription": "This app does not use the microphone.",
-        "NSPhotoLibraryUsageDescription": "This app does not access your photo library.",
+        "NSCameraUsageDescription": "North does not use the camera.",
+        "NSMicrophoneUsageDescription": "North does not use the microphone.",
+        "NSPhotoLibraryUsageDescription": "North does not access your photo library.",
+        "NSLocationWhenInUseUsageDescription": "North does not use your location.",
+        "NSUserTrackingUsageDescription": "North respects your privacy and does not track you across apps or websites.",
         "SKAdNetworkItems": [
-          {
-            "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
-          },
           {
             "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
           }
@@ -44,7 +48,18 @@
       "package": "com.brighton.northapp",
       "versionCode": 1,
       "permissions": [
-        "com.android.vending.BILLING"
+        "com.android.vending.BILLING",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ],
       "intentFilters": [
         {
@@ -61,8 +76,39 @@
             "BROWSABLE",
             "DEFAULT"
           ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "north.app"
+            },
+            {
+              "scheme": "https",
+              "host": "www.north.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "north"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -81,7 +127,16 @@
           }
         }
       ],
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#09090B",
+          "sounds": [],
+          "mode": "production"
+        }
+      ]
     ],
     "extra": {
       "eas": {
@@ -94,7 +149,7 @@
       "policy": "sdkVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/your-eas-project-id"
+      "url": "https://u.expo.dev/bc083779-e1cd-4c55-9fec-8fd405495396"
     }
   }
 }

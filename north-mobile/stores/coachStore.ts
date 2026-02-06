@@ -234,14 +234,18 @@ export const useCoachStore = create<CoachStore>()(
           throw error;
         }
 
-        // Validate inputs
-        if (!name || name.trim().length === 0) {
+        // Validate and trim inputs
+        const trimmedName = name?.trim() || '';
+        const trimmedIcon = icon?.trim() || '';
+        const trimmedPrompt = systemPrompt?.trim() || '';
+
+        if (trimmedName.length === 0) {
           const error = new Error('Coach name cannot be empty');
           set({ error: error.message });
           throw error;
         }
         
-        if (!systemPrompt || systemPrompt.trim().length === 0) {
+        if (trimmedPrompt.length === 0) {
           const error = new Error('System prompt cannot be empty');
           set({ error: error.message });
           throw error;
@@ -254,9 +258,9 @@ export const useCoachStore = create<CoachStore>()(
         const tempId = optimisticId || `temp-${Date.now()}`;
         const tempCoach: Coach = {
           id: tempId,
-          name,
-          icon,
-          systemPrompt,
+          name: trimmedName,
+          icon: trimmedIcon,
+          systemPrompt: trimmedPrompt,
           creatorId: '',
           isPublic: false,
           createdAt: new Date().toISOString(),
@@ -271,9 +275,9 @@ export const useCoachStore = create<CoachStore>()(
 
         if (!isOnline) {
              useOfflineQueue.getState().enqueue('create_coach', { 
-               name, 
-               icon, 
-               systemPrompt, 
+               name: trimmedName, 
+               icon: trimmedIcon, 
+               systemPrompt: trimmedPrompt, 
                optimisticId: tempId,
                isProUser 
              });
@@ -284,9 +288,9 @@ export const useCoachStore = create<CoachStore>()(
           const { data, error } = await supabase
             .from('coaches')
             .insert({ 
-              name, 
-              icon, 
-              system_prompt: systemPrompt, 
+              name: trimmedName, 
+              icon: trimmedIcon, 
+              system_prompt: trimmedPrompt, 
               is_public: false 
             })
             .select()
@@ -347,17 +351,31 @@ export const useCoachStore = create<CoachStore>()(
           throw error;
         }
 
-        // Validate inputs
-        if (updates.name !== undefined && (!updates.name || updates.name.trim().length === 0)) {
-          const error = new Error('Coach name cannot be empty');
-          set({ error: error.message });
-          throw error;
+        // Validate and trim inputs
+        const trimmedUpdates: Partial<Omit<Coach, 'id' | 'creatorId' | 'isPublic' | 'createdAt' | 'updatedAt'>> = {};
+        
+        if (updates.name !== undefined) {
+          const trimmedName = updates.name.trim();
+          if (trimmedName.length === 0) {
+            const error = new Error('Coach name cannot be empty');
+            set({ error: error.message });
+            throw error;
+          }
+          trimmedUpdates.name = trimmedName;
         }
         
-        if (updates.systemPrompt !== undefined && (!updates.systemPrompt || updates.systemPrompt.trim().length === 0)) {
-          const error = new Error('System prompt cannot be empty');
-          set({ error: error.message });
-          throw error;
+        if (updates.icon !== undefined) {
+          trimmedUpdates.icon = updates.icon.trim();
+        }
+        
+        if (updates.systemPrompt !== undefined) {
+          const trimmedPrompt = updates.systemPrompt.trim();
+          if (trimmedPrompt.length === 0) {
+            const error = new Error('System prompt cannot be empty');
+            set({ error: error.message });
+            throw error;
+          }
+          trimmedUpdates.systemPrompt = trimmedPrompt;
         }
 
         // Check network status
@@ -370,22 +388,22 @@ export const useCoachStore = create<CoachStore>()(
         set((state) => ({
           coaches: state.coaches.map((coach) =>
             coach.id === id
-              ? { ...coach, ...updates, updatedAt: new Date().toISOString() }
+              ? { ...coach, ...trimmedUpdates, updatedAt: new Date().toISOString() }
               : coach
           ),
         }));
 
         if (!isOnline) {
-            useOfflineQueue.getState().enqueue('update_coach', { id, updates });
+            useOfflineQueue.getState().enqueue('update_coach', { id, updates: trimmedUpdates });
             return;
         }
 
         try {
           // Convert camelCase to snake_case for database
           const dbUpdates: any = {};
-          if (updates.name !== undefined) dbUpdates.name = updates.name;
-          if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
-          if (updates.systemPrompt !== undefined) dbUpdates.system_prompt = updates.systemPrompt;
+          if (trimmedUpdates.name !== undefined) dbUpdates.name = trimmedUpdates.name;
+          if (trimmedUpdates.icon !== undefined) dbUpdates.icon = trimmedUpdates.icon;
+          if (trimmedUpdates.systemPrompt !== undefined) dbUpdates.system_prompt = trimmedUpdates.systemPrompt;
 
           const { error } = await supabase
             .from('coaches')
@@ -412,6 +430,8 @@ export const useCoachStore = create<CoachStore>()(
        * Only the coach creator can delete their coaches.
        * Default coaches cannot be deleted.
        * 
+       * Edge case: Validates the coach exists and is not a default coach before deletion.
+       * 
        * @param id - The coach ID
        * @throws Error if deletion fails
        * 
@@ -421,6 +441,13 @@ export const useCoachStore = create<CoachStore>()(
        * ```
        */
       deleteCoach: async (id) => {
+        // Validate id
+        if (!id || id.trim().length === 0) {
+          const error = new Error('Coach ID cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+
         // Check if trying to delete a default coach
         const coach = get().coaches.find(c => c.id === id);
         if (coach && coach.creatorId === null) {

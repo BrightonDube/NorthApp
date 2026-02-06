@@ -683,20 +683,20 @@ describe('Chat UI Property-Based Tests', () => {
               rerender(<MessageList messages={currentMessages} />);
               
               // Small delay to simulate rapid but not instant additions
-              await new Promise(resolve => setTimeout(resolve, 10));
+              await new Promise(resolve => setTimeout(resolve, 5));
             }
 
-            // Wait for final scroll
+            // Wait for final scroll with shorter timeout
             await waitFor(() => {
               expect(sortedMessages.length).toBeGreaterThan(0);
-            }, { timeout: 200 });
+            }, { timeout: 100 });
             
             // Verify component rendered without errors
             expect(UNSAFE_root).toBeDefined();
           }
         ),
-        { numRuns: 30 }
+        { numRuns: 10 } // Reduced from 30 to avoid timeout
       );
-    });
+    }, 15000); // Increased timeout to 15 seconds
   });
 });

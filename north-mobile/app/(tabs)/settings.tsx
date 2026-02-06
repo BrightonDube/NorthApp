@@ -30,10 +30,11 @@ import { useAuthStore } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
 import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { NotificationSettings } from '@/components/notifications';
 
-// Legal URLs (replace with actual URLs)
-const PRIVACY_POLICY_URL = 'https://north.app/privacy';
-const TERMS_OF_SERVICE_URL = 'https://north.app/terms';
+// Legal URLs - using in-app screens
+const PRIVACY_POLICY_URL = '/legal/privacy';
+const TERMS_OF_SERVICE_URL = '/legal/terms';
 
 // Theme storage key
 const THEME_STORAGE_KEY = '@north/theme';
@@ -67,13 +68,21 @@ function ThemeModal({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
     >
       <Pressable 
         style={styles.modalOverlay}
         onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close theme selection"
       >
         <View style={styles.themeModal}>
-          <Text style={styles.themeModalTitle}>Choose Theme</Text>
+          <Text 
+            style={styles.themeModalTitle}
+            accessibilityRole="header"
+          >
+            Choose Theme
+          </Text>
           {THEME_OPTIONS.map((option) => (
             <Pressable
               key={option.value}
@@ -284,7 +293,12 @@ export default function SettingsScreen() {
 
   const handleOpenUrl = async (url: string) => {
     try {
-      await Linking.openURL(url);
+      // Check if it's an internal route
+      if (url.startsWith('/legal/')) {
+        router.push(url as any);
+      } else {
+        await Linking.openURL(url);
+      }
     } catch (error) {
       Alert.alert('Error', 'Could not open the link');
     }
@@ -317,7 +331,12 @@ export default function SettingsScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Settings</Text>
+          <Text 
+            style={styles.headerTitle}
+            accessibilityRole="header"
+          >
+            Settings
+          </Text>
         </View>
 
         {/* Tier Status Badge */}
@@ -351,7 +370,12 @@ export default function SettingsScreen() {
         </View>
 
         {/* Account Section */}
-        <Text style={styles.sectionTitle}>Account</Text>
+        <Text 
+          style={styles.sectionTitle}
+          accessibilityRole="header"
+        >
+          Account
+        </Text>
         <View style={styles.section}>
           <SettingsRow 
             iconName="person-outline"
@@ -366,7 +390,12 @@ export default function SettingsScreen() {
         </View>
 
         {/* Subscription Section */}
-        <Text style={styles.sectionTitle}>Subscription</Text>
+        <Text 
+          style={styles.sectionTitle}
+          accessibilityRole="header"
+        >
+          Subscription
+        </Text>
         <View style={styles.section}>
           <SettingsRow 
             iconName="star-outline"
@@ -387,8 +416,22 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Notifications Section */}
+        <Text 
+          style={styles.sectionTitle}
+          accessibilityRole="header"
+        >
+          Notifications
+        </Text>
+        <NotificationSettings />
+
         {/* App Section */}
-        <Text style={styles.sectionTitle}>App</Text>
+        <Text 
+          style={styles.sectionTitle}
+          accessibilityRole="header"
+        >
+          App
+        </Text>
         <View style={styles.section}>
           <SettingsRow 
             iconName="color-palette-outline"
@@ -505,6 +548,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  tierBadgeText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
   tierBadgeTextPro: {
     fontSize: 18,
     fontWeight: '700',
@@ -550,7 +598,8 @@ const styles = StyleSheet.create({
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
+    minHeight: 48,
     borderBottomWidth: 1,
     borderBottomColor: '#E4E4E7',
   },
@@ -623,8 +672,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 12,
+    minHeight: 48,
     borderRadius: 10,
     marginBottom: 8,
   },

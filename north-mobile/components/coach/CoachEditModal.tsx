@@ -258,10 +258,11 @@ export function CoachEditModal({
         >
           <View className="flex-1 bg-white dark:bg-zinc-950">
             {/* Header */}
-            <View className="flex-row items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+            <View className="flex-row items-center justify-between px-6 border-b border-zinc-200 dark:border-zinc-800" style={{ paddingVertical: 16, minHeight: 56 }}>
               <TouchableOpacity
                 onPress={handleCancel}
                 disabled={isLoading}
+                style={{ paddingVertical: 8, paddingHorizontal: 8, minHeight: 44, justifyContent: 'center' }}
                 accessible
                 accessibilityRole="button"
                 accessibilityLabel="Cancel"
@@ -278,6 +279,7 @@ export function CoachEditModal({
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={isLoading || !isFormValid}
+                style={{ paddingVertical: 8, paddingHorizontal: 8, minHeight: 44, justifyContent: 'center' }}
                 accessible
                 accessibilityRole="button"
                 accessibilityLabel="Save changes"
@@ -340,11 +342,12 @@ export function CoachEditModal({
                     <TouchableOpacity
                       key={suggestedIcon}
                       onPress={() => handleIconSelect(suggestedIcon)}
-                      className={`w-12 h-12 rounded-xl items-center justify-center ${
+                      className={`rounded-xl items-center justify-center ${
                         icon === suggestedIcon
                           ? 'bg-blue-100 dark:bg-blue-900/50 border-2 border-blue-500 dark:border-blue-400'
                           : 'bg-zinc-100 dark:bg-zinc-800 border-2 border-transparent'
                       }`}
+                      style={{ width: 48, height: 48 }}
                       accessible
                       accessibilityRole="radio"
                       accessibilityState={{ checked: icon === suggestedIcon }}

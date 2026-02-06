@@ -44,34 +44,27 @@ describe('Context Store Persistence Property-Based Tests', () => {
   let testUserEmail: string;
 
   beforeAll(async () => {
-    // Use an existing test user instead of creating a new one
-    // This avoids rate limiting issues
-    testUserEmail = 'test@northapp.com';
-    const testPassword = 'TestPassword123!';
-
-    // Try to sign in with existing user
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: testUserEmail,
-      password: testPassword,
-    });
-
-    if (signInError) {
-      // If sign in fails, try to create the user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: testUserEmail,
-        password: testPassword,
-      });
-
-      if (signUpError || !signUpData.user) {
-        throw new Error(`Failed to create/sign in test user: ${signUpError?.message || signInError.message}`);
-      }
-
-      testUserId = signUpData.user.id;
-    } else {
-      testUserId = signInData.user.id;
-    }
-
-    console.log(`Using test user: ${testUserEmail} with ID: ${testUserId}`);
+    // Skip actual authentication to avoid rate limits
+    // Use a mock user ID for testing
+    testUserId = '00000000-0000-1000-8000-000000000000';
+    testUserEmail = 'test@example.com';
+    
+    // Mock the auth.getUser() to return our test user
+    jest.spyOn(supabase.auth, 'getUser').mockResolvedValue({
+      data: {
+        user: {
+          id: testUserId,
+          email: testUserEmail,
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+        },
+      },
+      error: null,
+    } as any);
+    
+    console.log(`Using mock test user: ${testUserEmail} with ID: ${testUserId}`);
   });
 
   afterAll(async () => {

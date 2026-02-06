@@ -36,6 +36,7 @@ import { useContextStore } from '@/stores/contextStore';
 import { useBillingStore } from '@/stores/billingStore';
 import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { ContextSectionSkeleton } from '@/components/SkeletonLoader';
 import type { UserContext, ContextCategory } from '@/types';
 
 // Category information with icons and colors
@@ -43,31 +44,26 @@ const CATEGORY_INFO: Record<ContextCategory, {
   label: string; 
   icon: string; 
   color: string;
-  description: string;
 }> = {
   values: { 
     label: 'Values', 
     icon: '💎', 
-    color: '#E9D5FF',
-    description: 'Core principles and beliefs that guide your decisions',
+    color: '#F5F3FF',
   },
   goals: { 
     label: 'Goals', 
     icon: '🎯', 
-    color: '#BFDBFE',
-    description: 'Current objectives and aspirations you\'re working toward',
+    color: '#EFF6FF',
   },
   projects: { 
     label: 'Projects', 
     icon: '🚀', 
-    color: '#BBF7D0',
-    description: 'Active work and initiatives you\'re engaged in',
+    color: '#F0FDF4',
   },
   constraints: { 
     label: 'Constraints', 
     icon: '⚠️', 
-    color: '#FED7AA',
-    description: 'Limitations and boundaries that affect your choices',
+    color: '#FFF7ED',
   },
 };
 
@@ -75,6 +71,7 @@ const CATEGORIES: ContextCategory[] = ['values', 'goals', 'projects', 'constrain
 
 /**
  * Context Item Card
+ * Simplified: removed interaction hint for cleaner look
  */
 function ContextItemCard({ 
   item, 
@@ -109,13 +106,13 @@ function ContextItemCard({
       <Text style={styles.itemContent} numberOfLines={3}>
         {item.content}
       </Text>
-      <Text style={styles.itemHint}>Tap to edit • Hold to delete</Text>
     </Pressable>
   );
 }
 
 /**
  * Context Section Component
+ * Simplified: removed category descriptions for cleaner look
  */
 function ContextSection({ 
   category, 
@@ -136,10 +133,12 @@ function ContextSection({
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionIcon}>{info.icon}</Text>
-        <View style={styles.sectionTitleContainer}>
-          <Text style={styles.sectionTitle}>{info.label}</Text>
-          <Text style={styles.sectionDescription}>{info.description}</Text>
-        </View>
+        <Text 
+          style={styles.sectionTitle}
+          accessibilityRole="header"
+        >
+          {info.label}
+        </Text>
       </View>
       
       {items.length === 0 ? (
@@ -156,7 +155,7 @@ function ContextSection({
           accessibilityLabel={`Add ${info.label.toLowerCase()}`}
         >
           <Text style={styles.emptyCardText}>
-            + Add your first {info.label.toLowerCase().slice(0, -1)}
+            + Add {info.label.toLowerCase().slice(0, -1)}
           </Text>
         </Pressable>
       ) : (
@@ -249,6 +248,7 @@ function ContextModal({
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
     >
       <SafeAreaView style={styles.modalContainer} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
@@ -257,15 +257,25 @@ function ContextModal({
         >
           {/* Header */}
           <View style={styles.modalHeader}>
-            <Pressable onPress={onClose} disabled={isLoading}>
+            <Pressable 
+              onPress={onClose} 
+              disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+            >
               <Text style={styles.modalCancel}>Cancel</Text>
             </Pressable>
-            <Text style={styles.modalTitle}>
+            <Text 
+              style={styles.modalTitle}
+              accessibilityRole="header"
+            >
               {mode === 'create' ? 'Add Context' : 'Edit Context'}
             </Text>
             <Pressable 
               onPress={handleSave} 
               disabled={isLoading || !content.trim()}
+              accessibilityRole="button"
+              accessibilityLabel={mode === 'create' ? 'Create context item' : 'Save changes'}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#09090B" />
@@ -310,6 +320,9 @@ function ContextModal({
                         styles.categoryChip,
                         isSelected && { backgroundColor: info.color },
                       ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: isSelected }}
+                      accessibilityLabel={`${info.label} category`}
                     >
                       <Text style={styles.categoryChipIcon}>{info.icon}</Text>
                       <Text style={[
@@ -339,6 +352,8 @@ function ContextModal({
               style={styles.textInput}
               maxLength={1000}
               editable={!isLoading}
+              accessibilityLabel="Context content input"
+              accessibilityHint="Enter the content for your context item"
             />
             <Text style={styles.charCount}>{content.length} / 1000</Text>
           </View>
@@ -385,10 +400,16 @@ function DeleteModal({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      accessibilityViewIsModal={true}
     >
       <View style={styles.deleteOverlay}>
         <View style={styles.deleteModal}>
-          <Text style={styles.deleteTitle}>Delete this item?</Text>
+          <Text 
+            style={styles.deleteTitle}
+            accessibilityRole="header"
+          >
+            Delete this item?
+          </Text>
           <Text style={styles.deleteMessage} numberOfLines={2}>
             "{item.content}"
           </Text>
@@ -397,6 +418,8 @@ function DeleteModal({
               onPress={onClose} 
               style={styles.deleteCancelButton}
               disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel deletion"
             >
               <Text style={styles.deleteCancelText}>Cancel</Text>
             </Pressable>
@@ -404,6 +427,8 @@ function DeleteModal({
               onPress={handleDelete} 
               style={styles.deleteConfirmButton}
               disabled={isLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm deletion"
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
@@ -430,6 +455,7 @@ export default function ContextScreen() {
     getByCategory,
     canAddMore,
     clearError,
+    lastSynced,
   } = useContextStore();
 
   const { isProUser, showPaywall, isPaywallVisible, paywallFeature, hidePaywall } = useBillingStore();
@@ -442,9 +468,12 @@ export default function ContextScreen() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<UserContext | null>(null);
 
-  // Fetch contexts on mount
+  // Fetch contexts on mount (skip if already loaded from parallel initialization)
   useEffect(() => {
-    fetchContexts();
+    // Only fetch if we don't have contexts yet or if data is stale
+    if (items.length === 0 || !lastSynced) {
+      fetchContexts();
+    }
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -499,10 +528,21 @@ export default function ContextScreen() {
   if (isLoading && items.length === 0 && !refreshing) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#09090B" />
-          <Text style={styles.loadingText}>Loading your context...</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Your Operating System</Text>
+          <Text style={styles.subtitle}>
+            Define your context once. Your coaches will use it automatically.
+          </Text>
         </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {CATEGORIES.map((category) => (
+            <ContextSectionSkeleton key={category} count={1} />
+          ))}
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -524,28 +564,25 @@ export default function ContextScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Your Operating System</Text>
+          <Text 
+            style={styles.title}
+            accessibilityRole="header"
+          >
+            Your Operating System
+          </Text>
           <Text style={styles.subtitle}>
             Define your context once. Your coaches will use it automatically.
           </Text>
-          
-          {/* Tier Status Indicator */}
-          <View style={[
-            styles.tierIndicator,
-            isProUser ? styles.tierIndicatorPro : styles.tierIndicatorFree
-          ]}>
-            <Text style={styles.tierIndicatorText}>
-              {isProUser 
-                ? '✨ Pro: Unlimited context items' 
-                : `📊 Free: ${items.length}/3 context items used`
-              }
-            </Text>
-          </View>
         </View>
 
         {/* Error Banner */}
         {error && (
-          <Pressable onPress={clearError} style={styles.errorBanner}>
+          <Pressable
+            onPress={clearError} 
+            style={styles.errorBanner}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss error message"
+          >
             <Text style={styles.errorText}>{error}</Text>
           </Pressable>
         )}
@@ -608,22 +645,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 32,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#71717A',
-  },
   header: {
-    marginTop: 16,
-    marginBottom: 28,
+    marginTop: 24,
+    marginBottom: 40,
+    paddingHorizontal: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: '#09090B',
     letterSpacing: -0.5,
@@ -631,78 +659,43 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     color: '#71717A',
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  tierIndicator: {
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  tierIndicatorPro: {
-    backgroundColor: '#DCFCE7',
-  },
-  tierIndicatorFree: {
-    backgroundColor: '#FEF3C7',
-  },
-  tierIndicatorText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#09090B',
+    marginTop: 8,
+    lineHeight: 22,
   },
   section: {
-    marginBottom: 28,
+    marginBottom: 32,
   },
   sectionHeader: {
     flexDirection: 'row',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionIcon: {
     fontSize: 24,
     marginRight: 12,
-    marginTop: 2,
-  },
-  sectionTitleContainer: {
-    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#09090B',
   },
-  sectionDescription: {
-    fontSize: 13,
-    color: '#71717A',
-    marginTop: 2,
-  },
   itemCard: {
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
   },
   itemCardPressed: {
     opacity: 0.8,
   },
   itemContent: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#09090B',
-    lineHeight: 21,
-  },
-  itemHint: {
-    fontSize: 11,
-    color: '#71717A',
-    marginTop: 8,
-    opacity: 0.7,
+    lineHeight: 24,
   },
   emptyCard: {
     backgroundColor: '#F4F4F5',
-    borderRadius: 14,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#E4E4E7',
-    borderStyle: 'dashed',
+    borderRadius: 16,
+    padding: 24,
     alignItems: 'center',
   },
   emptyCardPressed: {
@@ -714,7 +707,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   addMoreButton: {
-    paddingVertical: 12,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   addMoreButtonPressed: {
@@ -727,7 +720,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 24,
   },
   footerText: {
     fontSize: 13,
@@ -791,7 +784,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F4F4F5',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    minHeight: 44,
     borderRadius: 20,
     gap: 6,
   },
@@ -870,7 +864,8 @@ const styles = StyleSheet.create({
   deleteCancelButton: {
     flex: 1,
     backgroundColor: '#F4F4F5',
-    paddingVertical: 14,
+    paddingVertical: 16,
+    minHeight: 48,
     borderRadius: 10,
     alignItems: 'center',
   },
@@ -882,7 +877,8 @@ const styles = StyleSheet.create({
   deleteConfirmButton: {
     flex: 1,
     backgroundColor: '#DC2626',
-    paddingVertical: 14,
+    paddingVertical: 16,
+    minHeight: 48,
     borderRadius: 10,
     alignItems: 'center',
   },

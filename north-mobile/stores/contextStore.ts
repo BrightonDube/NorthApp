@@ -208,6 +208,21 @@ export const useContextStore = create<ContextStore>()(
        * ```
        */
       createContext: async (category, content, optimisticId) => {
+        // Validate input - reject empty or whitespace-only content
+        if (!content || content.trim().length === 0) {
+          const error = new Error('Context content cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+
+        // Validate category
+        const validCategories: ContextCategory[] = ['values', 'goals', 'projects', 'constraints'];
+        if (!validCategories.includes(category)) {
+          const error = new Error(`Invalid category: ${category}`);
+          set({ error: error.message });
+          throw error;
+        }
+
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
@@ -224,7 +239,7 @@ export const useContextStore = create<ContextStore>()(
           id: tempId,
           userId: user.id,
           category,
-          content,
+          content: content.trim(), // Trim whitespace
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -238,14 +253,14 @@ export const useContextStore = create<ContextStore>()(
 
         if (!isOnline) {
             // Queue for later
-            useOfflineQueue.getState().enqueue('create_context', { category, content, optimisticId: tempId });
+            useOfflineQueue.getState().enqueue('create_context', { category, content: content.trim(), optimisticId: tempId });
             return tempItem;
         }
 
         try {
           const { data, error } = await supabase
             .from('user_context')
-            .insert({ user_id: user.id, category, content })
+            .insert({ user_id: user.id, category, content: content.trim() })
             .select()
             .single();
 
@@ -290,6 +305,13 @@ export const useContextStore = create<ContextStore>()(
        * ```
        */
       updateContext: async (id, content) => {
+        // Validate input - reject empty or whitespace-only content
+        if (!content || content.trim().length === 0) {
+          const error = new Error('Context content cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
@@ -300,20 +322,20 @@ export const useContextStore = create<ContextStore>()(
         set((state) => ({
           items: state.items.map((item) =>
             item.id === id
-              ? { ...item, content, updatedAt: new Date().toISOString() }
+              ? { ...item, content: content.trim(), updatedAt: new Date().toISOString() }
               : item
           ),
         }));
 
         if (!isOnline) {
-            useOfflineQueue.getState().enqueue('update_context', { id, content });
+            useOfflineQueue.getState().enqueue('update_context', { id, content: content.trim() });
             return;
         }
 
         try {
           const { error } = await supabase
             .from('user_context')
-            .update({ content })
+            .update({ content: content.trim() })
             .eq('id', id);
 
           if (error) throw error;
@@ -333,6 +355,9 @@ export const useContextStore = create<ContextStore>()(
        * then deleted from the server. If the request fails, the item is restored
        * (rollback).
        * 
+       * Edge case: If the item doesn't exist locally, still attempts server deletion
+       * to ensure consistency.
+       * 
        * @param id - The context item ID
        * @throws Error if deletion fails
        * 
@@ -342,6 +367,13 @@ export const useContextStore = create<ContextStore>()(
        * ```
        */
       deleteContext: async (id) => {
+        // Validate id
+        if (!id || id.trim().length === 0) {
+          const error = new Error('Context ID cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();

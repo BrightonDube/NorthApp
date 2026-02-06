@@ -323,7 +323,7 @@ describe('ContextStore Property-Based Tests', () => {
             expect(insertMock).toHaveBeenCalledWith({
               user_id: userId,
               category,
-              content,
+              content: content.trim(), // Content is trimmed in the store
             });
           }
         ),
@@ -429,8 +429,8 @@ describe('ContextStore Property-Based Tests', () => {
             const updatedItem = result.current.items.find(item => item.id === contextId);
             expect(updatedItem).toBeDefined();
 
-            // Verify content was updated
-            expect(updatedItem!.content).toBe(newContent);
+            // Verify content was updated (trimmed)
+            expect(updatedItem!.content).toBe(newContent.trim());
 
             // Verify createdAt remained unchanged
             expect(updatedItem!.createdAt).toBe(createdAt);

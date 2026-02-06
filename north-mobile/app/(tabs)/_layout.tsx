@@ -3,10 +3,16 @@
  * 
  * Main navigation layout for authenticated users.
  * Uses bottom tab navigation with Home, Context, and Settings tabs.
+ * 
+ * Performance optimization: Tabs are lazy-loaded to improve cold start time.
+ * Animations: Subtle fade transitions between tabs (< 200ms)
+ * 
+ * Validates: Requirements 13.7, 20.1 (App Startup Optimization), 19.7 (Animations)
  */
 
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 /**
  * Tab icon component
@@ -30,6 +36,8 @@ function TabIcon({ icon, label, focused }: { icon: string; label: string; focuse
 }
 
 export default function TabsLayout() {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <Tabs
       screenOptions={{
@@ -44,6 +52,12 @@ export default function TabsLayout() {
         },
         tabBarActiveTintColor: '#3B82F6',
         tabBarInactiveTintColor: '#9CA3AF',
+        // Lazy load tabs for better performance
+        lazy: true,
+        // Subtle fade animation between tabs (< 200ms)
+        animation: prefersReducedMotion ? undefined : 'fade',
+        // Smooth transition configuration
+        animationDuration: 150, // Even faster for tab switches
       }}
     >
       <Tabs.Screen

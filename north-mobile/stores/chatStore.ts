@@ -33,7 +33,7 @@ interface ChatState {
  */
 interface ChatActions {
   fetchOrCreateSession: (coachId: string) => Promise<ChatSession>;
-  fetchMessages: (sessionId: string) => Promise<void>;
+  fetchMessages: (sessionId: string, limit?: number, offset?: number) => Promise<void>;
   sendMessage: (sessionId: string, coachId: string, content: string) => Promise<void>;
   appendStreamingToken: (token: string) => void;
   finalizeStreamingMessage: (messageId: string) => void;
@@ -125,6 +125,11 @@ export const useChatStore = create<ChatStore>()(
        * Each user-coach pair has exactly one chat session. This function
        * retrieves the existing session or creates a new one if it doesn't exist.
        * 
+       * Edge cases:
+       * - Validates coachId is not empty
+       * - Handles network errors gracefully
+       * - Prevents duplicate session creation with proper error handling
+       * 
        * @param coachId - The coach ID
        * @returns The chat session
        * @throws Error if session creation/retrieval fails
@@ -136,6 +141,13 @@ export const useChatStore = create<ChatStore>()(
        * ```
        */
       fetchOrCreateSession: async (coachId) => {
+        // Validate coachId
+        if (!coachId || coachId.trim().length === 0) {
+          const error = new Error('Coach ID cannot be empty');
+          set({ error: error.message, isLoading: false });
+          throw error;
+        }
+
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
@@ -151,11 +163,13 @@ export const useChatStore = create<ChatStore>()(
 
         try {
           // Get current user
-          const { data: { user } } = await supabase.auth.getUser();
+          const { data, error: authError } = await supabase.auth.getUser();
           
-          if (!user) {
+          if (authError || !data?.user) {
             throw new Error('User not authenticated');
           }
+          
+          const user = data.user;
 
           // Check if session already exists
           const { data: existingSession, error: fetchError } = await supabase
@@ -232,23 +246,34 @@ export const useChatStore = create<ChatStore>()(
       },
 
       /**
-       * Fetch all messages for a chat session
+       * Fetch all messages for a chat session with pagination
        * 
-       * Validates: Requirements 8.6, 16.2
+       * Validates: Requirements 8.6, 16.2, 20.3 (Memory Management)
        * 
        * Messages are ordered by created_at ascending (oldest first) for
        * chronological display in the chat interface.
        * 
+       * Implements pagination to load 50 messages at a time for better
+       * memory management and performance with large chat histories.
+       * 
+       * When offset > 0, older messages are prepended to the existing array
+       * to maintain chronological order.
+       * 
        * @param sessionId - The chat session ID
+       * @param limit - Maximum number of messages to fetch (default: 50)
+       * @param offset - Number of messages to skip (default: 0)
        * @throws Error if fetch fails
        * 
        * @example
        * ```typescript
+       * // Load first 50 messages
        * await fetchMessages('session-123');
-       * const msgs = messages['session-123'];
+       * 
+       * // Load next 50 messages (older messages)
+       * await fetchMessages('session-123', 50, 50);
        * ```
        */
-      fetchMessages: async (sessionId) => {
+      fetchMessages: async (sessionId, limit = 50, offset = 0) => {
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
@@ -263,11 +288,13 @@ export const useChatStore = create<ChatStore>()(
         set({ isLoading: true, error: null });
 
         try {
+          // Fetch messages with pagination
           const { data, error } = await supabase
             .from('messages')
             .select('*')
             .eq('chat_session_id', sessionId)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: true })
+            .range(offset, offset + limit - 1);
 
           if (error) throw error;
 
@@ -279,14 +306,23 @@ export const useChatStore = create<ChatStore>()(
             createdAt: msg.created_at,
           }));
 
-          set((state) => ({
-            messages: {
-              ...state.messages,
-              [sessionId]: messages,
-            },
-            isLoading: false,
-            lastSynced: Date.now(),
-          }));
+          set((state) => {
+            // If offset is 0, replace messages (initial load)
+            // If offset > 0, prepend older messages to the beginning
+            const existingMessages = state.messages[sessionId] || [];
+            const updatedMessages = offset === 0 
+              ? messages 
+              : [...messages, ...existingMessages];
+
+            return {
+              messages: {
+                ...state.messages,
+                [sessionId]: updatedMessages,
+              },
+              isLoading: false,
+              lastSynced: Date.now(),
+            };
+          });
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Failed to fetch messages',
@@ -321,6 +357,13 @@ export const useChatStore = create<ChatStore>()(
        * ```
        */
       sendMessage: async (sessionId, coachId, content) => {
+        // Validate input - reject empty or whitespace-only messages
+        if (!content || content.trim().length === 0) {
+          const error = new Error('Message cannot be empty');
+          set({ error: error.message });
+          throw error;
+        }
+
         // Check network status
         const { useNetworkStore } = require('./networkStore');
         const { isOnline } = useNetworkStore.getState();
@@ -518,6 +561,9 @@ export const useChatStore = create<ChatStore>()(
        * Called when the SSE stream completes. Takes the accumulated
        * streaming message and saves it as a complete assistant message.
        * 
+       * Edge case: If the streaming message is empty or whitespace-only,
+       * the streaming state is cleared without persisting the message.
+       * 
        * @param messageId - The message ID from the Edge Function
        * 
        * @example
@@ -529,7 +575,17 @@ export const useChatStore = create<ChatStore>()(
       finalizeStreamingMessage: (messageId) => {
         const { streamingMessage, streamingSessionId } = get();
         
-        if (streamingMessage && streamingSessionId) {
+        // Edge case: Clear streaming state if message is empty or whitespace-only
+        if (!streamingMessage || streamingMessage.trim().length === 0) {
+          set({
+            streamingMessage: null,
+            streamingSessionId: null,
+            isSending: false,
+          });
+          return;
+        }
+        
+        if (streamingSessionId) {
           const assistantMessage: Message = {
             id: messageId,
             chatSessionId: streamingSessionId,
@@ -561,6 +617,9 @@ export const useChatStore = create<ChatStore>()(
        * Finds the last user message in the session and resends it.
        * Useful for recovering from network errors or AI failures.
        * 
+       * Edge case: If there are no user messages or the session doesn't exist,
+       * throws a descriptive error.
+       * 
        * @param sessionId - The chat session ID
        * @throws Error if retry fails
        * 
@@ -571,11 +630,22 @@ export const useChatStore = create<ChatStore>()(
        * ```
        */
       retryLastMessage: async (sessionId) => {
+        // Validate session exists
+        const session = get().sessions[sessionId];
+        if (!session) {
+          const error = new Error('Session not found');
+          set({ error: error.message });
+          throw error;
+        }
+
+        // Find last user message
         const messages = get().messages[sessionId] || [];
         const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
         
         if (!lastUserMessage) {
-          throw new Error('No message to retry');
+          const error = new Error('No message to retry');
+          set({ error: error.message });
+          throw error;
         }
 
         // Remove any failed assistant message after the last user message
@@ -588,12 +658,6 @@ export const useChatStore = create<ChatStore>()(
             [sessionId]: messagesUpToLastUser,
           },
         }));
-
-        // Get session to find coachId
-        const session = get().sessions[sessionId];
-        if (!session) {
-          throw new Error('Session not found');
-        }
 
         // Resend the message
         await get().sendMessage(sessionId, session.coachId, lastUserMessage.content);

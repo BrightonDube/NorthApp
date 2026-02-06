@@ -19,10 +19,11 @@ import Purchases, {
   LOG_LEVEL,
   PurchasesOffering,
 } from 'react-native-purchases';
+import Constants from 'expo-constants';
 import type { BillingStore, Entitlements } from '@/types';
 
-// RevenueCat API keys from environment
-const REVENUECAT_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || '';
+// RevenueCat API keys from environment - Get dynamically to support tests
+const getApiKey = () => process.env.EXPO_PUBLIC_REVENUECAT_API_KEY || '';
 
 // Entitlement identifier configured in RevenueCat dashboard
 const PRO_ENTITLEMENT_ID = 'pro';
@@ -39,7 +40,22 @@ let isInitialized = false;
  */
 let customerInfoUpdateListener: (() => void) | null = null;
 
+/**
+ * Reset initialization state (for testing only)
+ */
+export function resetInitialization() {
+  isInitialized = false;
+  customerInfoUpdateListener = null;
+}
+
 export async function initializeRevenueCat(userId?: string): Promise<void> {
+  // Skip initialization in Expo Go - RevenueCat doesn't work there
+  if (Constants.appOwnership === 'expo') {
+    console.log('[BillingStore] Expo Go detected. Skipping RevenueCat initialization.');
+    isInitialized = true; // Mark as initialized to prevent repeated attempts
+    return;
+  }
+
   if (isInitialized) {
     // If already initialized but we have a new user, log in
     if (userId) {
@@ -52,7 +68,8 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
     return;
   }
 
-  if (!REVENUECAT_API_KEY || REVENUECAT_API_KEY === 'your_revenuecat_api_key_here') {
+  const apiKey = getApiKey();
+  if (!apiKey || apiKey === 'your_revenuecat_api_key_here') {
     console.warn('[BillingStore] RevenueCat API key not configured');
     return;
   }
@@ -66,7 +83,7 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
     // Configure RevenueCat with platform-specific API key
     // Note: In production, you might have different keys for iOS/Android
     await Purchases.configure({
-      apiKey: REVENUECAT_API_KEY,
+      apiKey,
       appUserID: userId, // Optional: Supabase user ID for cross-platform sync
     });
 

@@ -19,7 +19,7 @@
  * Validates: Requirements 6.2, 6.3, 13.1-13.7
  */
 
-import { View, Text, ScrollView, Pressable, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,26 +30,29 @@ import { useBillingStore } from '@/stores/billingStore';
 import { CoachGrid, CoachCreateModal, CoachEditModal } from '@/components/coach';
 import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { CoachGridSkeleton } from '@/components/SkeletonLoader';
 import type { Coach } from '@/types';
 
 /**
  * Section Header Component
+ * Simplified: removed count badge for cleaner look
  */
-function SectionHeader({ title, count }: { title: string; count?: number }) {
+function SectionHeader({ title }: { title: string }) {
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {count !== undefined && (
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{count}</Text>
-        </View>
-      )}
+      <Text 
+        style={styles.sectionTitle}
+        accessibilityRole="header"
+      >
+        {title}
+      </Text>
     </View>
   );
 }
 
 /**
  * Create Coach Button (Pro Feature)
+ * Simplified: solid background, no dashed border, cleaner design
  */
 function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProUser: boolean }) {
   const handlePress = () => {
@@ -73,14 +76,9 @@ function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProU
       </View>
       <View style={styles.createContent}>
         <Text style={styles.createTitle}>Create Custom Coach</Text>
-        <View style={styles.createSubtitleContainer}>
-          <Text style={[
-            styles.createSubtitle,
-            isProUser && styles.createSubtitleActive
-          ]}>
-            {isProUser ? '✨ Pro Feature - Unlocked' : '🔒 Pro Feature'}
-          </Text>
-        </View>
+        <Text style={styles.createSubtitle}>
+          {isProUser ? 'Pro Feature' : 'Requires Pro'}
+        </Text>
       </View>
     </Pressable>
   );
@@ -91,9 +89,19 @@ function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProU
  */
 function EmptyState() {
   return (
-    <View style={styles.emptyState}>
+    <View 
+      style={styles.emptyState}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel="No coaches available. Pull to refresh or check your connection."
+    >
       <Text style={styles.emptyIcon}>🎯</Text>
-      <Text style={styles.emptyTitle}>No coaches available</Text>
+      <Text 
+        style={styles.emptyTitle}
+        accessibilityRole="header"
+      >
+        No coaches available
+      </Text>
       <Text style={styles.emptySubtitle}>Pull to refresh or check your connection</Text>
     </View>
   );
@@ -104,11 +112,26 @@ function EmptyState() {
  */
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <View style={styles.emptyState}>
+    <View 
+      style={styles.emptyState}
+      accessible
+      accessibilityRole="alert"
+      accessibilityLiveRegion="assertive"
+    >
       <Text style={styles.emptyIcon}>⚠️</Text>
-      <Text style={styles.emptyTitle}>Something went wrong</Text>
+      <Text 
+        style={styles.emptyTitle}
+        accessibilityRole="header"
+      >
+        Something went wrong
+      </Text>
       <Text style={styles.emptySubtitle}>{message}</Text>
-      <Pressable onPress={onRetry} style={styles.retryButton}>
+      <Pressable 
+        onPress={onRetry} 
+        style={styles.retryButton}
+        accessibilityRole="button"
+        accessibilityLabel="Retry loading coaches"
+      >
         <Text style={styles.retryText}>Try Again</Text>
       </Pressable>
     </View>
@@ -129,6 +152,7 @@ export default function HomeScreen() {
     updateCoach,
     deleteCoach,
     clearError,
+    lastSynced,
   } = useCoachStore();
   
   const { isProUser, isPaywallVisible, paywallFeature, hidePaywall } = useBillingStore();
@@ -138,9 +162,12 @@ export default function HomeScreen() {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
 
-  // Fetch coaches on mount
+  // Fetch coaches on mount (skip if already loaded from parallel initialization)
   useEffect(() => {
-    fetchCoaches();
+    // Only fetch if we don't have coaches yet or if data is stale
+    if (coaches.length === 0 || !lastSynced) {
+      fetchCoaches();
+    }
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -198,10 +225,20 @@ export default function HomeScreen() {
   if (isLoading && coaches.length === 0 && !refreshing) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#09090B" />
-          <Text style={styles.loadingText}>Loading coaches...</Text>
+        <View style={styles.header}>
+          <Text style={styles.greeting}>Welcome back,</Text>
+          <Text style={styles.userName}>{user?.name || 'Friend'}</Text>
         </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.section}>
+            <SectionHeader title="Your Board of Directors" />
+            <CoachGridSkeleton count={4} />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -224,7 +261,12 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.greeting}>Welcome back,</Text>
-          <Text style={styles.userName}>{user?.name || 'Friend'}</Text>
+          <Text 
+            style={styles.userName}
+            accessibilityRole="header"
+          >
+            {user?.name || 'Friend'}
+          </Text>
         </View>
 
         {/* Error State */}
@@ -235,7 +277,7 @@ export default function HomeScreen() {
             {/* Default Coaches Section */}
             {defaultCoaches.length > 0 && (
               <View style={styles.section}>
-                <SectionHeader title="Your Board of Directors" count={defaultCoaches.length} />
+                <SectionHeader title="Your Board of Directors" />
                 <CoachGrid
                   coaches={defaultCoaches}
                   onCoachPress={handleCoachPress}
@@ -247,7 +289,7 @@ export default function HomeScreen() {
             {/* User's Custom Coaches Section */}
             {myCoaches.length > 0 && (
               <View style={styles.section}>
-                <SectionHeader title="My Coaches" count={myCoaches.length} />
+                <SectionHeader title="My Coaches" />
                 <CoachGrid
                   coaches={myCoaches}
                   onCoachPress={handleCoachPress}
@@ -311,80 +353,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 32,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#71717A',
-  },
   header: {
-    marginTop: 16,
-    marginBottom: 28,
+    marginTop: 24,
+    marginBottom: 40,
+    paddingHorizontal: 20,
   },
   greeting: {
     fontSize: 15,
     color: '#71717A',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   userName: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: '#09090B',
     letterSpacing: -0.5,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#09090B',
   },
-  countBadge: {
-    marginLeft: 8,
-    backgroundColor: '#F4F4F5',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  countText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#71717A',
-  },
   createButton: {
-    borderWidth: 2,
-    borderColor: '#E4E4E7',
-    borderStyle: 'dashed',
+    backgroundColor: '#F4F4F5',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
   },
   createButtonPressed: {
-    backgroundColor: '#F4F4F5',
+    backgroundColor: '#E4E4E7',
   },
   createIconContainer: {
     width: 56,
     height: 56,
     borderRadius: 14,
-    backgroundColor: '#F4F4F5',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 16,
   },
   createIcon: {
-    fontSize: 24,
-    color: '#71717A',
+    fontSize: 28,
+    color: '#09090B',
+    fontWeight: '300',
   },
   createContent: {
     flex: 1,
@@ -393,19 +411,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#09090B',
-    marginBottom: 2,
-  },
-  createSubtitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: 4,
   },
   createSubtitle: {
     fontSize: 14,
     color: '#71717A',
-  },
-  createSubtitleActive: {
-    color: '#22C55E',
-    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
@@ -430,7 +440,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
     backgroundColor: '#09090B',
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    minHeight: 48,
     borderRadius: 8,
   },
   retryText: {

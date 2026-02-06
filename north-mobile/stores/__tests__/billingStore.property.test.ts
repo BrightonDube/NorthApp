@@ -16,7 +16,7 @@
 
 import fc from 'fast-check';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useBillingStore } from '../billingStore';
+import { useBillingStore, resetInitialization } from '../billingStore';
 import type { Entitlements } from '@/types';
 
 // Mock RevenueCat
@@ -63,6 +63,7 @@ describe('Billing Store Property-Based Tests', () => {
     
     // Clear store state
     useBillingStore.getState().reset();
+    resetInitialization();
     await AsyncStorage.clear();
     jest.clearAllMocks();
     
@@ -99,6 +100,7 @@ describe('Billing Store Property-Based Tests', () => {
           async (entitlements) => {
             // Reset for each test
             useBillingStore.getState().reset();
+            resetInitialization();
             await new Promise(resolve => setTimeout(resolve, 50));
             jest.clearAllMocks();
             
@@ -139,6 +141,7 @@ describe('Billing Store Property-Based Tests', () => {
           async (errorMessage) => {
             // Reset for each test
             useBillingStore.getState().reset();
+            resetInitialization();
             await new Promise(resolve => setTimeout(resolve, 50));
             jest.clearAllMocks();
             
@@ -325,6 +328,7 @@ describe('Billing Store Property-Based Tests', () => {
           async (packageInfo) => {
             // Reset for each test
             useBillingStore.getState().reset();
+            resetInitialization();
             await new Promise(resolve => setTimeout(resolve, 50));
             jest.clearAllMocks();
             

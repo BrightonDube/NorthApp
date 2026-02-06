@@ -43,12 +43,20 @@ jest.mock('expo-haptics', () => ({
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
   const View = require('react-native').View;
+  const { TouchableOpacity } = require('react-native');
   return {
-    Swipeable: ({ children, renderRightActions }: any) => (
+    Swipeable: ({ children, renderRightActions, onSwipeableOpen }: any) => (
       <View testID="swipeable-container">
         {children}
         {renderRightActions && (
-          <View testID="swipe-actions">{renderRightActions()}</View>
+          <View testID="swipe-actions">
+            <TouchableOpacity
+              testID="trigger-swipe-open"
+              onPress={onSwipeableOpen}
+            >
+              {renderRightActions()}
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     ),
@@ -215,6 +223,26 @@ describe('ContextCard Component', () => {
 
       expect(getByTestId('swipeable-container')).toBeTruthy();
       expect(getByTestId('swipe-actions')).toBeTruthy();
+    });
+
+    it('should provide haptic feedback when swipe gesture opens', () => {
+      const context = createMockContext();
+
+      const { getByTestId } = render(
+        <ContextCard
+          context={context}
+          onEdit={jest.fn()}
+          onDelete={jest.fn()}
+        />
+      );
+
+      // Simulate swipe gesture opening
+      const triggerSwipe = getByTestId('trigger-swipe-open');
+      fireEvent.press(triggerSwipe);
+
+      expect(Haptics.impactAsync).toHaveBeenCalledWith(
+        Haptics.ImpactFeedbackStyle.Light
+      );
     });
 
     it('should call onDelete when delete action is pressed', () => {

@@ -159,17 +159,22 @@ export default function LoginScreen() {
 
             {/* Header */}
             <View className="mb-12">
-              <Text className="text-4xl font-bold text-gray-900 mb-2">
+              <Text className="text-4xl font-bold text-zinc-900 mb-3">
                 Welcome to North
               </Text>
-              <Text className="text-lg text-gray-600">
+              <Text className="text-lg text-zinc-600">
                 Your personal board of directors
               </Text>
             </View>
 
             {/* Error Display */}
             {error && (
-              <View className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
+              <View 
+                className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200"
+                accessible
+                accessibilityRole="alert"
+                accessibilityLiveRegion="assertive"
+              >
                 <Text className="text-red-800 text-sm">{error}</Text>
               </View>
             )}
@@ -192,6 +197,8 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 editable={!isLoading}
                 testID="email-input"
+                accessibilityLabel="Email address input"
+                accessibilityHint="Enter your email address"
               />
               {emailError && (
                 <Text className="text-red-500 text-sm mt-1">{emailError}</Text>
@@ -216,6 +223,8 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 editable={!isLoading}
                 testID="password-input"
+                accessibilityLabel="Password input"
+                accessibilityHint="Enter your password"
               />
               {passwordError && (
                 <Text className="text-red-500 text-sm mt-1">{passwordError}</Text>
@@ -224,12 +233,16 @@ export default function LoginScreen() {
 
             {/* Login Button */}
             <TouchableOpacity
-              className={`w-full py-4 rounded-lg mb-4 ${
-                isLoading ? 'bg-gray-400' : 'bg-blue-600'
+              className={`w-full rounded-lg mb-6 ${
+                isLoading ? 'bg-gray-400' : 'bg-zinc-900'
               }`}
+              style={{ paddingVertical: 16, minHeight: 48 }}
               onPress={handleLogin}
               disabled={isLoading}
               testID="login-button"
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
+              accessibilityState={{ disabled: isLoading }}
             >
               {isLoading ? (
                 <ActivityIndicator color="white" />
@@ -240,61 +253,58 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Divider */}
-            <View className="flex-row items-center my-6">
-              <View className="flex-1 h-px bg-gray-300" />
-              <Text className="mx-4 text-gray-500 text-sm">or</Text>
-              <View className="flex-1 h-px bg-gray-300" />
+            {/* Social Sign In Buttons */}
+            <View className="space-y-3 mb-6">
+              {/* Google Sign In Button */}
+              <TouchableOpacity
+                className={`w-full rounded-lg bg-zinc-50 flex-row items-center justify-center ${
+                  isLoading ? 'opacity-50' : ''
+                }`}
+                style={{ paddingVertical: 16, minHeight: 48 }}
+                onPress={handleGoogleSignIn}
+                disabled={isLoading}
+                testID="google-signin-button"
+                accessibilityRole="button"
+                accessibilityLabel="Sign in with Google"
+                accessibilityState={{ disabled: isLoading }}
+              >
+                <GoogleLogo size={20} />
+                <Text className="text-zinc-900 text-center text-base font-semibold ml-3">
+                  Sign in with Google
+                </Text>
+              </TouchableOpacity>
+
+              {/* Apple Sign In Button */}
+              <TouchableOpacity
+                className={`w-full rounded-lg bg-zinc-900 flex-row items-center justify-center ${
+                  isLoading ? 'opacity-50' : ''
+                }`}
+                style={{ paddingVertical: 16, minHeight: 48 }}
+                onPress={handleAppleSignIn}
+                disabled={isLoading}
+                testID="apple-signin-button"
+                accessibilityRole="button"
+                accessibilityLabel="Sign in with Apple"
+                accessibilityState={{ disabled: isLoading }}
+              >
+                <AppleLogo size={20} color="#FFFFFF" />
+                <Text className="text-white text-center text-base font-semibold ml-2">
+                  Sign in with Apple
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Google Sign In Button */}
-            <TouchableOpacity
-              className={`w-full py-4 rounded-lg border-2 border-gray-300 mb-3 flex-row items-center justify-center ${
-                isLoading ? 'opacity-50' : ''
-              }`}
-              onPress={handleGoogleSignIn}
-              disabled={isLoading}
-              testID="google-signin-button"
-            >
-              <GoogleLogo size={20} />
-              <Text className="text-gray-900 text-center text-base font-semibold ml-3">
-                Sign in with Google
-              </Text>
-            </TouchableOpacity>
-
-            {/* Apple Sign In Button */}
-            <TouchableOpacity
-              className={`w-full py-4 rounded-lg border-2 border-gray-900 flex-row items-center justify-center ${
-                isLoading ? 'opacity-50' : ''
-              }`}
-              onPress={handleAppleSignIn}
-              disabled={isLoading}
-              testID="apple-signin-button"
-            >
-              <AppleLogo size={20} color="#000000" />
-              <Text className="text-gray-900 text-center text-base font-semibold ml-2">
-                Sign in with Apple
-              </Text>
-            </TouchableOpacity>
-
             {/* Sign Up Link */}
-            <View className="flex-row justify-center mt-6">
+            <View className="flex-row justify-center mt-8">
               <Text className="text-gray-600">Don't have an account? </Text>
               <Link href="/(auth)/register" asChild>
                 <TouchableOpacity
                   accessibilityRole="link"
                   accessibilityLabel="Sign up for a new account"
                 >
-                  <Text className="text-blue-600 font-semibold">Sign Up</Text>
+                  <Text className="text-zinc-900 font-semibold">Sign Up</Text>
                 </TouchableOpacity>
               </Link>
-            </View>
-
-            {/* Footer */}
-            <View className="mt-8">
-              <Text className="text-center text-sm text-gray-600">
-                By signing in, you agree to our Terms of Service and Privacy Policy
-              </Text>
             </View>
           </View>
         </ScrollView>

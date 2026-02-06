@@ -28,6 +28,10 @@
     
     /* Border colors */
     --border-subtle: #E4E4E7;
+    
+    /* Focus indicator colors (WCAG AA compliant - 3:1 contrast ratio) */
+    --focus-ring: #2563EB; /* Blue-600 for light mode */
+    --focus-ring-offset: #FFFFFF;
   }
 
   /* Dark Mode */
@@ -51,5 +55,9 @@
     
     /* Border colors */
     --border-subtle: #27272A;
+    
+    /* Focus indicator colors (WCAG AA compliant - 3:1 contrast ratio) */
+    --focus-ring: #60A5FA; /* Blue-400 for dark mode */
+    --focus-ring-offset: #050505;
   }
 }

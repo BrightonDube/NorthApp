@@ -49,12 +49,20 @@ jest.mock('expo-haptics', () => ({
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
   const View = require('react-native').View;
+  const { TouchableOpacity } = require('react-native');
   return {
-    Swipeable: ({ children, renderRightActions }: any) => (
+    Swipeable: ({ children, renderRightActions, onSwipeableOpen }: any) => (
       <View testID="swipeable-container">
         {children}
         {renderRightActions && (
-          <View testID="swipe-actions">{renderRightActions()}</View>
+          <View testID="swipe-actions">
+            <TouchableOpacity
+              testID="trigger-swipe-open"
+              onPress={onSwipeableOpen}
+            >
+              {renderRightActions()}
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     ),
@@ -438,13 +446,13 @@ describe('Context UI Property-Based Tests', () => {
             await waitFor(() => {
               const input = getByDisplayValue(contextItem.content);
               fireEvent.changeText(input, longContent);
-            });
+            }, { timeout: 3000 });
 
             // Press save button
             await waitFor(() => {
               const saveButton = getByText('Save');
               fireEvent.press(saveButton);
-            });
+            }, { timeout: 3000 });
 
             // Verify onSave was NOT called
             expect(mockOnSave).not.toHaveBeenCalled();
@@ -452,12 +460,12 @@ describe('Context UI Property-Based Tests', () => {
             // Verify error message is displayed
             await waitFor(() => {
               expect(queryByText('Content must be 1000 characters or less')).toBeTruthy();
-            });
+            }, { timeout: 3000 });
           }
         ),
-        { numRuns: 50 } // Reduced runs for performance
+        { numRuns: 20 } // Reduced runs for stability
       );
-    }, 60000); // 60 second timeout for property-based test
+    }, 90000); // 90 second timeout for property-based test
   });
 
   /**

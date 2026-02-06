@@ -17,6 +17,7 @@ import Animated, {
   withTiming,
   withDelay,
 } from 'react-native-reanimated';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 /**
  * StreamingIndicator Component
@@ -30,16 +31,25 @@ import Animated, {
  * ```
  */
 export function StreamingIndicator() {
+  const prefersReducedMotion = useReducedMotion();
   const dot1Opacity = useSharedValue(0.3);
   const dot2Opacity = useSharedValue(0.3);
   const dot3Opacity = useSharedValue(0.3);
 
   useEffect(() => {
-    // Animate dots in sequence
+    // Skip animations if user prefers reduced motion
+    if (prefersReducedMotion) {
+      dot1Opacity.value = 1;
+      dot2Opacity.value = 1;
+      dot3Opacity.value = 1;
+      return;
+    }
+
+    // Animate dots in sequence with minimal timing (< 200ms per animation)
     dot1Opacity.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 400 }),
-        withTiming(0.3, { duration: 400 })
+        withTiming(1, { duration: 180 }),
+        withTiming(0.3, { duration: 180 })
       ),
       -1, // infinite
       false
@@ -47,8 +57,8 @@ export function StreamingIndicator() {
 
     dot2Opacity.value = withRepeat(
       withSequence(
-        withDelay(200, withTiming(1, { duration: 400 })),
-        withTiming(0.3, { duration: 400 })
+        withDelay(120, withTiming(1, { duration: 180 })),
+        withTiming(0.3, { duration: 180 })
       ),
       -1,
       false
@@ -56,13 +66,13 @@ export function StreamingIndicator() {
 
     dot3Opacity.value = withRepeat(
       withSequence(
-        withDelay(400, withTiming(1, { duration: 400 })),
-        withTiming(0.3, { duration: 400 })
+        withDelay(180, withTiming(1, { duration: 180 })),
+        withTiming(0.3, { duration: 180 })
       ),
       -1,
       false
     );
-  }, []);
+  }, [prefersReducedMotion]);
 
   const dot1Style = useAnimatedStyle(() => ({
     opacity: dot1Opacity.value,

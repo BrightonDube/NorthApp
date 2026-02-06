@@ -21,7 +21,6 @@ import {
   Text, 
   KeyboardAvoidingView, 
   Platform,
-  ActivityIndicator,
   Pressable,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -32,6 +31,7 @@ import { useChatStore, useSessionMessages, useStreamingMessage, useIsSending } f
 import { useCoachStore, useCoachById } from '@/stores/coachStore';
 import { ChatHeader, MessageList, ChatInput } from '@/components/chat';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { ChatLoadingSkeleton } from '@/components/SkeletonLoader';
 import type { Coach } from '@/types';
 
 
@@ -40,9 +40,16 @@ import type { Coach } from '@/types';
  */
 function EmptyChat({ coach }: { coach: Coach | undefined }) {
   return (
-    <View className="flex-1 items-center justify-center px-8">
+    <View 
+      className="flex-1 items-center justify-center px-8"
+      accessible
+      accessibilityRole="text"
+    >
       <Text className="text-6xl mb-4">{coach?.icon || '🤖'}</Text>
-      <Text className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">
+      <Text 
+        className="text-xl font-semibold text-zinc-900 dark:text-white mb-2"
+        accessibilityRole="header"
+      >
         Start a conversation
       </Text>
       <Text className="text-base text-zinc-500 dark:text-zinc-400 text-center leading-6">
@@ -93,11 +100,17 @@ export default function ChatScreen() {
   
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalLoaded, setTotalLoaded] = useState(0);
   
   // Get messages for current session
   const messages = useSessionMessages(sessionId || '');
   const streamingMessage = useStreamingMessage();
   const isSending = useIsSending();
+
+  // Pagination constants
+  const PAGE_SIZE = 50;
 
   // Initialize session on mount
   useEffect(() => {
@@ -113,8 +126,13 @@ export default function ChatScreen() {
         const session = await fetchOrCreateSession(coachId);
         setSessionId(session.id);
         
-        // Fetch existing messages
-        await fetchMessages(session.id);
+        // Fetch initial messages (first page)
+        await fetchMessages(session.id, PAGE_SIZE, 0);
+        setTotalLoaded(PAGE_SIZE);
+        
+        // Check if there might be more messages
+        // We'll know for sure after the first fetch
+        setHasMore(true);
       } catch (err) {
         console.error('Failed to initialize chat:', err);
       } finally {
@@ -124,6 +142,40 @@ export default function ChatScreen() {
 
     initializeChat();
   }, [coachId]);
+
+  // Update hasMore based on messages loaded
+  useEffect(() => {
+    if (messages.length < PAGE_SIZE) {
+      setHasMore(false);
+    } else if (messages.length >= totalLoaded) {
+      setHasMore(true);
+    }
+  }, [messages.length, totalLoaded]);
+
+  // Load more messages (pagination)
+  const handleLoadMore = useCallback(async () => {
+    if (!sessionId || isLoadingMore || !hasMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+      // Fetch next page of messages
+      const currentCount = messages.length;
+      await fetchMessages(sessionId, PAGE_SIZE, currentCount);
+      
+      // Update total loaded count
+      setTotalLoaded(currentCount + PAGE_SIZE);
+      
+      // If we got fewer messages than requested, there are no more
+      const newMessages = useChatStore.getState().messages[sessionId] || [];
+      if (newMessages.length - currentCount < PAGE_SIZE) {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error('Failed to load more messages:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [sessionId, messages.length, isLoadingMore, hasMore, fetchMessages]);
 
   const handleBack = useCallback(() => {
     if (Platform.OS === 'ios') {
@@ -150,12 +202,7 @@ export default function ChatScreen() {
         edges={['top']}
       >
         {coach && <ChatHeader coach={coach} onBack={handleBack} />}
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#09090B" />
-          <Text className="mt-3 text-base text-zinc-500 dark:text-zinc-400">
-            Setting up chat...
-          </Text>
-        </View>
+        <ChatLoadingSkeleton />
       </SafeAreaView>
     );
   }
@@ -167,9 +214,16 @@ export default function ChatScreen() {
         className="flex-1 bg-white dark:bg-zinc-950" 
         edges={['top']}
       >
-        <View className="flex-1 items-center justify-center px-8">
+        <View 
+          className="flex-1 items-center justify-center px-8"
+          accessible
+          accessibilityRole="alert"
+        >
           <Text className="text-6xl mb-4">🤔</Text>
-          <Text className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">
+          <Text 
+            className="text-xl font-semibold text-zinc-900 dark:text-white mb-2"
+            accessibilityRole="header"
+          >
             Coach not found
           </Text>
           <Text className="text-base text-zinc-500 dark:text-zinc-400 text-center">
@@ -178,6 +232,8 @@ export default function ChatScreen() {
           <Pressable
             onPress={handleBack}
             className="mt-6 bg-zinc-900 dark:bg-zinc-100 px-6 py-3 rounded-xl"
+            accessibilityRole="button"
+            accessibilityLabel="Go back to coach list"
           >
             <Text className="text-white dark:text-zinc-900 font-semibold">
               Go Back
@@ -191,7 +247,7 @@ export default function ChatScreen() {
   return (
     <SafeAreaView 
       className="flex-1 bg-white dark:bg-zinc-950" 
-      edges={['top']}
+      edges={['top', 'bottom']}
     >
       <OfflineIndicator />
       <ChatHeader coach={coach} onBack={handleBack} />
@@ -209,6 +265,9 @@ export default function ChatScreen() {
             streamingMessage={streamingMessage}
             isLoading={false}
             emptyMessage={`Start a conversation with ${coach.name}`}
+            hasMore={hasMore}
+            onLoadMore={handleLoadMore}
+            isLoadingMore={isLoadingMore}
           />
         )}
 

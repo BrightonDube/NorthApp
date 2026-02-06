@@ -129,7 +129,12 @@ export default function CreateCoachScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={handleClose} style={styles.closeButton}>
+          <Pressable 
+            onPress={handleClose} 
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="Close coach creation"
+          >
             <Ionicons name="close" size={24} color="#71717A" />
           </Pressable>
           <Text style={styles.headerTitle}>Create Coach</Text>
@@ -157,6 +162,9 @@ export default function CreateCoachScreen() {
                     styles.avatarOption,
                     avatar === emoji && styles.avatarOptionSelected,
                   ]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: avatar === emoji }}
+                  accessibilityLabel={`Avatar ${emoji}`}
                 >
                   <Text style={styles.avatarEmoji}>{emoji}</Text>
                 </Pressable>
@@ -175,6 +183,8 @@ export default function CreateCoachScreen() {
               onChangeText={setName}
               maxLength={50}
               autoCapitalize="words"
+              accessibilityLabel="Coach name input"
+              accessibilityHint="Enter a name for your coach"
             />
           </View>
 
@@ -193,6 +203,9 @@ export default function CreateCoachScreen() {
                     styles.chip,
                     expertise === domain && styles.chipSelected,
                   ]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: expertise === domain }}
+                  accessibilityLabel={`${domain} expertise`}
                 >
                   <Text style={[
                     styles.chipText,
@@ -211,6 +224,8 @@ export default function CreateCoachScreen() {
                 value={customExpertise}
                 onChangeText={setCustomExpertise}
                 maxLength={100}
+                accessibilityLabel="Custom expertise input"
+                accessibilityHint="Enter your custom expertise area"
               />
             )}
           </View>
@@ -230,6 +245,9 @@ export default function CreateCoachScreen() {
                     styles.styleOption,
                     style === s.id && styles.styleOptionSelected,
                   ]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: style === s.id }}
+                  accessibilityLabel={`${s.label} coaching style: ${s.description}`}
                 >
                   <View style={styles.styleHeader}>
                     <View style={[
@@ -264,6 +282,8 @@ export default function CreateCoachScreen() {
               numberOfLines={3}
               maxLength={500}
               textAlignVertical="top"
+              accessibilityLabel="Coach description input"
+              accessibilityHint="Optional: Add a short bio for your coach"
             />
           </View>
 
@@ -285,6 +305,8 @@ export default function CreateCoachScreen() {
               numberOfLines={4}
               maxLength={2000}
               textAlignVertical="top"
+              accessibilityLabel="System prompt input"
+              accessibilityHint="Advanced: Customize how your coach behaves"
             />
           </View>
 
@@ -309,6 +331,9 @@ export default function CreateCoachScreen() {
               styles.createButton,
               (!isValid || isLoading) && styles.createButtonDisabled,
             ]}
+            accessibilityRole="button"
+            accessibilityLabel="Create coach"
+            accessibilityState={{ disabled: !isValid || isLoading }}
           >
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />

@@ -4,7 +4,11 @@
  * Displays coaches in a 2-column grid layout.
  * Follows Simon's brief: "Beautiful, minimal, clean" design.
  * 
- * Validates: Requirements 13.1, 13.6
+ * Features:
+ * - Staggered fade-in animations for cards
+ * - Responsive 2-column layout
+ * 
+ * Validates: Requirements 13.1, 13.6, 19.7
  */
 
 import { View } from 'react-native';
@@ -21,6 +25,7 @@ interface CoachGridProps {
 /**
  * CoachGrid displays coaches in a responsive 2-column grid.
  * Provides consistent spacing and layout for coach cards.
+ * Cards animate in with a subtle stagger effect.
  * 
  * @example
  * ```tsx
@@ -47,15 +52,19 @@ export function CoachGrid({
     <View className="gap-3" testID={testID}>
       {rows.map((row, rowIndex) => (
         <View key={rowIndex} className="flex-row gap-3">
-          {row.map((coach) => (
-            <CoachCard
-              key={coach.id}
-              coach={coach}
-              onPress={() => onCoachPress(coach)}
-              onLongPress={onCoachLongPress ? () => onCoachLongPress(coach) : undefined}
-              testID={`coach-card-${coach.id}`}
-            />
-          ))}
+          {row.map((coach, colIndex) => {
+            const index = rowIndex * 2 + colIndex;
+            return (
+              <CoachCard
+                key={coach.id}
+                coach={coach}
+                onPress={() => onCoachPress(coach)}
+                onLongPress={onCoachLongPress ? () => onCoachLongPress(coach) : undefined}
+                testID={`coach-card-${coach.id}`}
+                index={index}
+              />
+            );
+          })}
           {/* Add spacer if odd number of coaches in last row */}
           {row.length === 1 && <View className="flex-1" />}
         </View>

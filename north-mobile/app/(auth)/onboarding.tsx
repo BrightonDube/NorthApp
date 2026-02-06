@@ -114,7 +114,10 @@ export default function OnboardingScreen() {
     <>
       {/* Header */}
       <View style={{ marginBottom: 32 }}>
-        <Text style={{ fontSize: 32, fontWeight: '700', color: '#111827', marginBottom: 8 }}>
+        <Text 
+          style={{ fontSize: 32, fontWeight: '700', color: '#111827', marginBottom: 8 }}
+          accessibilityRole="header"
+        >
           What's your name?
         </Text>
         <Text style={{ fontSize: 16, color: '#6B7280' }}>
@@ -131,7 +134,11 @@ export default function OnboardingScreen() {
           borderRadius: 12,
           borderWidth: 1,
           borderColor: '#FECACA',
-        }}>
+        }}
+        accessible
+        accessibilityRole="alert"
+        accessibilityLiveRegion="assertive"
+        >
           <Text style={{ color: '#DC2626', fontSize: 14 }}>{error}</Text>
         </View>
       )}
@@ -158,6 +165,8 @@ export default function OnboardingScreen() {
         autoCorrect={false}
         editable={!isLoading}
         autoFocus
+        accessibilityLabel="Name input"
+        accessibilityHint="Enter your name to personalize your experience"
       />
 
       {/* Continue Button */}
@@ -170,6 +179,9 @@ export default function OnboardingScreen() {
         }}
         onPress={handleNameSubmit}
         disabled={isLoading || !name.trim()}
+        accessibilityRole="button"
+        accessibilityLabel="Continue to next step"
+        accessibilityState={{ disabled: isLoading || !name.trim() }}
       >
         {isLoading ? (
           <ActivityIndicator color="#FFFFFF" />
@@ -186,7 +198,10 @@ export default function OnboardingScreen() {
     <>
       {/* Header */}
       <View style={{ marginBottom: 32 }}>
-        <Text style={{ fontSize: 32, fontWeight: '700', color: '#111827', marginBottom: 8 }}>
+        <Text 
+          style={{ fontSize: 32, fontWeight: '700', color: '#111827', marginBottom: 8 }}
+          accessibilityRole="header"
+        >
           What's your main goal?
         </Text>
         <Text style={{ fontSize: 16, color: '#6B7280' }}>
@@ -203,7 +218,11 @@ export default function OnboardingScreen() {
           borderRadius: 12,
           borderWidth: 1,
           borderColor: '#FECACA',
-        }}>
+        }}
+        accessible
+        accessibilityRole="alert"
+        accessibilityLiveRegion="assertive"
+        >
           <Text style={{ color: '#DC2626', fontSize: 14 }}>{error}</Text>
         </View>
       )}
@@ -230,6 +249,8 @@ export default function OnboardingScreen() {
         editable={!isLoading}
         multiline
         autoFocus
+        accessibilityLabel="Primary goal input"
+        accessibilityHint="Optional: Enter your main goal to help coaches understand your context"
       />
 
       {/* Continue Button */}
@@ -243,6 +264,9 @@ export default function OnboardingScreen() {
         }}
         onPress={handleGoalSubmit}
         disabled={isLoading}
+        accessibilityRole="button"
+        accessibilityLabel={goal.trim() ? 'Complete setup' : 'Skip goal and complete setup'}
+        accessibilityState={{ disabled: isLoading }}
       >
         {isLoading ? (
           <ActivityIndicator color="#FFFFFF" />
@@ -262,6 +286,8 @@ export default function OnboardingScreen() {
           }}
           onPress={handleSkip}
           disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel="Skip this step"
         >
           <Text style={{ color: '#6B7280', fontSize: 14 }}>
             Skip this step
@@ -282,7 +308,13 @@ export default function OnboardingScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Progress Indicator */}
-          <View style={{ flexDirection: 'row', marginBottom: 32 }}>
+          <View 
+            style={{ flexDirection: 'row', marginBottom: 32 }}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel={`Step ${step === 'name' ? '1' : '2'} of 2`}
+            accessibilityValue={{ min: 0, max: 2, now: step === 'name' ? 1 : 2 }}
+          >
             <View
               style={{
                 flex: 1,

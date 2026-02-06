@@ -54,7 +54,8 @@ export function ChatHeader({ coach, onBack }: ChatHeaderProps) {
       <View className="flex-row items-center px-4 py-3">
         <TouchableOpacity
           onPress={handleBack}
-          className="mr-3 w-10 h-10 items-center justify-center -ml-2"
+          className="mr-3 items-center justify-center -ml-2"
+          style={{ width: 44, height: 44 }}
           accessible
           accessibilityRole="button"
           accessibilityLabel="Go back"

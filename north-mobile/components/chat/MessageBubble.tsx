@@ -7,9 +7,11 @@
  * Validates: Requirements 8.7, 11.1, 11.2
  */
 
+import React from 'react';
 import { View, Text } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { Message } from '@/types';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 export interface MessageBubbleProps {
   message: Message;
@@ -21,6 +23,8 @@ export interface MessageBubbleProps {
  * 
  * Renders a single message with appropriate styling based on role.
  * Supports streaming messages with a typing indicator.
+ * 
+ * Performance: Memoized to prevent unnecessary re-renders.
  * 
  * @param message - The message to display
  * @param isStreaming - Whether this message is currently streaming
@@ -45,12 +49,13 @@ export interface MessageBubbleProps {
  * />
  * ```
  */
-export function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
+export const MessageBubble = React.memo(function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
   const isUser = message.role === 'user';
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <Animated.View
-      entering={FadeIn}
+      entering={prefersReducedMotion ? undefined : FadeIn}
       className={`mb-4 ${isUser ? 'items-end' : 'items-start'}`}
       testID={`message-bubble-${message.id}`}
       accessible
@@ -80,4 +85,7 @@ export function MessageBubble({ message, isStreaming = false }: MessageBubblePro
       </View>
     </Animated.View>
   );
-}
+});
+
+// Memoization comparison function - only re-render if content or streaming state changes
+MessageBubble.displayName = 'MessageBubble';

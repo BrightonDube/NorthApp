@@ -111,28 +111,108 @@ jest.mock('react-native-purchases', () => ({
   setDebugLogsEnabled: jest.fn(),
 }));
 
+// Mock Expo Notifications
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn(() => Promise.resolve()),
+  getPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  requestPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  getExpoPushTokenAsync: jest.fn(() => Promise.resolve({ data: 'ExponentPushToken[test]' })),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  scheduleNotificationAsync: jest.fn(() => Promise.resolve('notification-id')),
+  cancelScheduledNotificationAsync: jest.fn(() => Promise.resolve()),
+  cancelAllScheduledNotificationsAsync: jest.fn(() => Promise.resolve()),
+  getAllScheduledNotificationsAsync: jest.fn(() => Promise.resolve([])),
+  AndroidImportance: {
+    MAX: 5,
+    HIGH: 4,
+    DEFAULT: 3,
+    LOW: 2,
+    MIN: 1,
+  },
+  AndroidNotificationPriority: {
+    HIGH: 'high',
+    DEFAULT: 'default',
+    LOW: 'low',
+    MIN: 'min',
+  },
+}));
+
+// Mock Expo Device
+jest.mock('expo-device', () => ({
+  isDevice: true,
+}));
+
+// Mock Expo Constants
+jest.mock('expo-constants', () => ({
+  default: {
+    appOwnership: 'standalone', // Mock as standalone app, not Expo Go
+    expoConfig: {
+      name: 'North',
+      slug: 'north',
+    },
+  },
+  AppOwnership: {
+    Expo: 'expo',
+    Standalone: 'standalone',
+  },
+}));
+
+// Mock Expo Updates
+jest.mock('expo-updates', () => ({
+  reloadAsync: jest.fn(() => Promise.resolve()),
+  checkForUpdateAsync: jest.fn(() => Promise.resolve({ isAvailable: false })),
+  fetchUpdateAsync: jest.fn(() => Promise.resolve()),
+}));
+
 // Mock react-native-reanimated
+// Note: Must be defined here, not in __mocks__ directory, to ensure proper loading
 jest.mock('react-native-reanimated', () => {
   const React = require('react');
-  const { View, Text } = require('react-native');
+  const { View, Text, ScrollView } = require('react-native');
+  
+  // Create chainable animation mocks
+  const createChainableAnimation = () => {
+    const animation = jest.fn();
+    animation.duration = jest.fn(() => animation);
+    animation.delay = jest.fn(() => animation);
+    animation.withInitialValues = jest.fn(() => animation);
+    animation.withCallback = jest.fn(() => animation);
+    animation.springify = jest.fn(() => animation);
+    animation.damping = jest.fn(() => animation);
+    animation.mass = jest.fn(() => animation);
+    animation.stiffness = jest.fn(() => animation);
+    return animation;
+  };
   
   return {
     __esModule: true,
     default: {
       View,
       Text,
-      ScrollView: require('react-native').ScrollView,
+      ScrollView,
     },
-    FadeIn: jest.fn(),
-    FadeOut: jest.fn(),
-    FadeInDown: jest.fn(),
-    FadeInUp: jest.fn(),
-    SlideInRight: jest.fn(),
-    SlideOutLeft: jest.fn(),
-    useSharedValue: jest.fn(() => ({ value: 0 })),
+    // Entering animations
+    FadeIn: createChainableAnimation(),
+    FadeInDown: createChainableAnimation(),
+    FadeInUp: createChainableAnimation(),
+    FadeOut: createChainableAnimation(),
+    FadeOutDown: createChainableAnimation(),
+    FadeOutUp: createChainableAnimation(),
+    SlideInRight: createChainableAnimation(),
+    SlideOutLeft: createChainableAnimation(),
+    // Hooks
+    useSharedValue: jest.fn((initial) => ({ value: initial })),
     useAnimatedStyle: jest.fn(() => ({})),
+    useDerivedValue: jest.fn((fn) => ({ value: fn() })),
+    // Animation functions
     withTiming: jest.fn((value) => value),
     withSpring: jest.fn((value) => value),
+    withDelay: jest.fn((delay, animation) => animation),
+    withRepeat: jest.fn((animation) => animation),
+    withSequence: jest.fn((...animations) => animations[0]),
+    // Utilities
     runOnJS: jest.fn((fn) => fn),
   };
 });

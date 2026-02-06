@@ -3,8 +3,9 @@
  * 
  * Displays subscription offerings and handles purchase flow.
  * Beautiful, minimal design following North's design system.
+ * Includes focus indicators for keyboard navigation.
  * 
- * Validates: Requirements 12.3, 12.4, 12.5
+ * Validates: Requirements 12.3, 12.4, 12.5, 23.7
  */
 
 import React, { useEffect } from 'react';
@@ -15,6 +16,8 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
+  StyleSheet,
+  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,14 +53,12 @@ const FEATURE_DESCRIPTIONS: Record<string, { title: string; description: string 
   },
 };
 
-// Pro benefits list
+// Pro benefits list - reduced to 4 key benefits for cleaner design
 const PRO_BENEFITS = [
-  { icon: 'create-outline', text: 'Create unlimited custom coaches' },
-  { icon: 'people-outline', text: 'Access all marketplace coaches' },
-  { icon: 'chatbubbles-outline', text: 'Unlimited AI conversations' },
-  { icon: 'document-text-outline', text: 'Unlimited personal context' },
-  { icon: 'star-outline', text: 'Priority AI responses' },
-  { icon: 'sync-outline', text: 'Cross-device sync' },
+  'Create unlimited custom coaches',
+  'Unlimited personal context',
+  'Unlimited AI conversations',
+  'Priority AI responses',
 ];
 
 interface PaywallModalProps {
@@ -120,7 +121,8 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
             </Text>
             <Pressable
               onPress={handleClose}
-              className="w-10 h-10 items-center justify-center rounded-full bg-surface"
+              className="items-center justify-center rounded-full bg-surface"
+              style={{ width: 44, height: 44 }}
               accessibilityLabel="Close paywall"
               accessibilityRole="button"
             >
@@ -134,60 +136,40 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
             showsVerticalScrollIndicator={false}
           >
           {/* Hero Section */}
-          <View className="items-center py-8">
-            {/* Current Tier Badge */}
-            {!isProUser && (
-              <View className="mb-3 px-3 py-1 bg-surface rounded-full">
-                <Text className="text-xs font-semibold text-text-secondary">
-                  Currently on Free Plan
-                </Text>
-              </View>
-            )}
-            
-            <View className="w-20 h-20 rounded-full bg-brand-primary items-center justify-center mb-4">
+          <View className="items-center py-12">
+            <View className="w-20 h-20 rounded-full bg-brand-primary items-center justify-center mb-6">
               <Ionicons name="diamond" size={40} color="#FFFFFF" />
             </View>
-            <Text className="text-2xl font-bold text-text-primary text-center mb-2">
+            <Text className="text-3xl font-bold text-text-primary text-center mb-3">
               {featureInfo.title}
             </Text>
-            <Text className="text-base text-text-secondary text-center px-4">
+            <Text className="text-base text-text-secondary text-center px-8 leading-6">
               {featureInfo.description}
             </Text>
           </View>
 
           {/* Benefits List */}
-          <View className="bg-surface rounded-2xl p-5 mb-6">
-            <Text className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-4">
-              Everything in Pro
-            </Text>
+          <View className="bg-surface rounded-2xl p-6 mb-8">
             {PRO_BENEFITS.map((benefit, index) => (
               <View
                 key={index}
-                className="flex-row items-center py-3 border-b border-border-subtle last:border-b-0"
+                className="flex-row items-center py-4 border-b border-border-subtle last:border-b-0"
               >
-                <View className="w-8 h-8 rounded-full bg-surface-highlight items-center justify-center mr-3">
-                  <Ionicons
-                    name={benefit.icon as any}
-                    size={18}
-                    color="#09090B"
-                  />
-                </View>
-                <Text className="flex-1 text-base text-text-primary">
-                  {benefit.text}
+                <Ionicons name="checkmark-circle" size={24} color="#22C55E" />
+                <Text className="flex-1 text-base text-text-primary ml-4">
+                  {benefit}
                 </Text>
-                <Ionicons name="checkmark" size={20} color="#22C55E" />
               </View>
             ))}
           </View>
 
           {/* Pricing Packages */}
           {isLoading ? (
-            <View className="py-8 items-center">
+            <View className="py-12 items-center">
               <ActivityIndicator size="large" color="#09090B" />
-              <Text className="text-text-secondary mt-2">Loading plans...</Text>
             </View>
           ) : offerings?.availablePackages && offerings.availablePackages.length > 0 ? (
-            <View className="gap-3 mb-6">
+            <View className="gap-3 mb-8">
               {offerings.availablePackages.map((pkg) => (
                 <PackageCard
                   key={pkg.identifier}
@@ -198,11 +180,10 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
               ))}
             </View>
           ) : (
-            <View className="bg-surface rounded-2xl p-6 mb-6 items-center">
+            <View className="bg-surface rounded-2xl p-8 mb-8 items-center">
               <Ionicons name="alert-circle-outline" size={32} color="#71717A" />
-              <Text className="text-text-secondary text-center mt-2">
+              <Text className="text-text-secondary text-center mt-3">
                 Subscription plans are not available at the moment.
-                Please try again later.
               </Text>
             </View>
           )}
@@ -211,21 +192,14 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
           <Pressable
             onPress={handleRestore}
             disabled={isLoading}
-            className="py-3 items-center"
+            className="py-4 items-center mb-6"
             accessibilityLabel="Restore purchases"
             accessibilityRole="button"
           >
-            <Text className="text-base text-text-secondary underline">
+            <Text className="text-base text-text-secondary">
               Restore Purchases
             </Text>
           </Pressable>
-
-          {/* Legal Text */}
-          <Text className="text-xs text-text-tertiary text-center mt-4 px-4">
-            Payment will be charged to your App Store or Google Play account.
-            Subscription automatically renews unless cancelled at least 24 hours
-            before the end of the current period.
-          </Text>
         </ScrollView>
       </View>
       </SafeAreaView>

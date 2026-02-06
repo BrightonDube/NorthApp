@@ -12,7 +12,7 @@ module.exports = {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { configFile: './babel.config.js' }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|expo|@expo|@supabase|zustand|react-native-purchases)/)',
+    'node_modules/(?!(react-native|@react-native|expo|@expo|expo-web-browser|expo-auth-session|expo-crypto|expo-modules-core|@supabase|zustand|react-native-purchases)/)',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   testMatch: [

@@ -140,7 +140,12 @@ export default function RegisterScreen() {
 
             {/* Error Display */}
             {error && (
-              <View className="mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
+              <View 
+                className="mb-4 p-4 bg-red-50 rounded-lg border border-red-200"
+                accessible
+                accessibilityRole="alert"
+                accessibilityLiveRegion="assertive"
+              >
                 <Text className="text-red-800 text-sm">{error}</Text>
               </View>
             )}
@@ -160,6 +165,8 @@ export default function RegisterScreen() {
                 autoCorrect={false}
                 editable={!isLoading}
                 testID="name-input"
+                accessibilityLabel="Name input"
+                accessibilityHint="Enter your full name"
               />
               {nameError && <Text className="text-red-500 text-sm mt-1">{nameError}</Text>}
             </View>
@@ -180,6 +187,8 @@ export default function RegisterScreen() {
                 autoCorrect={false}
                 editable={!isLoading}
                 testID="email-input"
+                accessibilityLabel="Email address input"
+                accessibilityHint="Enter your email address"
               />
               {emailError && <Text className="text-red-500 text-sm mt-1">{emailError}</Text>}
             </View>
@@ -200,6 +209,8 @@ export default function RegisterScreen() {
                 autoCorrect={false}
                 editable={!isLoading}
                 testID="password-input"
+                accessibilityLabel="Password input"
+                accessibilityHint="Enter a password with at least 6 characters"
               />
               {passwordError && <Text className="text-red-500 text-sm mt-1">{passwordError}</Text>}
             </View>
@@ -220,18 +231,24 @@ export default function RegisterScreen() {
                 autoCorrect={false}
                 editable={!isLoading}
                 testID="confirm-password-input"
+                accessibilityLabel="Confirm password input"
+                accessibilityHint="Re-enter your password to confirm"
               />
               {confirmPasswordError && <Text className="text-red-500 text-sm mt-1">{confirmPasswordError}</Text>}
             </View>
 
             {/* Register Button */}
             <TouchableOpacity
-              className={`w-full py-4 rounded-lg mb-4 ${
+              className={`w-full rounded-lg mb-4 ${
                 isLoading ? 'bg-gray-400' : 'bg-blue-600'
               }`}
+              style={{ paddingVertical: 16, minHeight: 48 }}
               onPress={handleRegister}
               disabled={isLoading}
               testID="register-button"
+              accessibilityRole="button"
+              accessibilityLabel="Create account"
+              accessibilityState={{ disabled: isLoading }}
             >
               {isLoading ? (
                 <ActivityIndicator color="white" />

@@ -39,6 +39,10 @@ Thumbs.db
 .env.local
 .env*.local
 
+# Firebase/Google Services config (contains API keys)
+google-services.json
+GoogleService-Info.plist
+
 # typescript
 *.tsbuildinfo
 

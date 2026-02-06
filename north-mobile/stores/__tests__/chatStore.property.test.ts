@@ -471,9 +471,11 @@ describe('ChatStore Property-Based Tests', () => {
             (supabase.from as jest.Mock).mockReturnValue({
               select: jest.fn().mockReturnValue({
                 eq: jest.fn().mockReturnValue({
-                  order: jest.fn().mockResolvedValue({
-                    data: mockDbRows,
-                    error: null,
+                  order: jest.fn().mockReturnValue({
+                    range: jest.fn().mockResolvedValue({
+                      data: mockDbRows,
+                      error: null,
+                    }),
                   }),
                 }),
               }),
@@ -684,10 +686,9 @@ describe('ChatStore Property-Based Tests', () => {
             expect(messages).toBeDefined();
             expect(messages.length).toBe(0); // Should remain empty
             
-            // Note: The implementation doesn't clear streaming state for empty messages
-            // This is the current behavior, though it could be considered a bug
-            expect(result.current.streamingMessage).toBe('');
-            expect(result.current.streamingSessionId).toBe(sessionId);
+            // Edge case fix: Streaming state is now properly cleared for empty messages
+            expect(result.current.streamingMessage).toBe(null);
+            expect(result.current.streamingSessionId).toBe(null);
           }
         ),
         { numRuns: 50 }

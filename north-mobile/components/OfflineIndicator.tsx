@@ -12,6 +12,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import { useIsOnline } from '@/stores/networkStore';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 /**
  * Offline Indicator Component
@@ -35,6 +36,7 @@ import { useIsOnline } from '@/stores/networkStore';
  */
 export function OfflineIndicator() {
   const isOnline = useIsOnline();
+  const prefersReducedMotion = useReducedMotion();
 
   // Don't render anything if online
   if (isOnline) {
@@ -43,8 +45,8 @@ export function OfflineIndicator() {
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(300)}
-      exiting={FadeOutUp.duration(300)}
+      entering={prefersReducedMotion ? undefined : FadeInDown.duration(180)}
+      exiting={prefersReducedMotion ? undefined : FadeOutUp.duration(180)}
       style={styles.container}
       accessibilityRole="alert"
       accessibilityLabel="You are offline"
