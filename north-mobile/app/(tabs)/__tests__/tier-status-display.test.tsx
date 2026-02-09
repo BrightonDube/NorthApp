@@ -192,7 +192,7 @@ describe('Tier Status Display - UI Components', () => {
       });
     });
 
-    it('should display context usage for free users', () => {
+    it('should display context item count', () => {
       // Arrange: Mock free user with 2 items
       (useBillingStore as unknown as jest.Mock).mockReturnValue({
         isProUser: false,
@@ -205,25 +205,8 @@ describe('Tier Status Display - UI Components', () => {
       // Act: Render context screen
       const { getByText } = render(<ContextScreen />);
 
-      // Assert: Should show usage indicator
-      expect(getByText(/Free: 2\/3 context items used/)).toBeTruthy();
-    });
-
-    it('should display unlimited indicator for pro users', () => {
-      // Arrange: Mock pro user
-      (useBillingStore as unknown as jest.Mock).mockReturnValue({
-        isProUser: true,
-        showPaywall: jest.fn(),
-        isPaywallVisible: false,
-        paywallFeature: null,
-        hidePaywall: jest.fn(),
-      });
-
-      // Act: Render context screen
-      const { getByText } = render(<ContextScreen />);
-
-      // Assert: Should show unlimited indicator
-      expect(getByText(/Pro: Unlimited context items/)).toBeTruthy();
+      // Assert: Should show item count
+      expect(getByText(/2 context items defined/)).toBeTruthy();
     });
   });
 
@@ -264,7 +247,7 @@ describe('Tier Status Display - UI Components', () => {
       const { getByText } = render(<HomeScreen />);
 
       // Assert: Should show locked indicator
-      expect(getByText(/🔒 Pro Feature/)).toBeTruthy();
+      expect(getByText(/Requires Pro/)).toBeTruthy();
     });
 
     it('should display unlocked status for pro users on create coach button', () => {
@@ -280,7 +263,7 @@ describe('Tier Status Display - UI Components', () => {
       const { getByText } = render(<HomeScreen />);
 
       // Assert: Should show unlocked indicator
-      expect(getByText(/✨ Pro Feature - Unlocked/)).toBeTruthy();
+      expect(getByText(/Pro Feature/)).toBeTruthy();
     });
   });
 

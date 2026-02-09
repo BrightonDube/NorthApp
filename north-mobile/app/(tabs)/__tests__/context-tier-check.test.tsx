@@ -119,8 +119,8 @@ describe('Context Screen - Tier Check Integration', () => {
       // Act: Render screen and try to add item
       const { getByText } = render(<ContextScreen />);
 
-      // Find and press the "Add more" button for constraints (empty category)
-      const addButton = getByText('+ Add your first constraint');
+      // Find and press the "Add" button for constraints
+      const addButton = getByText('+ Add constraint');
       fireEvent.press(addButton);
 
       // Assert: Paywall should be shown
@@ -172,8 +172,8 @@ describe('Context Screen - Tier Check Integration', () => {
       // Act: Render screen and try to add item
       const { getByText } = render(<ContextScreen />);
 
-      // Find and press the "Add more" button
-      const addButton = getByText('+ Add your first constraint');
+      // Find and press the "Add" button
+      const addButton = getByText('+ Add constraint');
       fireEvent.press(addButton);
 
       // Assert: Paywall should NOT be shown
@@ -220,8 +220,8 @@ describe('Context Screen - Tier Check Integration', () => {
       // Act: Render screen and try to add item
       const { getByText } = render(<ContextScreen />);
 
-      // Find and press the "Add more" button
-      const addButton = getByText('+ Add your first constraint');
+      // Find and press the "Add" button
+      const addButton = getByText('+ Add constraint');
       fireEvent.press(addButton);
 
       // Assert: Paywall should NOT be shown
@@ -244,7 +244,7 @@ describe('Context Screen - Tier Check Integration', () => {
 
       // Act: Render screen and try to add item
       const { getByText } = render(<ContextScreen />);
-      const addButton = getByText('+ Add your first value');
+      const addButton = getByText('+ Add value');
       fireEvent.press(addButton);
 
       // Assert: canAddMore should be called with false (free user)
@@ -267,7 +267,7 @@ describe('Context Screen - Tier Check Integration', () => {
 
       // Act: Render screen and try to add item
       const { getByText } = render(<ContextScreen />);
-      const addButton = getByText('+ Add your first value');
+      const addButton = getByText('+ Add value');
       fireEvent.press(addButton);
 
       // Assert: canAddMore should be called with true (Pro user)
