@@ -157,6 +157,7 @@ npm run test:coverage
 
 This project uses GitHub Actions for automated builds and deployments:
 
+- **Automatic Releases**: Push to `main` → Builds and submits to Play Store automatically
 - **Automatic Updates**: Push to `main` → EAS Update publishes automatically
 - **Manual Builds**: Trigger builds from GitHub Actions when needed
 - **Automated Tests**: Tests run on every PR and push to `main`
@@ -164,12 +165,13 @@ This project uses GitHub Actions for automated builds and deployments:
 ### Quick Setup
 
 1. Get your Expo token: `eas whoami --json`
-2. Add GitHub secrets (see `north-mobile/CI_CD_QUICKSTART.md`)
-3. Push to `main` - updates deploy automatically!
+2. Add GitHub secrets (see `.documentation/CICD_SETUP_CHECKLIST.md`)
+3. Push to `main` - app builds and submits automatically!
 
-**📚 Full Documentation:**
-- Quick Start: `north-mobile/CI_CD_QUICKSTART.md`
-- Complete Guide: `north-mobile/CI_CD_SETUP.md`
+**📚 Documentation:**
+- All guides are in `.documentation/` folder
+- Start with: `.documentation/verify-play-console.md` (if having issues)
+- Or: `.documentation/RELEASE_WORKFLOW_SUMMARY.md` (for releases)
 
 ### Workflows
 
