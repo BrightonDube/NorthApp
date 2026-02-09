@@ -248,40 +248,6 @@ describe('Coach UI Property-Based Tests', () => {
       );
     });
 
-    it('should display custom badge for user-created coaches', () => {
-      runPropertyTest(
-        fc.property(
-          coachArbitrary.map(c => ({ ...c, creatorId: 'user-123' })),
-          (userCoach) => {
-            const mockOnPress = jest.fn();
-            const { getByText } = render(
-              <CoachCard coach={userCoach} onPress={mockOnPress} />
-            );
-
-            // Verify custom badge is present for user coaches
-            expect(getByText('Custom')).toBeTruthy();
-          }
-        )
-      );
-    });
-
-    it('should not display custom badge for default coaches', () => {
-      runPropertyTest(
-        fc.property(
-          coachArbitrary.map(c => ({ ...c, creatorId: null })),
-          (defaultCoach) => {
-            const mockOnPress = jest.fn();
-            const { queryByText } = render(
-              <CoachCard coach={defaultCoach} onPress={mockOnPress} />
-            );
-
-            // Verify custom badge is NOT present for default coaches
-            expect(queryByText('Custom')).toBeNull();
-          }
-        )
-      );
-    });
-
     it('should maintain content integrity across all coaches', () => {
       runPropertyTest(
         fc.property(

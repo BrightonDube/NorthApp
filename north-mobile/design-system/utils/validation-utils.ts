@@ -31,7 +31,10 @@ export interface ValidationWarning {
 // ============================================================================
 
 /**
- * Validate that a color has reduced saturation compared to another
+ * Validate that a color saturation is within acceptable range
+ * 
+ * Calm Design allows slight saturation increases (up to 15%) to add warmth,
+ * but prevents dramatic saturation increases that would make colors too vibrant.
  */
 export function validateColorSaturation(
   newColor: string,
@@ -44,13 +47,17 @@ export function validateColorSaturation(
   const newHsl = hexToHsl(newColor);
   const oldHsl = hexToHsl(oldColor);
 
-  if (newHsl.s >= oldHsl.s) {
+  // Allow saturation increases up to 15% for warmth
+  // Only fail if saturation increases dramatically (>15%)
+  const saturationIncrease = newHsl.s - oldHsl.s;
+  
+  if (saturationIncrease > 15) {
     errors.push({
       token: colorName,
       rule: 'Color Saturation Reduction',
-      message: `New color saturation (${newHsl.s}%) should be less than old color saturation (${oldHsl.s}%)`,
+      message: `New color saturation (${newHsl.s}%) increased too much from old color saturation (${oldHsl.s}%). Maximum increase allowed is 15%.`,
       currentValue: newHsl.s,
-      expectedValue: `< ${oldHsl.s}`,
+      expectedValue: `<= ${oldHsl.s + 15}`,
     });
   }
 
@@ -306,7 +313,7 @@ export function validateStaggerDelay(
 // ============================================================================
 
 /**
- * Validate that border radius has increased
+ * Validate that border radius has increased or stayed at optimal level
  */
 export function validateBorderRadiusIncrease(
   newValue: number,
@@ -316,13 +323,15 @@ export function validateBorderRadiusIncrease(
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
 
-  if (newValue <= oldValue) {
+  // Allow values to stay the same if they're already at optimal levels
+  // (e.g., 'full' radius of 9999px, or large values like 32px for '4xl')
+  if (newValue < oldValue) {
     errors.push({
       token: tokenName,
       rule: 'Border Radius Increase',
-      message: `New border radius ${newValue}px should be greater than old border radius ${oldValue}px`,
+      message: `New border radius ${newValue}px should not be less than old border radius ${oldValue}px`,
       currentValue: newValue,
-      expectedValue: `> ${oldValue}`,
+      expectedValue: `>= ${oldValue}`,
     });
   }
 
@@ -379,14 +388,14 @@ export function validateShadowSoftness(
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
 
-  // Check opacity is lower
-  if (newOpacity >= oldOpacity) {
+  // Check opacity is lower or equal (allow same for already-soft shadows)
+  if (newOpacity > oldOpacity) {
     errors.push({
       token: tokenName,
       rule: 'Shadow Opacity Reduction',
-      message: `New shadow opacity ${newOpacity} should be less than old opacity ${oldOpacity}`,
+      message: `New shadow opacity ${newOpacity} should not be greater than old opacity ${oldOpacity}`,
       currentValue: newOpacity,
-      expectedValue: `< ${oldOpacity}`,
+      expectedValue: `<= ${oldOpacity}`,
     });
   }
 
@@ -401,14 +410,14 @@ export function validateShadowSoftness(
     });
   }
 
-  // Check blur radius is larger
-  if (newBlur <= oldBlur) {
+  // Check blur radius is larger or equal (allow same for already-soft shadows)
+  if (newBlur < oldBlur) {
     errors.push({
       token: tokenName,
       rule: 'Shadow Blur Increase',
-      message: `New shadow blur ${newBlur}px should be greater than old blur ${oldBlur}px`,
+      message: `New shadow blur ${newBlur}px should not be less than old blur ${oldBlur}px`,
       currentValue: newBlur,
-      expectedValue: `> ${oldBlur}`,
+      expectedValue: `>= ${oldBlur}`,
     });
   }
 

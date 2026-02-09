@@ -260,7 +260,7 @@ export const oldComponentTokens = {
 export const newComponentTokens = {
   button: {
     height: {
-      sm: 40,
+      sm: 44, // Increased from 40 to meet minimum touch target
       md: 48,
       lg: 56,
     },

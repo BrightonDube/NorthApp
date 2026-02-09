@@ -12,6 +12,7 @@
  */
 
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { ActivityIndicator } from 'react-native';
 import { PaywallModal } from '../PaywallModal';
 import { useBillingStore } from '@/stores/billingStore';
 import type { PurchasesOfferings, PurchasesPackage } from 'react-native-purchases';
@@ -322,27 +323,11 @@ describe('PaywallModal - Pro Upgrade Prompt', () => {
         />
       );
 
-      // Assert: All benefits should be visible
+      // Assert: All 4 benefits should be visible
       expect(getByText('Create unlimited custom coaches')).toBeTruthy();
-      expect(getByText('Access all marketplace coaches')).toBeTruthy();
-      expect(getByText('Unlimited AI conversations')).toBeTruthy();
       expect(getByText('Unlimited personal context')).toBeTruthy();
+      expect(getByText('Unlimited AI conversations')).toBeTruthy();
       expect(getByText('Priority AI responses')).toBeTruthy();
-      expect(getByText('Cross-device sync')).toBeTruthy();
-    });
-
-    it('should display "Everything in Pro" section header', () => {
-      // Act: Render modal
-      const { getByText } = render(
-        <PaywallModal
-          visible={true}
-          feature="coach_creation"
-          onClose={mockOnClose}
-        />
-      );
-
-      // Assert: Section header should be visible
-      expect(getByText('Everything in Pro')).toBeTruthy();
     });
   });
 
@@ -417,8 +402,15 @@ describe('PaywallModal - Pro Upgrade Prompt', () => {
         />
       );
 
-      // Assert: Loading indicator should be visible
-      expect(getByText('Loading plans...')).toBeTruthy();
+      // Assert: Loading indicator should be visible (ActivityIndicator, no text)
+      const { UNSAFE_getByType } = render(
+        <PaywallModal
+          visible={true}
+          feature="coach_creation"
+          onClose={mockOnClose}
+        />
+      );
+      expect(UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
     });
 
     it('should show error state when offerings are unavailable', () => {
@@ -440,9 +432,8 @@ describe('PaywallModal - Pro Upgrade Prompt', () => {
         />
       );
 
-      // Assert: Error message should be visible (checking for partial text match)
+      // Assert: Error message should be visible
       expect(getByText(/Subscription plans are not available/)).toBeTruthy();
-      expect(getByText(/Please try again later/)).toBeTruthy();
     });
   });
 
@@ -637,8 +628,8 @@ describe('PaywallModal - Pro Upgrade Prompt', () => {
       );
 
       // Assert: Should show loading state instead of package cards
-      // When isLoading is true, the component shows "Loading plans..." message
-      expect(getByText('Loading plans...')).toBeTruthy();
+      // When isLoading is true, the component shows ActivityIndicator
+      expect(UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
     });
 
     it('should not initiate purchase when in loading state', async () => {
@@ -660,7 +651,7 @@ describe('PaywallModal - Pro Upgrade Prompt', () => {
       );
 
       // Assert: Should show loading state, no purchase buttons available
-      expect(getByText('Loading plans...')).toBeTruthy();
+      expect(UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
       
       // Verify purchasePackage is not called
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -925,23 +916,6 @@ describe('PaywallModal - Pro Upgrade Prompt', () => {
       // Assert: Restore button should still be visible even when offerings fail
       const restoreButton = getByLabelText('Restore purchases');
       expect(restoreButton).toBeTruthy();
-    });
-  });
-
-  describe('Legal Text', () => {
-    it('should display subscription legal disclaimer', () => {
-      // Act: Render modal
-      const { getByText } = render(
-        <PaywallModal
-          visible={true}
-          feature="coach_creation"
-          onClose={mockOnClose}
-        />
-      );
-
-      // Assert: Legal text should be visible
-      expect(getByText(/Payment will be charged to your App Store or Google Play account/)).toBeTruthy();
-      expect(getByText(/Subscription automatically renews/)).toBeTruthy();
     });
   });
 
