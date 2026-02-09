@@ -3,6 +3,9 @@
 *.md
 !README.md
 
+# Documentation
+.documentation/
+
 # Dependencies
 node_modules/
 .pnp
