@@ -25,17 +25,6 @@ jest.mock('react-native/Libraries/Utilities/useColorScheme', () => ({
   default: jest.fn(),
 }));
 
-// Mock react-native-svg
-jest.mock('react-native-svg', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    Svg: ({ children, ...props }: any) => React.createElement(View, { testID: 'svg', ...props }, children),
-    Circle: (props: any) => React.createElement(View, { testID: 'circle', ...props }),
-    Path: (props: any) => React.createElement(View, { testID: 'path', ...props }),
-  };
-});
-
 describe('EmptyState Component', () => {
   beforeEach(() => {
     // Reset mocks
@@ -145,15 +134,11 @@ describe('EmptyState Component', () => {
         />
       );
 
-      const button = getByText('Add Item').parent;
+      const button = getByText('Add Item').parent?.parent;
       const styles = button?.props.style;
       
       // Button should have minimum height of 48px
-      expect(styles).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ minHeight: 48 })
-        ])
-      );
+      expect(styles).toMatchObject({ minHeight: 48 });
     });
   });
 
@@ -368,21 +353,31 @@ describe('EmptyState Component', () => {
     });
 
     it('should have accessible button when action is provided', () => {
+      const onPress = jest.fn();
       const { getByText } = render(
         <EmptyState
           title="No items"
           description="Get started"
           action={{
             label: "Add Item",
-            onPress: jest.fn(),
+            onPress,
           }}
         />
       );
 
-      const button = getByText('Add Item').parent;
+      const buttonText = getByText('Add Item');
       
-      // Button should be touchable
-      expect(button?.props.onPress).toBeDefined();
+      // Button text should be rendered
+      expect(buttonText).toBeTruthy();
+      
+      // Simulate press on the button (the parent TouchableOpacity)
+      // In React Native testing, we can trigger the press through fireEvent
+      // which will call the onPress handler if it exists
+      const { fireEvent } = require('@testing-library/react-native');
+      fireEvent.press(buttonText);
+      
+      // Verify onPress was called, confirming the button is touchable
+      expect(onPress).toHaveBeenCalled();
     });
 
     it('should meet minimum touch target size for button', () => {
@@ -397,15 +392,11 @@ describe('EmptyState Component', () => {
         />
       );
 
-      const button = getByText('Add Item').parent;
+      const button = getByText('Add Item').parent?.parent;
       const styles = button?.props.style;
       
       // Button should meet 48px minimum touch target
-      expect(styles).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ minHeight: 48 })
-        ])
-      );
+      expect(styles).toMatchObject({ minHeight: 48 });
     });
   });
 

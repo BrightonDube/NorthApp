@@ -166,6 +166,27 @@ jest.mock('expo-updates', () => ({
   fetchUpdateAsync: jest.fn(() => Promise.resolve()),
 }));
 
+// Mock react-native-svg
+jest.mock('react-native-svg', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: View,
+    Svg: ({ children, ...props }) => React.createElement(View, { testID: 'svg', ...props }, children),
+    Circle: (props) => React.createElement(View, { testID: 'circle', ...props }),
+    Path: (props) => React.createElement(View, { testID: 'path', ...props }),
+    Rect: (props) => React.createElement(View, { testID: 'rect', ...props }),
+    Line: (props) => React.createElement(View, { testID: 'line', ...props }),
+    Polygon: (props) => React.createElement(View, { testID: 'polygon', ...props }),
+    Polyline: (props) => React.createElement(View, { testID: 'polyline', ...props }),
+    G: ({ children, ...props }) => React.createElement(View, { testID: 'g', ...props }, children),
+    Defs: ({ children, ...props }) => React.createElement(View, { testID: 'defs', ...props }, children),
+    LinearGradient: ({ children, ...props }) => React.createElement(View, { testID: 'linearGradient', ...props }, children),
+    Stop: (props) => React.createElement(View, { testID: 'stop', ...props }),
+  };
+});
+
 // Mock react-native-reanimated
 // Note: Must be defined here, not in __mocks__ directory, to ensure proper loading
 jest.mock('react-native-reanimated', () => {
@@ -186,13 +207,16 @@ jest.mock('react-native-reanimated', () => {
     return animation;
   };
   
+  // Create Animated namespace with View, Text, ScrollView
+  const Animated = {
+    View,
+    Text,
+    ScrollView,
+  };
+  
   return {
     __esModule: true,
-    default: {
-      View,
-      Text,
-      ScrollView,
-    },
+    default: Animated,
     // Entering animations
     FadeIn: createChainableAnimation(),
     FadeInDown: createChainableAnimation(),

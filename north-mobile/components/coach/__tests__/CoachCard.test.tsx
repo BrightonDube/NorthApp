@@ -86,7 +86,6 @@ describe('CoachCard', () => {
     // Just verify the coach name is rendered
     expect(getByText(mockCoach.name)).toBeTruthy();
   });
-  });
 
   it('has correct accessibility label', () => {
     const { getByLabelText } = render(
