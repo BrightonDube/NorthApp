@@ -65,7 +65,7 @@ export function CoachCard({ coach, onPress, onLongPress, testID, index = 0 }: Co
 
   return (
     <Animated.View
-      entering={prefersReducedMotion ? undefined : FadeIn.duration(180).delay(index * 30)}
+      entering={prefersReducedMotion ? undefined : FadeIn.duration(400).delay(index * 50)}
     >
       <Pressable
         onPress={handlePress}

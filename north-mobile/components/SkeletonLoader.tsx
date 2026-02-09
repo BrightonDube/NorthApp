@@ -1,21 +1,23 @@
 /**
  * Skeleton Loader Components
  * 
- * Provides skeleton loading states for different content types.
- * Implements subtle animations for a premium feel.
+ * Provides skeleton loading states with calming shimmer effect.
+ * Implements the Calm Design System loading patterns.
  * 
  * Features:
- * - Multiple skeleton types (card, list, text)
- * - Subtle pulse animation
- * - Consistent with app design system
+ * - Shimmer effect with gradient animation (1500ms linear)
+ * - Surface colors with subtle highlight
+ * - Multiple skeleton shapes (text, circle, rectangle)
  * - Dark mode support
+ * - Respects reduced motion preferences
  * 
- * Validates: Requirements 15.2, 19.1-19.7
+ * Validates: Requirements 7.3, 7.4, 7.5
  */
 
 import { View, StyleSheet, Animated, useColorScheme } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface SkeletonProps {
   /**
@@ -36,6 +38,12 @@ interface SkeletonProps {
   borderRadius?: number;
   
   /**
+   * Shape variant
+   * @default 'rectangle'
+   */
+  variant?: 'text' | 'circle' | 'rectangle';
+  
+  /**
    * Whether to animate the skeleton
    * @default true
    */
@@ -45,64 +53,103 @@ interface SkeletonProps {
 /**
  * Base Skeleton Component
  * 
- * A single skeleton element with pulse animation.
+ * A single skeleton element with shimmer animation.
+ * Uses surface colors with subtle highlight for calming effect.
+ * Implements 1500ms linear animation as per Calm Design System.
  * 
  * @example
  * ```typescript
- * <Skeleton width={200} height={20} />
- * <Skeleton width="100%" height={100} borderRadius={16} />
+ * <Skeleton width={200} height={20} variant="text" />
+ * <Skeleton width={56} height={56} variant="circle" />
+ * <Skeleton width="100%" height={100} variant="rectangle" borderRadius={16} />
  * ```
  */
 export function Skeleton({
   width = '100%',
   height = 20,
-  borderRadius = 12,
+  borderRadius,
+  variant = 'rectangle',
   animated = true,
 }: SkeletonProps) {
   const colorScheme = useColorScheme();
   const prefersReducedMotion = useReducedMotion();
-  const opacity = useRef(new Animated.Value(1)).current;
+  const shimmerPosition = useRef(new Animated.Value(-1)).current;
+
+  // Determine border radius based on variant
+  const effectiveBorderRadius = borderRadius ?? (
+    variant === 'circle' ? 9999 :
+    variant === 'text' ? 8 :
+    12
+  );
+
+  // Calm Design System colors - surface with subtle highlight
+  // Light mode: #F5F5F4 (surface) with #E7E5E4 (highlight)
+  // Dark mode: #1C1917 (surface) with #292524 (highlight)
+  const baseColor = colorScheme === 'dark' ? '#1C1917' : '#F5F5F4';
+  const highlightColor = colorScheme === 'dark' ? '#292524' : '#E7E5E4';
 
   useEffect(() => {
     // Disable animation if user prefers reduced motion
     if (!animated || prefersReducedMotion) return;
 
-    // Subtle pulse animation (< 200ms transitions as per requirements)
+    // Shimmer animation: 1500ms linear (as per Requirements 7.3)
+    // Gradient sweeps from left to right continuously
     const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.5,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-      ])
+      Animated.timing(shimmerPosition, {
+        toValue: 1,
+        duration: 1500, // 1500ms as specified in requirements
+        useNativeDriver: true,
+        easing: (t) => t, // Linear easing
+      })
     );
 
     animation.start();
 
     return () => animation.stop();
-  }, [animated, prefersReducedMotion, opacity]);
+  }, [animated, prefersReducedMotion, shimmerPosition]);
 
-  const backgroundColor = colorScheme === 'dark' ? '#27272A' : '#F4F4F5';
+  // Calculate shimmer gradient position
+  // Interpolate from -100% to 100% for smooth sweep effect
+  const translateX = shimmerPosition.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-100%', '100%'],
+  });
 
   return (
-    <Animated.View
+    <View
       style={[
         styles.skeleton,
         {
           width: width as any,
           height,
-          borderRadius,
-          backgroundColor,
-          opacity: (animated && !prefersReducedMotion) ? opacity : 1,
+          borderRadius: effectiveBorderRadius,
+          backgroundColor: baseColor,
+          overflow: 'hidden',
         },
       ]}
-    />
+    >
+      {animated && !prefersReducedMotion && (
+        <Animated.View
+          style={[
+            styles.shimmer,
+            {
+              transform: [{ translateX }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[
+              `${baseColor}00`, // Transparent base
+              highlightColor,   // Subtle highlight
+              `${baseColor}00`, // Transparent base
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.shimmerGradient}
+          />
+        </Animated.View>
+      )}
+    </View>
   );
 }
 
@@ -110,6 +157,7 @@ export function Skeleton({
  * Coach Card Skeleton
  * 
  * Skeleton loader for coach cards in the home screen.
+ * Uses circle variant for avatar and text variant for labels.
  * 
  * @example
  * ```typescript
@@ -119,10 +167,10 @@ export function Skeleton({
 export function CoachCardSkeleton() {
   return (
     <View style={styles.coachCard}>
-      <Skeleton width={56} height={56} borderRadius={14} />
+      <Skeleton width={56} height={56} variant="circle" />
       <View style={styles.coachCardContent}>
-        <Skeleton width="70%" height={18} />
-        <Skeleton width="50%" height={14} />
+        <Skeleton width="70%" height={18} variant="text" />
+        <Skeleton width="50%" height={14} variant="text" />
       </View>
     </View>
   );
@@ -132,6 +180,7 @@ export function CoachCardSkeleton() {
  * Context Card Skeleton
  * 
  * Skeleton loader for context items.
+ * Uses text variant for content lines.
  * 
  * @example
  * ```typescript
@@ -141,9 +190,9 @@ export function CoachCardSkeleton() {
 export function ContextCardSkeleton() {
   return (
     <View style={styles.contextCard}>
-      <Skeleton width="100%" height={16} />
-      <Skeleton width="90%" height={16} />
-      <Skeleton width="60%" height={16} />
+      <Skeleton width="100%" height={16} variant="text" />
+      <Skeleton width="90%" height={16} variant="text" />
+      <Skeleton width="60%" height={16} variant="text" />
     </View>
   );
 }
@@ -152,6 +201,7 @@ export function ContextCardSkeleton() {
  * Message Skeleton
  * 
  * Skeleton loader for chat messages.
+ * Uses text variant for message content.
  * 
  * @example
  * ```typescript
@@ -162,8 +212,8 @@ export function ContextCardSkeleton() {
 export function MessageSkeleton({ isUser = false }: { isUser?: boolean }) {
   return (
     <View style={[styles.message, isUser && styles.messageUser]}>
-      <Skeleton width="80%" height={16} />
-      <Skeleton width="60%" height={16} />
+      <Skeleton width="80%" height={16} variant="text" />
+      <Skeleton width="60%" height={16} variant="text" />
     </View>
   );
 }
@@ -200,6 +250,7 @@ export function CoachGridSkeleton({ count = 4 }: { count?: number }) {
  * Context Section Skeleton
  * 
  * Skeleton loader for a context section with multiple items.
+ * Uses rectangle variant for icon and text variant for title.
  * 
  * @example
  * ```typescript
@@ -216,8 +267,8 @@ export function ContextSectionSkeleton({ count = 2 }: { count?: number }) {
       accessibilityLiveRegion="polite"
     >
       <View style={styles.sectionHeader}>
-        <Skeleton width={32} height={32} borderRadius={8} />
-        <Skeleton width={120} height={20} />
+        <Skeleton width={32} height={32} variant="rectangle" borderRadius={8} />
+        <Skeleton width={120} height={20} variant="text" />
       </View>
       {Array.from({ length: count }).map((_, index) => (
         <ContextCardSkeleton key={index} />
@@ -256,6 +307,21 @@ export function ChatLoadingSkeleton() {
 const styles = StyleSheet.create({
   skeleton: {
     overflow: 'hidden',
+    position: 'relative',
+  },
+  shimmer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  shimmerGradient: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   coachCard: {
     flexDirection: 'row',

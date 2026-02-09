@@ -642,13 +642,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingHorizontal: 24, // Updated to screen-margin-x (24px)
+    paddingBottom: 32, // screen-margin-y
   },
   header: {
     marginTop: 24,
-    marginBottom: 40,
-    paddingHorizontal: 20,
+    marginBottom: 48, // Updated to 2xl spacing for generous breathing room
+    paddingHorizontal: 24, // Updated to screen-margin-x (24px)
   },
   title: {
     fontSize: 32,
@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: 48, // Updated to 2xl spacing (48px) for section spacing
   },
   sectionHeader: {
     flexDirection: 'row',

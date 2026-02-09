@@ -131,4 +131,67 @@ describe('Deep Linking', () => {
       });
     });
   });
+
+  describe('Coach Installation Deep Links', () => {
+    it('should parse coach installation deep link', () => {
+      const url = 'northapp://coach/install/abc123';
+      const result = parseDeepLink(url);
+      
+      expect(result).toEqual({
+        screen: '/coach/preview/[coachId]',
+        params: { coachId: 'abc123' },
+      });
+    });
+
+    it('should parse coach installation deep link with UUID', () => {
+      const coachId = '550e8400-e29b-41d4-a716-446655440000';
+      const url = `northapp://coach/install/${coachId}`;
+      const result = parseDeepLink(url);
+      
+      expect(result).toEqual({
+        screen: '/coach/preview/[coachId]',
+        params: { coachId },
+      });
+    });
+
+    it('should return null for invalid coach installation link', () => {
+      const url = 'northapp://coach/install/';
+      const result = parseDeepLink(url);
+      
+      expect(result).toBeNull();
+    });
+
+    it('should create coach installation deep link', () => {
+      const url = createDeepLink('coach/install', { coachId: 'abc123' });
+      expect(url).toBe('northapp://coach/install/abc123');
+    });
+
+    it('should handle round-trip for coach installation link', () => {
+      const coachId = 'test-coach-789';
+      const url = createDeepLink('coach/install', { coachId });
+      const parsed = parseDeepLink(url);
+      
+      expect(parsed).toEqual({
+        screen: '/coach/preview/[coachId]',
+        params: { coachId },
+      });
+    });
+
+    it('should not parse coach installation link with wrong scheme', () => {
+      const url = 'north://coach/install/abc123';
+      const result = parseDeepLink(url);
+      
+      expect(result).toBeNull();
+    });
+
+    it('should parse coach installation link with hyphens and underscores', () => {
+      const url = 'northapp://coach/install/coach-123_abc';
+      const result = parseDeepLink(url);
+      
+      expect(result).toEqual({
+        screen: '/coach/preview/[coachId]',
+        params: { coachId: 'coach-123_abc' },
+      });
+    });
+  });
 });

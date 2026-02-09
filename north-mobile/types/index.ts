@@ -59,6 +59,20 @@ export interface UserContext {
 // ============================================================================
 
 /**
+ * Valid categories for coaches in the marketplace
+ * Validates: Requirements 5.1, 5.4
+ */
+export enum CoachCategory {
+  PRODUCTIVITY = 'Productivity',
+  LEARNING = 'Learning',
+  HEALTH = 'Health',
+  ENTERTAINMENT = 'Entertainment',
+  BUSINESS = 'Business',
+  CREATIVE = 'Creative',
+  GENERAL = 'General',
+}
+
+/**
  * AI coach with specialized role and system prompt
  * Validates: Requirements 6.1, 6.2, 6.6
  */
@@ -69,8 +83,34 @@ export interface Coach {
   systemPrompt: string;
   creatorId: string | null; // null for default coaches
   isPublic: boolean;
+  category: CoachCategory;
+  isFeatured: boolean;
+  sourceCoachId: string | null; // reference to original coach if this is an installed copy
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Public coach available in the marketplace
+ * Extends Coach with creator information for display
+ * Validates: Requirements 1.1, 1.2, 6.3
+ */
+export interface PublicCoach extends Coach {
+  creatorName: string; // Display name of the coach creator
+  model?: string; // AI model used (e.g., 'gpt-4')
+  temperature?: number; // Model temperature setting
+  avatarUrl?: string; // Optional avatar image URL
+}
+
+/**
+ * Installed coach in a user's collection
+ * Includes reference to the original public coach
+ * Validates: Requirements 3.4, 10.1, 10.2, 10.3
+ */
+export interface InstalledCoach extends Coach {
+  userId: string; // The user who installed this coach
+  sourceCoachId: string; // Reference to original public coach (required for installed coaches)
+  installedAt: string; // Timestamp when the coach was installed
 }
 
 // ============================================================================

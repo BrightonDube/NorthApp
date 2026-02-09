@@ -49,9 +49,9 @@ export function CoachGrid({
   }
 
   return (
-    <View className="gap-3" testID={testID}>
+    <View className="gap-4" testID={testID}>
       {rows.map((row, rowIndex) => (
-        <View key={rowIndex} className="flex-row gap-3">
+        <View key={rowIndex} className="flex-row gap-4">
           {row.map((coach, colIndex) => {
             const index = rowIndex * 2 + colIndex;
             return (

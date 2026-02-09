@@ -10,13 +10,17 @@
  * - Supports all Pressable props
  * - Maintains existing hover/press states
  * - Respects accessibility settings
+ * - Haptic feedback on press (light impact)
+ * - Calm design system tokens (48px height, 16px padding, 12px radius)
+ * - 44x44 minimum touch target
  * 
- * Validates: Requirement 23.7
+ * Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.2, 4.2, 9.2, 9.5, 10.3, 23.7
  */
 
 import React from 'react';
 import { Pressable, View, StyleSheet, type PressableProps, type ViewStyle } from 'react-native';
 import { useColorScheme } from 'react-native';
+import { useHaptic } from '@/hooks/useHaptic';
 
 export interface FocusableProps extends PressableProps {
   /**
@@ -40,6 +44,12 @@ export interface FocusableProps extends PressableProps {
    * Children to render inside the focusable component
    */
   children: React.ReactNode;
+  
+  /**
+   * Whether to enable haptic feedback on press
+   * Defaults to false for generic Focusable, true for FocusableButton
+   */
+  enableHaptic?: boolean;
 }
 
 /**
@@ -54,6 +64,7 @@ export interface FocusableProps extends PressableProps {
  *   onPress={handlePress}
  *   accessibilityLabel="Submit button"
  *   borderRadius={12}
+ *   enableHaptic
  * >
  *   <View className="bg-zinc-900 px-6 py-3 rounded-xl">
  *     <Text className="text-white">Submit</Text>
@@ -65,18 +76,30 @@ export function Focusable({
   style,
   focusBorderColor,
   borderRadius = 12,
+  enableHaptic = false,
+  onPress,
   children,
   ...pressableProps
 }: FocusableProps) {
   const colorScheme = useColorScheme();
+  const haptic = useHaptic();
   
   // Default focus colors with high contrast (3:1 ratio minimum)
   const defaultFocusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB'; // Blue-400 / Blue-600
   const finalFocusBorderColor = focusBorderColor || defaultFocusColor;
 
+  // Handle press with optional haptic feedback
+  const handlePress = React.useCallback(async (event: any) => {
+    if (enableHaptic) {
+      await haptic.light();
+    }
+    onPress?.(event);
+  }, [enableHaptic, haptic, onPress]);
+
   return (
     <Pressable
       {...pressableProps}
+      onPress={handlePress}
       style={({ pressed, focused }) => {
         const baseStyle = typeof style === 'function' 
           ? style({ pressed, focused }) 
@@ -106,8 +129,15 @@ export function Focusable({
 /**
  * FocusableButton Component
  * 
- * A pre-styled button with focus indicators.
+ * A pre-styled button with focus indicators and haptic feedback.
  * Provides common button styling with automatic focus support.
+ * Implements calm design system tokens:
+ * - 48px height (button-md)
+ * - 16px vertical padding (button-padding-y)
+ * - 24px horizontal padding (button-padding-x)
+ * - 12px border radius (md)
+ * - 44x44 minimum touch target
+ * - Light haptic feedback on press
  * 
  * @example
  * ```tsx
@@ -147,19 +177,21 @@ export function FocusableButton({
   const colorScheme = useColorScheme();
   
   const getVariantStyle = (pressed: boolean, focused: boolean): ViewStyle => {
+    // Calm design system tokens
     const baseStyle: ViewStyle = {
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      borderRadius: 12,
+      paddingHorizontal: 24, // button-padding-x
+      paddingVertical: 16,   // button-padding-y
+      borderRadius: 12,      // md
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 44, // Minimum touch target
+      minHeight: 48,         // button height
+      minWidth: 44,          // minimum touch target width
     };
 
     if (disabled) {
       return {
         ...baseStyle,
-        backgroundColor: colorScheme === 'dark' ? '#27272A' : '#E4E4E7',
+        backgroundColor: colorScheme === 'dark' ? '#292524' : '#E7E5E4', // surface-highlight
         opacity: 0.5,
       };
     }
@@ -168,7 +200,8 @@ export function FocusableButton({
       case 'primary':
         return {
           ...baseStyle,
-          backgroundColor: colorScheme === 'dark' ? '#FAFAFA' : '#09090B',
+          // Use calm design system brand colors
+          backgroundColor: colorScheme === 'dark' ? '#FAFAF9' : '#292524', // brand-primary
           opacity: pressed ? 0.8 : 1,
         };
       
@@ -177,14 +210,18 @@ export function FocusableButton({
           ...baseStyle,
           backgroundColor: 'transparent',
           borderWidth: 1,
-          borderColor: colorScheme === 'dark' ? '#FAFAFA' : '#09090B',
+          // Use calm design system brand colors
+          borderColor: colorScheme === 'dark' ? '#FAFAF9' : '#292524', // brand-primary
           opacity: pressed ? 0.8 : 1,
         };
       
       case 'ghost':
         return {
           ...baseStyle,
-          backgroundColor: pressed ? (colorScheme === 'dark' ? '#27272A' : '#F4F4F5') : 'transparent',
+          // Use calm design system surface colors
+          backgroundColor: pressed 
+            ? (colorScheme === 'dark' ? '#292524' : '#F5F5F4') // surface-highlight / surface
+            : 'transparent',
         };
       
       default:
@@ -196,6 +233,7 @@ export function FocusableButton({
     <Focusable
       {...props}
       disabled={disabled}
+      enableHaptic={true} // Always enable haptic for buttons
       style={({ pressed, focused }) => {
         const variantStyle = getVariantStyle(pressed, focused);
         const customStyle = typeof style === 'function' 

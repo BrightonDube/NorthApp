@@ -95,6 +95,9 @@ export interface Database {
           system_prompt: string
           creator_id: string | null
           is_public: boolean
+          category: string
+          is_featured: boolean
+          source_coach_id: string | null
           created_at: string
           updated_at: string
         }
@@ -105,6 +108,9 @@ export interface Database {
           system_prompt: string
           creator_id?: string | null
           is_public?: boolean
+          category?: string
+          is_featured?: boolean
+          source_coach_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -115,6 +121,9 @@ export interface Database {
           system_prompt?: string
           creator_id?: string | null
           is_public?: boolean
+          category?: string
+          is_featured?: boolean
+          source_coach_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -123,6 +132,12 @@ export interface Database {
             foreignKeyName: "coaches_creator_id_fkey"
             columns: ["creator_id"]
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaches_source_coach_id_fkey"
+            columns: ["source_coach_id"]
+            referencedRelation: "coaches"
             referencedColumns: ["id"]
           }
         ]

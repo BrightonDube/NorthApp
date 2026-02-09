@@ -6,10 +6,12 @@
  * - north://chat/{coachId} - Open specific coach chat
  * - north://context - Open context management
  * - north://settings - Open settings
+ * - northapp://coach/install/{coachId} - Install a shared coach
  */
 
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
+import { coachDeepLinkHandler } from './coachDeepLinkHandler';
 
 export interface DeepLinkRoute {
   screen: string;
@@ -23,6 +25,18 @@ export interface DeepLinkRoute {
  */
 export function parseDeepLink(url: string): DeepLinkRoute | null {
   try {
+    // Handle northapp:// scheme for coach installation
+    if (url && url.startsWith('northapp://coach/install/')) {
+      const coachId = coachDeepLinkHandler.parseCoachId(url);
+      if (coachId) {
+        return {
+          screen: '/coach/preview/[coachId]',
+          params: { coachId },
+        };
+      }
+      return null;
+    }
+
     // Simple URL parsing for north:// scheme
     if (!url || !url.startsWith('north://')) {
       return null;
@@ -148,6 +162,11 @@ export function createDeepLink(screen: string, params?: Record<string, string>):
       return `${prefix}context`;
     case 'settings':
       return `${prefix}settings`;
+    case 'coach/install':
+      if (params?.coachId) {
+        return `northapp://coach/install/${params.coachId}`;
+      }
+      return 'northapp://coach/install';
     default:
       return prefix;
   }

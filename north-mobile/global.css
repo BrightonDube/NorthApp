@@ -4,60 +4,192 @@
 
 @layer base {
   /* ===================================
-     NORTH DESIGN SYSTEM - Color Tokens
+     CALM DESIGN SYSTEM - Design Tokens
+     Warm, muted palette for calming UI
      =================================== */
   
   /* Light Mode (Default) */
   :root {
-    /* Background colors */
-    --background: #FFFFFF;
-    --foreground: #09090B;
+    /* ============ Color Tokens ============ */
     
-    /* Surface colors (cards, inputs, modals) */
-    --surface: #F4F4F5;
-    --surface-highlight: #E4E4E7;
+    /* Background colors - Warm, soft whites */
+    --background: #FAFAF9;
+    --foreground: #1C1917;
     
-    /* Brand colors */
-    --brand-primary: #09090B;
-    --brand-inverse: #FFFFFF;
+    /* Surface colors (cards, inputs, modals) - Subtle, layered */
+    --surface: #F5F5F4;
+    --surface-highlight: #E7E5E4;
     
-    /* Text colors */
-    --text-primary: #09090B;
-    --text-secondary: #71717A;
-    --text-tertiary: #D4D4D8;
+    /* Brand colors - Warm neutrals */
+    --brand-primary: #292524;
+    --brand-accent: #78716C;
+    --brand-inverse: #FAFAF9;
     
-    /* Border colors */
-    --border-subtle: #E4E4E7;
+    /* Text colors - Softer contrast */
+    --text-primary: #1C1917;
+    --text-secondary: #78716C;
+    --text-tertiary: #A8A29E;
+    
+    /* Border colors - Subtle boundaries */
+    --border-subtle: #E7E5E4;
+    
+    /* Nature-inspired accent colors */
+    --accent-sky: #BAE6FD;
+    --accent-earth: #D6D3D1;
+    --accent-sage: #D9F0E3;
+    --accent-lavender: #E9D5FF;
+    
+    /* Shadow colors - Very subtle */
+    --shadow-color: rgba(28, 25, 23, 0.04);
+    --shadow-xs: 0 1px 2px 0 rgba(28, 25, 23, 0.03);
+    --shadow-sm: 0 2px 4px 0 rgba(28, 25, 23, 0.04);
+    --shadow-md: 0 4px 8px 0 rgba(28, 25, 23, 0.05);
+    --shadow-lg: 0 8px 16px 0 rgba(28, 25, 23, 0.06);
+    --shadow-xl: 0 12px 24px 0 rgba(28, 25, 23, 0.07);
+    
+    /* Gradient tokens - Subtle depth */
+    --gradient-calm: linear-gradient(180deg, #FAFAF9 0%, #F5F5F4 100%);
+    --gradient-surface: linear-gradient(180deg, #F5F5F4 0%, #E7E5E4 100%);
     
     /* Focus indicator colors (WCAG AA compliant - 3:1 contrast ratio) */
     --focus-ring: #2563EB; /* Blue-600 for light mode */
-    --focus-ring-offset: #FFFFFF;
+    --focus-ring-offset: #FAFAF9;
+    
+    /* ============ Spacing Tokens ============ */
+    /* Increased by 25-50% for generous whitespace */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
+    --spacing-3xl: 64px;
+    --spacing-4xl: 96px;
+    
+    /* ============ Border Radius Tokens ============ */
+    /* Organic shape language - increased for softer feel */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+    --radius-3xl: 28px;
+    --radius-4xl: 32px;
+    --radius-full: 9999px;
+    
+    /* ============ Animation Tokens ============ */
+    /* Gentle motion - slow, fluid timing */
+    --duration-fast: 200ms;
+    --duration-normal: 300ms;
+    --duration-slow: 400ms;
+    --duration-slower: 600ms;
+    --duration-breathing: 2500ms;
+    
+    /* Easing curves - slow start and end */
+    --ease-gentle: cubic-bezier(0.4, 0.0, 0.2, 1);
+    --ease-calm: cubic-bezier(0.25, 0.1, 0.25, 1);
+    --ease-breathing: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+    
+    /* ============ Touch Target Tokens ============ */
+    /* Generous interactive areas */
+    --touch-target-standard: 44px;
+    --touch-target-comfortable: 48px;
+    --touch-target-generous: 56px;
+    
+    /* ============ Component Tokens ============ */
+    /* Button */
+    --button-height-sm: 40px;
+    --button-height-md: 48px;
+    --button-height-lg: 56px;
+    --button-padding-x: 24px;
+    --button-padding-y: 16px;
+    --button-radius: var(--radius-md);
+    
+    /* Input */
+    --input-height: 48px;
+    --input-padding: 16px;
+    --input-radius: var(--radius-md);
+    
+    /* Card */
+    --card-padding: 20px;
+    --card-radius: var(--radius-lg);
+    
+    /* Modal */
+    --modal-padding: 24px;
+    --modal-radius: var(--radius-2xl);
+    
+    /* List Item */
+    --list-item-height: 56px;
+    --list-item-height-lg: 72px;
+    --list-item-padding: 16px;
+    --list-item-spacing: 8px;
   }
 
   /* Dark Mode */
   .dark {
-    /* Background colors */
-    --background: #050505;
-    --foreground: #FAFAFA;
+    /* ============ Color Tokens ============ */
     
-    /* Surface colors (cards, inputs, modals) */
-    --surface: #18181B;
-    --surface-highlight: #27272A;
+    /* Background colors - Deep, warm blacks */
+    --background: #0C0A09;
+    --foreground: #FAFAF9;
     
-    /* Brand colors */
-    --brand-primary: #FAFAFA;
-    --brand-inverse: #09090B;
+    /* Surface colors (cards, inputs, modals) - Layered warmth */
+    --surface: #1C1917;
+    --surface-highlight: #292524;
     
-    /* Text colors */
-    --text-primary: #FAFAFA;
-    --text-secondary: #A1A1AA;
-    --text-tertiary: #52525B;
+    /* Brand colors - Light warmth */
+    --brand-primary: #FAFAF9;
+    --brand-accent: #A8A29E;
+    --brand-inverse: #292524;
     
-    /* Border colors */
-    --border-subtle: #27272A;
+    /* Text colors - Warm tones */
+    --text-primary: #FAFAF9;
+    --text-secondary: #A8A29E;
+    --text-tertiary: #57534E;
+    
+    /* Border colors - Subtle boundaries */
+    --border-subtle: #252220;
+    
+    /* Nature-inspired accent colors - Muted versions */
+    --accent-sky: #0C4A6E;
+    --accent-earth: #44403C;
+    --accent-sage: #14532D;
+    --accent-lavender: #581C87;
+    
+    /* Shadow colors - Subtle glow */
+    --shadow-color: rgba(250, 250, 249, 0.02);
+    --shadow-xs: 0 1px 2px 0 rgba(250, 250, 249, 0.02);
+    --shadow-sm: 0 2px 4px 0 rgba(250, 250, 249, 0.03);
+    --shadow-md: 0 4px 8px 0 rgba(250, 250, 249, 0.04);
+    --shadow-lg: 0 8px 16px 0 rgba(250, 250, 249, 0.05);
+    --shadow-xl: 0 12px 24px 0 rgba(250, 250, 249, 0.06);
+    
+    /* Gradient tokens - Subtle depth */
+    --gradient-calm: linear-gradient(180deg, #0C0A09 0%, #1C1917 100%);
+    --gradient-surface: linear-gradient(180deg, #1C1917 0%, #292524 100%);
     
     /* Focus indicator colors (WCAG AA compliant - 3:1 contrast ratio) */
     --focus-ring: #60A5FA; /* Blue-400 for dark mode */
-    --focus-ring-offset: #050505;
+    --focus-ring-offset: #0C0A09;
+    
+    /* Note: Spacing, Border Radius, Animation, Touch Target, and Component tokens
+       remain the same across light and dark modes */
+  }
+  
+  /* ============ Utility Classes ============ */
+  
+  /* Smooth theme transitions */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: var(--duration-normal);
+    transition-timing-function: var(--ease-gentle);
+  }
+  
+  /* Disable transitions for reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+    }
   }
 }

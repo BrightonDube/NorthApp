@@ -222,4 +222,86 @@ describe('Deep Linking Properties', () => {
       { numRuns: 100 }
     );
   });
+
+  /**
+   * Property 9: Invalid coach IDs are rejected
+   * 
+   * **Validates: Requirements 3.5**
+   * 
+   * For any malformed or non-existent coach ID in a deep link, the system
+   * should reject the link by returning null from parseDeepLink.
+   * This prevents navigation to invalid coach preview screens.
+   * 
+   * Feature: coach-marketplace-sharing
+   */
+  it('Property 9: Invalid coach IDs in installation links are rejected', () => {
+    fc.assert(
+      fc.property(
+        fc.oneof(
+          // Empty coach ID
+          fc.constant('northapp://coach/install/'),
+          // Coach ID with only special characters (no valid alphanumeric)
+          fc.string()
+            .filter(s => s.length > 0 && !/[a-zA-Z0-9-_]/.test(s))
+            .map(s => `northapp://coach/install/${s}`),
+          // Coach ID with spaces
+          fc.constant('northapp://coach/install/coach 123'),
+          // Coach ID with slashes (would be interpreted as additional path segments)
+          fc.constant('northapp://coach/install/coach/123'),
+          // Malformed URL structure
+          fc.constant('northapp://coach/install'),
+          fc.constant('northapp://coach/'),
+          fc.constant('northapp://coach'),
+          // Wrong scheme
+          fc.uuid().map(id => `north://coach/install/${id}`),
+          // Wrong path
+          fc.uuid().map(id => `northapp://coach/share/${id}`),
+          fc.uuid().map(id => `northapp://install/${id}`),
+        ),
+        (invalidUrl) => {
+          // Should not throw
+          expect(() => parseDeepLink(invalidUrl)).not.toThrow();
+          
+          // Should return null for invalid coach installation links
+          const result = parseDeepLink(invalidUrl);
+          expect(result).toBeNull();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 6: Deep link parsing round trip
+   * 
+   * **Validates: Requirements 3.1**
+   * 
+   * For any valid coach ID, generating a coach installation deep link
+   * and then parsing it should return the same coach ID.
+   * 
+   * Feature: coach-marketplace-sharing
+   */
+  it('Property 6: Coach installation deep link round trip preserves coach ID', () => {
+    fc.assert(
+      fc.property(
+        fc.uuid(),
+        (coachId) => {
+          // Create coach installation deep link
+          const url = createDeepLink('coach/install', { coachId });
+          
+          // Parse the deep link
+          const parsed = parseDeepLink(url);
+          
+          // Should successfully parse
+          expect(parsed).not.toBeNull();
+          expect(parsed?.screen).toBe('/coach/preview/[coachId]');
+          expect(parsed?.params?.coachId).toBe(coachId);
+          
+          // Coach ID should be preserved exactly
+          expect(parsed?.params?.coachId).toHaveLength(36); // UUID length
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
 });

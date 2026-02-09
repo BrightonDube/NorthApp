@@ -212,6 +212,17 @@ jest.mock('react-native-reanimated', () => {
     withDelay: jest.fn((delay, animation) => animation),
     withRepeat: jest.fn((animation) => animation),
     withSequence: jest.fn((...animations) => animations[0]),
+    // Easing functions
+    Easing: {
+      linear: jest.fn(),
+      ease: jest.fn(),
+      quad: jest.fn(),
+      cubic: jest.fn(),
+      bezier: jest.fn((x1, y1, x2, y2) => `cubic-bezier(${x1}, ${y1}, ${x2}, ${y2})`),
+      in: jest.fn(),
+      out: jest.fn(),
+      inOut: jest.fn(),
+    },
     // Utilities
     runOnJS: jest.fn((fn) => fn),
   };
@@ -251,6 +262,16 @@ jest.mock('expo-haptics', () => ({
     Error: 'error',
   },
 }));
+
+// Mock expo-linear-gradient
+jest.mock('expo-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    LinearGradient: ({ children, style, ...props }) => 
+      React.createElement(View, { style, ...props }, children),
+  };
+});
 
 // Mock @react-native-community/netinfo
 jest.mock('@react-native-community/netinfo', () => ({

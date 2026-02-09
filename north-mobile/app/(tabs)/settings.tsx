@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24, // Updated to screen-margin-x (24px)
     paddingTop: 16,
     paddingBottom: 40,
   },
