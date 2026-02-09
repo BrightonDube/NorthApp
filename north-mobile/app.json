@@ -46,7 +46,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.brighton.northapp",
-      "versionCode": 2,
+      "versionCode": 3,
       "enableProguardInReleaseBuilds": true,
       "enableShrinkResourcesInReleaseBuilds": true,
       "permissions": [
