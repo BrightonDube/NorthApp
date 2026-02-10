@@ -50,7 +50,8 @@
         "appleTeamId": "${APPLE_TEAM_ID}"
       },
       "android": {
-        "track": "internal"
+        "track": "internal",
+        "serviceAccountKeyPath": "./play-store-key.json"
       }
     }
   }
