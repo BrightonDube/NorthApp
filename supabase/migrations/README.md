@@ -78,6 +78,61 @@ This directory contains SQL migration scripts for the North mobile application d
 
 **Validates**: Requirements 5.1, 5.4, 6.3, 10.3
 
+### add_session_reports_memory.sql
+
+**Purpose**: Adds support for the Session Reports & Conversation Memory feature
+
+**Changes**:
+- Creates `coaching_sessions` table to track session boundaries
+- Creates `session_reports` table to store generated reports with insights and action items
+- Creates `action_items` table to track action items with status management
+- Adds comprehensive indexes for efficient querying (user_id, status, dates, full-text search)
+- Implements Row Level Security (RLS) policies for all tables
+- Creates helper functions for context building and search
+- Adds triggers for automatic timestamp updates
+
+**Tables Created**:
+- `coaching_sessions` - Tracks coaching session boundaries with start/end times and message counts
+- `session_reports` - Stores AI-generated session reports with summary, insights, decisions, and topics
+- `action_items` - Tracks action items from sessions with status (pending/completed/cancelled)
+
+**Indexes Created**:
+- `idx_coaching_sessions_user_status` - Index on user_id and status
+- `idx_coaching_sessions_active` - Partial index for active sessions
+- `idx_coaching_sessions_user_coach` - Composite index for user and coach queries
+- `idx_coaching_sessions_end_time` - Index on end_time for session boundary queries
+- `idx_session_reports_user_date` - Index on user_id and session_date (DESC)
+- `idx_session_reports_coach` - Index on coach_id
+- `idx_session_reports_topics` - GIN index for topic array searches
+- `idx_session_reports_session` - Index on session_id
+- `idx_session_reports_user_coach` - Composite index for user/coach/date queries
+- `idx_session_reports_insights_search` - Full-text search index on report content
+- `idx_action_items_user_status` - Index on user_id and status
+- `idx_action_items_report` - Index on report_id
+- `idx_action_items_text_search` - GIN index for full-text search
+- `idx_action_items_user_created` - Index on user_id and created_at
+- `idx_action_items_pending` - Partial index for pending items
+
+**Helper Functions**:
+- `get_recent_session_reports(user_id, limit)` - Retrieves recent reports for context building
+- `get_pending_action_items(user_id)` - Retrieves all pending action items
+- `search_session_reports(user_id, query, limit)` - Full-text search across reports
+
+**RLS Policies**:
+- Users can only view, update, and delete their own sessions, reports, and action items
+- System (service role) can create reports and action items for any user
+- All operations require authentication
+
+**Constraints**:
+- Session status must be 'active' or 'ended'
+- Report confidence must be 'high', 'medium', or 'low'
+- Action item status must be 'pending', 'completed', or 'cancelled'
+- Foreign keys cascade delete to maintain referential integrity
+
+**Validates**: Requirements 1.5, 2.6, 3.1-3.7, 5.1, 9.7
+
+**Documentation**: See `SESSION_REPORTS_MIGRATION_GUIDE.md` for detailed information
+
 ## Running Migrations
 
 ### Using Supabase CLI
@@ -178,6 +233,44 @@ ALTER TABLE coaches DROP COLUMN IF EXISTS is_featured;
 ALTER TABLE coaches DROP COLUMN IF EXISTS category;
 ```
 
+### Rollback Session Reports Migration
+
+To rollback the session reports migration (WARNING: This will delete all session reports data!):
+
+```sql
+-- Drop helper functions
+DROP FUNCTION IF EXISTS search_session_reports(UUID, TEXT, INTEGER);
+DROP FUNCTION IF EXISTS get_pending_action_items(UUID);
+DROP FUNCTION IF EXISTS get_recent_session_reports(UUID, INTEGER);
+
+-- Drop RLS policies for action_items
+DROP POLICY IF EXISTS "Users can delete their own action items" ON action_items;
+DROP POLICY IF EXISTS "Users can update their own action items" ON action_items;
+DROP POLICY IF EXISTS "System can create action items" ON action_items;
+DROP POLICY IF EXISTS "Users can view their own action items" ON action_items;
+
+-- Drop RLS policies for session_reports
+DROP POLICY IF EXISTS "Users can delete their own session reports" ON session_reports;
+DROP POLICY IF EXISTS "Users can update their own session reports" ON session_reports;
+DROP POLICY IF EXISTS "System can create session reports" ON session_reports;
+DROP POLICY IF EXISTS "Users can view their own session reports" ON session_reports;
+
+-- Drop RLS policies for coaching_sessions
+DROP POLICY IF EXISTS "Users can delete their own coaching sessions" ON coaching_sessions;
+DROP POLICY IF EXISTS "Users can update their own coaching sessions" ON coaching_sessions;
+DROP POLICY IF EXISTS "Users can create their own coaching sessions" ON coaching_sessions;
+DROP POLICY IF EXISTS "Users can view their own coaching sessions" ON coaching_sessions;
+
+-- Drop triggers
+DROP TRIGGER IF EXISTS update_session_reports_updated_at ON session_reports;
+DROP TRIGGER IF EXISTS update_coaching_sessions_updated_at ON coaching_sessions;
+
+-- Drop tables (this will delete all data!)
+DROP TABLE IF EXISTS action_items;
+DROP TABLE IF EXISTS session_reports;
+DROP TABLE IF EXISTS coaching_sessions;
+```
+
 ## Verification
 
 ### Verify File Context Attachments Migration
@@ -255,6 +348,59 @@ AND indexname LIKE 'idx_coaches_%';
 SELECT constraint_name, check_clause 
 FROM information_schema.check_constraints 
 WHERE constraint_name = 'check_coach_category';
+```
+
+### Verify Session Reports Migration
+
+After running the migration, verify the changes:
+
+```sql
+-- Check that tables exist
+SELECT table_name, table_type 
+FROM information_schema.tables 
+WHERE table_schema = 'public' 
+AND table_name IN ('coaching_sessions', 'session_reports', 'action_items');
+
+-- Check coaching_sessions columns
+SELECT column_name, data_type, column_default, is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'coaching_sessions' 
+ORDER BY ordinal_position;
+
+-- Check session_reports columns
+SELECT column_name, data_type, column_default, is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'session_reports' 
+ORDER BY ordinal_position;
+
+-- Check action_items columns
+SELECT column_name, data_type, column_default, is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'action_items' 
+ORDER BY ordinal_position;
+
+-- Check that indexes exist
+SELECT indexname, indexdef 
+FROM pg_indexes 
+WHERE tablename IN ('coaching_sessions', 'session_reports', 'action_items')
+ORDER BY tablename, indexname;
+
+-- Check that RLS is enabled
+SELECT tablename, rowsecurity 
+FROM pg_tables 
+WHERE tablename IN ('coaching_sessions', 'session_reports', 'action_items');
+
+-- Check RLS policies
+SELECT schemaname, tablename, policyname, permissive, roles, cmd
+FROM pg_policies 
+WHERE tablename IN ('coaching_sessions', 'session_reports', 'action_items')
+ORDER BY tablename, policyname;
+
+-- Check that helper functions exist
+SELECT routine_name, routine_type, routine_definition
+FROM information_schema.routines
+WHERE routine_schema = 'public'
+AND routine_name IN ('get_recent_session_reports', 'get_pending_action_items', 'search_session_reports');
 ```
 
 ## Notes

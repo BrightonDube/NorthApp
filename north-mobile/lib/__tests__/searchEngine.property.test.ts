@@ -118,10 +118,12 @@ describe('Search Engine Properties', () => {
             expect(foundMatch).toBe(true);
 
             // Verify all results contain the search term in at least one field
+            // Note: We need to trim the search term because the search engine trims it
+            const trimmedSearchTerm = searchTerm.trim();
             results.forEach((coach) => {
-              const nameMatch = coach.name.toLowerCase().includes(searchTerm.toLowerCase());
-              const promptMatch = coach.systemPrompt.toLowerCase().includes(searchTerm.toLowerCase());
-              const creatorMatch = coach.creatorName.toLowerCase().includes(searchTerm.toLowerCase());
+              const nameMatch = coach.name.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
+              const promptMatch = coach.systemPrompt.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
+              const creatorMatch = coach.creatorName.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
 
               expect(nameMatch || promptMatch || creatorMatch).toBe(true);
             });
@@ -200,10 +202,12 @@ describe('Search Engine Properties', () => {
             expect(foundMatch).toBe(true);
 
             // Verify all results contain the search term in at least one field
+            // Note: We need to trim the search term because the search engine trims it
+            const trimmedSearchTerm = searchTerm.trim();
             results.forEach((coach) => {
-              const nameMatch = coach.name.toLowerCase().includes(searchTerm.toLowerCase());
-              const promptMatch = coach.systemPrompt.toLowerCase().includes(searchTerm.toLowerCase());
-              const creatorMatch = coach.creatorName.toLowerCase().includes(searchTerm.toLowerCase());
+              const nameMatch = coach.name.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
+              const promptMatch = coach.systemPrompt.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
+              const creatorMatch = coach.creatorName.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
 
               expect(nameMatch || promptMatch || creatorMatch).toBe(true);
             });
@@ -369,10 +373,12 @@ describe('Search Engine Properties', () => {
             expect(resultIds).not.toContain('coach-4');
 
             // Verify each result has the search term in at least one field
+            // Note: We need to trim the search term because the search engine trims it
+            const trimmedSearchTerm = searchTerm.trim();
             results.forEach((coach) => {
-              const nameMatch = coach.name.toLowerCase().includes(searchTerm.toLowerCase());
-              const promptMatch = coach.systemPrompt.toLowerCase().includes(searchTerm.toLowerCase());
-              const creatorMatch = coach.creatorName.toLowerCase().includes(searchTerm.toLowerCase());
+              const nameMatch = coach.name.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
+              const promptMatch = coach.systemPrompt.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
+              const creatorMatch = coach.creatorName.toLowerCase().includes(trimmedSearchTerm.toLowerCase());
 
               expect(nameMatch || promptMatch || creatorMatch).toBe(true);
             });

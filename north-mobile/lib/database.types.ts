@@ -293,6 +293,183 @@ export interface Database {
           }
         ]
       }
+      coaching_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          coach_id: string
+          start_time: string
+          end_time: string | null
+          message_count: number
+          status: 'active' | 'ended'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          coach_id: string
+          start_time?: string
+          end_time?: string | null
+          message_count?: number
+          status?: 'active' | 'ended'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          coach_id?: string
+          start_time?: string
+          end_time?: string | null
+          message_count?: number
+          status?: 'active' | 'ended'
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaching_sessions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaching_sessions_coach_id_fkey"
+            columns: ["coach_id"]
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      session_reports: {
+        Row: {
+          id: string
+          session_id: string
+          user_id: string
+          coach_id: string
+          summary: string
+          key_insights: Json
+          decisions: Json
+          topics: string[]
+          session_date: string
+          session_duration: number
+          message_count: number
+          generated_at: string
+          confidence: 'high' | 'medium' | 'low'
+          generation_attempts: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          user_id: string
+          coach_id: string
+          summary: string
+          key_insights?: Json
+          decisions?: Json
+          topics?: string[]
+          session_date: string
+          session_duration: number
+          message_count: number
+          generated_at?: string
+          confidence?: 'high' | 'medium' | 'low'
+          generation_attempts?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          user_id?: string
+          coach_id?: string
+          summary?: string
+          key_insights?: Json
+          decisions?: Json
+          topics?: string[]
+          session_date?: string
+          session_duration?: number
+          message_count?: number
+          generated_at?: string
+          confidence?: 'high' | 'medium' | 'low'
+          generation_attempts?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_reports_session_id_fkey"
+            columns: ["session_id"]
+            referencedRelation: "coaching_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_reports_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_reports_coach_id_fkey"
+            columns: ["coach_id"]
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      action_items: {
+        Row: {
+          id: string
+          report_id: string
+          user_id: string
+          text: string
+          status: 'pending' | 'completed' | 'cancelled'
+          created_at: string
+          completed_at: string | null
+          linked_action_item_id: string | null
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          user_id: string
+          text: string
+          status?: 'pending' | 'completed' | 'cancelled'
+          created_at?: string
+          completed_at?: string | null
+          linked_action_item_id?: string | null
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          user_id?: string
+          text?: string
+          status?: 'pending' | 'completed' | 'cancelled'
+          created_at?: string
+          completed_at?: string | null
+          linked_action_item_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_items_report_id_fkey"
+            columns: ["report_id"]
+            referencedRelation: "session_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_items_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_items_linked_action_item_id_fkey"
+            columns: ["linked_action_item_id"]
+            referencedRelation: "action_items"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -326,6 +503,9 @@ export type ChatSession = Tables<'chat_sessions'>
 export type Message = Tables<'messages'>
 export type FileAttachment = Tables<'file_attachments'>
 export type SessionFileSelection = Tables<'session_file_selections'>
+export type CoachingSession = Tables<'coaching_sessions'>
+export type SessionReport = Tables<'session_reports'>
+export type ActionItem = Tables<'action_items'>
 
 /**
  * Specific table insert types for convenience
@@ -337,6 +517,9 @@ export type FileAttachmentInsert = Inserts<'file_attachments'>
 export type SessionFileSelectionInsert = Inserts<'session_file_selections'>
 export type ChatSessionInsert = Inserts<'chat_sessions'>
 export type MessageInsert = Inserts<'messages'>
+export type CoachingSessionInsert = Inserts<'coaching_sessions'>
+export type SessionReportInsert = Inserts<'session_reports'>
+export type ActionItemInsert = Inserts<'action_items'>
 
 /**
  * Specific table update types for convenience
@@ -346,9 +529,15 @@ export type UserContextUpdate = Updates<'user_context'>
 export type CoachUpdate = Updates<'coaches'>
 export type ChatSessionUpdate = Updates<'chat_sessions'>
 export type MessageUpdate = Updates<'messages'>
+export type CoachingSessionUpdate = Updates<'coaching_sessions'>
+export type SessionReportUpdate = Updates<'session_reports'>
+export type ActionItemUpdate = Updates<'action_items'>
 
 /**
  * Enum types for type-safe category and role values
  */
 export type ContextCategory = Database['public']['Tables']['user_context']['Row']['category']
 export type MessageRole = Database['public']['Tables']['messages']['Row']['role']
+export type SessionStatus = Database['public']['Tables']['coaching_sessions']['Row']['status']
+export type ActionItemStatus = Database['public']['Tables']['action_items']['Row']['status']
+export type ReportConfidence = Database['public']['Tables']['session_reports']['Row']['confidence']
