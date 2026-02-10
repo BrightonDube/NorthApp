@@ -1148,15 +1148,20 @@ describe('coachStore - Property-Based Tests', () => {
             systemPrompt: fc.option(systemPromptArbitrary),
           }),
           async (defaultCoach, updates) => {
-            // Reset for each iteration
+            // Reset for each iteration - directly set state without calling reset()
+            // to avoid race conditions with AsyncStorage persist middleware
             jest.clearAllMocks();
-            useCoachStore.getState().reset();
             
             const { useNetworkStore } = require('../networkStore');
             useNetworkStore.getState.mockReturnValue({ isOnline: true });
             
-            // Set default coach in store
-            useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
+            // Directly set the state we want
+            useCoachStore.setState({ 
+              coaches: [defaultCoach], 
+              isLoading: false, 
+              error: null, 
+              lastSynced: Date.now() 
+            });
 
             // Filter out undefined updates
             const filteredUpdates: any = {};
@@ -1210,15 +1215,20 @@ describe('coachStore - Property-Based Tests', () => {
             updatedAt: timestampArbitrary,
           }),
           async (defaultCoach) => {
-            // Reset for each iteration
+            // Reset for each iteration - directly set state without calling reset()
+            // to avoid race conditions with AsyncStorage persist middleware
             jest.clearAllMocks();
-            useCoachStore.getState().reset();
             
             const { useNetworkStore } = require('../networkStore');
             useNetworkStore.getState.mockReturnValue({ isOnline: true });
             
-            // Set default coach in store
-            useCoachStore.setState({ coaches: [defaultCoach], isLoading: false, error: null, lastSynced: Date.now() });
+            // Directly set the state we want
+            useCoachStore.setState({ 
+              coaches: [defaultCoach], 
+              isLoading: false, 
+              error: null, 
+              lastSynced: Date.now() 
+            });
 
             // Attempt to delete default coach should throw error
             try {

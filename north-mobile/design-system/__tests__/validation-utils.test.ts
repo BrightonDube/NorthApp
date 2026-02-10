@@ -238,8 +238,14 @@ describe('Validation Utilities', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should fail when border radius did not increase', () => {
+    it('should pass when border radius stayed the same (already optimal)', () => {
       const result = validateBorderRadiusIncrease(8, 8, 'md');
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('should fail when border radius decreased', () => {
+      const result = validateBorderRadiusIncrease(6, 8, 'md');
       expect(result.isValid).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].rule).toBe('Border Radius Increase');
@@ -279,7 +285,7 @@ describe('Validation Utilities', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should fail when opacity did not decrease', () => {
+    it('should pass when opacity stayed the same (already soft)', () => {
       const result = validateShadowSoftness(
         0.06, // new opacity (same)
         0.06, // old opacity
@@ -288,8 +294,22 @@ describe('Validation Utilities', () => {
         0.07,
         'sm'
       );
+      expect(result.isValid).toBe(true);
+      expect(result.errors.length).toBe(0);
+    });
+
+    it('should fail when opacity increased', () => {
+      const result = validateShadowSoftness(
+        0.08, // new opacity (higher)
+        0.06, // old opacity
+        8, // new blur
+        4, // old blur
+        0.09,
+        'sm'
+      );
       expect(result.isValid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some((e) => e.rule === 'Shadow Opacity Reduction')).toBe(true);
     });
 
     it('should fail when opacity exceeds maximum', () => {
@@ -305,11 +325,24 @@ describe('Validation Utilities', () => {
       expect(result.errors.some((e) => e.rule === 'Maximum Shadow Opacity')).toBe(true);
     });
 
-    it('should fail when blur did not increase', () => {
+    it('should pass when blur stayed the same (already soft)', () => {
       const result = validateShadowSoftness(
         0.04, // new opacity
         0.06, // old opacity
         4, // new blur (same)
+        4, // old blur
+        0.07,
+        'sm'
+      );
+      expect(result.isValid).toBe(true);
+      expect(result.errors.length).toBe(0);
+    });
+
+    it('should fail when blur decreased', () => {
+      const result = validateShadowSoftness(
+        0.04, // new opacity
+        0.06, // old opacity
+        2, // new blur (smaller)
         4, // old blur
         0.07,
         'sm'

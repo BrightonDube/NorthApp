@@ -544,3 +544,48 @@ export interface FieldValidation {
  * Validates: Requirements 6.2
  */
 export type DefaultCoachSeed = Omit<Coach, 'id' | 'createdAt' | 'updatedAt'>;
+
+// ============================================================================
+// File Attachment Types
+// ============================================================================
+
+/**
+ * File metadata for creating file attachments
+ * Validates: Requirements 3.2, 3.4
+ */
+export interface FileMetadata {
+  filename: string;
+  fileType: 'pdf' | 'txt' | 'md';
+  fileSize: number;
+  uploadDate: Date;
+}
+
+/**
+ * Storage usage information
+ * Validates: Requirements 10.1, 10.4
+ */
+export interface StorageUsage {
+  usedBytes: number;
+  totalBytes: number;
+  percentageUsed: number;
+}
+
+/**
+ * File attachment record
+ * Validates: Requirements 2.5, 3.2, 3.3, 3.5
+ */
+export interface FileAttachment {
+  id: string;
+  userId: string;
+  filename: string;
+  fileType: 'pdf' | 'txt' | 'md';
+  fileSize: number;
+  uploadDate: string;
+  storagePath: string;
+  storageUrl: string;
+  extractedContent: string | null;
+  extractionSuccess: boolean;
+  extractionError: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

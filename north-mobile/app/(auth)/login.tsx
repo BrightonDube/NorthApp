@@ -154,7 +154,7 @@ export default function LoginScreen() {
           <View className="w-full max-w-md mx-auto">
             {/* Logo */}
             <View className="items-center mb-8">
-              <Logo size={100} color="#09090B" />
+              <Logo size={100} />
             </View>
 
             {/* Header */}

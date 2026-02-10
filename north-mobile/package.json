@@ -40,6 +40,7 @@
     "expo-updates": "~29.0.16",
     "expo-web-browser": "~15.0.10",
     "nativewind": "^4.2.1",
+    "pdf-parse": "^2.4.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -53,6 +54,7 @@
     "react-native-worklets": "0.5.1",
     "react-native-worklets-core": "^1.6.2",
     "tailwindcss": "^3.3.2",
+    "uuid": "^13.0.0",
     "zustand": "^5.0.10"
   },
   "devDependencies": {
@@ -60,9 +62,11 @@
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "29.5.14",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "~19.1.0",
     "@types/react-native": "^0.72.8",
     "@types/react-test-renderer": "^19.1.0",
+    "@types/uuid": "^10.0.0",
     "babel-jest": "^30.2.0",
     "babel-preset-expo": "^54.0.10",
     "dotenv": "^17.2.3",

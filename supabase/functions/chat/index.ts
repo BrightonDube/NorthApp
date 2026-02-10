@@ -17,6 +17,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.1.3';
+import { buildPromptContext, filterSessionFiles, type FileAttachment } from './context-injection.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -100,6 +101,27 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .order('category');
 
+    // Fetch user file attachments
+    const { data: fileAttachments } = await supabaseClient
+      .from('file_attachments')
+      .select('id, filename, file_type, upload_date, extracted_content, extraction_success')
+      .eq('user_id', user.id)
+      .eq('extraction_success', true)
+      .order('upload_date', { ascending: false });
+
+    // Fetch session-specific file selections (if any)
+    const { data: sessionFileSelections } = await supabaseClient
+      .from('session_file_selections')
+      .select('file_id')
+      .eq('session_id', sessionId);
+
+    // Filter files based on session selections
+    const sessionFileIds = sessionFileSelections?.map(s => s.file_id);
+    const filteredFiles = filterSessionFiles(
+      (fileAttachments as FileAttachment[]) || [],
+      sessionFileIds
+    );
+
     // Fetch conversation history (last 10 messages)
     const { data: messages } = await supabaseClient
       .from('messages')
@@ -116,24 +138,12 @@ serve(async (req) => {
       constraints: contexts?.filter(c => c.category === 'constraints').map(c => c.content) || [],
     };
 
-    // Build system prompt with context
-    const systemPrompt = `${coach.system_prompt}
-
----
-
-USER CONTEXT (This information defines who the user is - use it to personalize your responses):
-
-VALUES (Core principles):
-${contextByCategory.values.length > 0 ? contextByCategory.values.map(v => `- ${v}`).join('\n') : 'Not specified'}
-
-GOALS (Current objectives):
-${contextByCategory.goals.length > 0 ? contextByCategory.goals.map(g => `- ${g}`).join('\n') : 'Not specified'}
-
-PROJECTS (Active work):
-${contextByCategory.projects.length > 0 ? contextByCategory.projects.map(p => `- ${p}`).join('\n') : 'Not specified'}
-
-CONSTRAINTS (Limitations):
-${contextByCategory.constraints.length > 0 ? contextByCategory.constraints.map(c => `- ${c}`).join('\n') : 'Not specified'}`;
+    // Build system prompt with context and file attachments
+    const systemPrompt = buildPromptContext(
+      coach.system_prompt,
+      contexts || [],
+      filteredFiles
+    );
 
     // Format conversation history for Gemini
     const history = messages?.map(m => ({

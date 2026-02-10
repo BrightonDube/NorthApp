@@ -210,6 +210,89 @@ export interface Database {
           }
         ]
       }
+      file_attachments: {
+        Row: {
+          id: string
+          user_id: string
+          filename: string
+          file_type: 'pdf' | 'txt' | 'md'
+          file_size: number
+          upload_date: string
+          storage_path: string
+          storage_url: string
+          extracted_content: string | null
+          extraction_success: boolean
+          extraction_error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          filename: string
+          file_type: 'pdf' | 'txt' | 'md'
+          file_size: number
+          upload_date?: string
+          storage_path: string
+          storage_url: string
+          extracted_content?: string | null
+          extraction_success?: boolean
+          extraction_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          filename?: string
+          file_type?: 'pdf' | 'txt' | 'md'
+          file_size?: number
+          upload_date?: string
+          storage_path?: string
+          storage_url?: string
+          extracted_content?: string | null
+          extraction_success?: boolean
+          extraction_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_attachments_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      session_file_selections: {
+        Row: {
+          id: string
+          session_id: string
+          file_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          file_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          file_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_file_selections_file_id_fkey"
+            columns: ["file_id"]
+            referencedRelation: "file_attachments"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -241,6 +324,8 @@ export type UserContext = Tables<'user_context'>
 export type Coach = Tables<'coaches'>
 export type ChatSession = Tables<'chat_sessions'>
 export type Message = Tables<'messages'>
+export type FileAttachment = Tables<'file_attachments'>
+export type SessionFileSelection = Tables<'session_file_selections'>
 
 /**
  * Specific table insert types for convenience
@@ -248,6 +333,8 @@ export type Message = Tables<'messages'>
 export type ProfileInsert = Inserts<'profiles'>
 export type UserContextInsert = Inserts<'user_context'>
 export type CoachInsert = Inserts<'coaches'>
+export type FileAttachmentInsert = Inserts<'file_attachments'>
+export type SessionFileSelectionInsert = Inserts<'session_file_selections'>
 export type ChatSessionInsert = Inserts<'chat_sessions'>
 export type MessageInsert = Inserts<'messages'>
 

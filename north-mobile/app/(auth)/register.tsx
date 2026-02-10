@@ -125,7 +125,7 @@ export default function RegisterScreen() {
           <View className="w-full max-w-md mx-auto">
             {/* Logo */}
             <View className="items-center mb-6">
-              <Logo size={80} color="#09090B" />
+              <Logo size={80} />
             </View>
 
             {/* Header */}

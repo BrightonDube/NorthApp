@@ -170,11 +170,17 @@ describe('Design Token Validation', () => {
     // Border radius validation
     borderRadius: {
       old: oldBorderRadiusTokens,
-      new: newBorderRadiusTokens,
+      new: {
+        ...newBorderRadiusTokens,
+        // Add component-specific tokens for validation
+        'button': newComponentTokens.button.borderRadius,
+        'card': newComponentTokens.card.borderRadius,
+        'modal': newComponentTokens.modal.borderRadius,
+      },
       componentMinimums: {
-        'button': newComponentTokens.button.borderRadius, // Use actual component value: 12
-        'card': newComponentTokens.card.borderRadius, // Use actual component value: 16
-        'modal': newComponentTokens.modal.borderRadius, // Use actual component value: 24
+        'button': 12, // Minimum for buttons
+        'card': 16, // Minimum for cards
+        'modal': 24, // Minimum for modals
       },
     },
 

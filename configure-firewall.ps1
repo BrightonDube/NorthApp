@@ -47,7 +47,7 @@ New-NetFirewallRule -DisplayName "Expo Dev Client" `
     -Description "Allow Expo Dev Client connections on ports 19000-19001"
 
 Write-Host ""
-Write-Host "✓ Firewall configuration complete!" -ForegroundColor Green
+Write-Host "Firewall configuration complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "1. Restart your terminal/PowerShell" -ForegroundColor White
