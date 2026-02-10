@@ -347,7 +347,7 @@ describe('SessionFileSelector', () => {
       );
 
       await waitFor(() => {
-        expect(getByText('1.0 MB')).toBeTruthy();
+        expect(getByText('1000.0 KB')).toBeTruthy();
         expect(getByText('500.0 KB')).toBeTruthy();
       });
     });
