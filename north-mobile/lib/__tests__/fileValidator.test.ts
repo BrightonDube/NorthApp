@@ -55,7 +55,7 @@ describe('FileValidator', () => {
       const result = validator.validateFileType(file);
 
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('File type not supported. Please upload PDF, TXT, or MD files.');
+      expect(result.error).toBe('File type ".jpg" is not supported. Please upload PDF, TXT, or MD files only.');
     });
 
     it('rejects EXE files', () => {
@@ -63,7 +63,7 @@ describe('FileValidator', () => {
       const result = validator.validateFileType(file);
 
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('File type not supported. Please upload PDF, TXT, or MD files.');
+      expect(result.error).toBe('File type ".exe" is not supported. Please upload PDF, TXT, or MD files only.');
     });
 
     it('rejects files without extension', () => {

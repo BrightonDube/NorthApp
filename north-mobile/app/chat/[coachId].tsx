@@ -267,7 +267,11 @@ export default function ChatScreen() {
       edges={['top', 'bottom']}
     >
       <OfflineIndicator />
-      <ChatHeader coach={coach} onBack={handleBack} />
+      <ChatHeader 
+        coach={coach} 
+        onBack={handleBack}
+        onOpenFileSelector={sessionId ? handleOpenFileSelector : undefined}
+      />
       
       <KeyboardAvoidingView 
         className="flex-1"
@@ -299,6 +303,21 @@ export default function ChatScreen() {
           placeholder={`Message ${coach.name}...`}
         />
       </KeyboardAvoidingView>
+
+      {/* File Selector Modal */}
+      {sessionId && (
+        <Modal
+          visible={showFileSelector}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={handleCloseFileSelector}
+        >
+          <SessionFileSelector
+            sessionId={sessionId}
+            onClose={handleCloseFileSelector}
+          />
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }

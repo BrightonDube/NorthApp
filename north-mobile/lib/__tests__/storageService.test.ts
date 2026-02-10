@@ -113,7 +113,7 @@ describe('StorageService', () => {
         type: 'application/pdf',
       };
 
-      await expect(storage.uploadFile(userId, file)).rejects.toThrow('Storage service error');
+      await expect(storage.uploadFile(userId, file)).rejects.toThrow('Failed to upload file. Please try again.');
     });
   });
 

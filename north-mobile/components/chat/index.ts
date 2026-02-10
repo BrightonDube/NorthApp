@@ -22,3 +22,6 @@ export { ChatHeader } from './ChatHeader';
 export type { ChatHeaderProps } from './ChatHeader';
 
 export { StreamingIndicator } from './StreamingIndicator';
+
+export { SessionFileSelector } from './SessionFileSelector';
+export type { SessionFileSelectorProps } from './SessionFileSelector';
