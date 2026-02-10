@@ -526,11 +526,12 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Add a file attachment to user's context
        * 
-       * Validates: Requirements 2.5, 3.2, 3.3, 3.5, 10.1, 10.2, 10.3
+       * Validates: Requirements 2.5, 3.2, 3.3, 3.5, 10.1, 10.2, 10.3, 6.1, 6.2
        * 
        * Stores file metadata and extracted content in the database.
        * Links the file to the user's account.
        * Enforces storage quota limits and provides warnings.
+       * Verifies user authentication and authorization.
        * 
        * @param userId - The user ID
        * @param metadata - File metadata (filename, type, size, upload date)
@@ -538,7 +539,7 @@ export const useContextStore = create<ContextStore>()(
        * @param storageUrl - URL to access the file in storage
        * @param storagePath - Path where file is stored
        * @returns The created file attachment record
-       * @throws Error if creation fails or quota exceeded
+       * @throws Error if creation fails, quota exceeded, or user not authenticated
        * 
        * @example
        * ```typescript
@@ -553,6 +554,31 @@ export const useContextStore = create<ContextStore>()(
        */
       addFileAttachment: async (userId, metadata, content, storageUrl, storagePath) => {
         try {
+          // Verify user authentication (Requirement 6.1)
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          
+          if (authError || !user) {
+            const error = new Error('Authentication required to add file attachments');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT] Unauthenticated file attachment attempt');
+            throw error;
+          }
+          
+          // Verify the authenticated user matches the provided userId (Requirement 6.2)
+          if (user.id !== userId) {
+            const error = new Error('You can only add files to your own account');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT]', {
+              type: 'unauthorized_access_attempt',
+              userId: user.id,
+              targetUserId: userId,
+              operation: 'addFileAttachment',
+              timestamp: new Date().toISOString(),
+              message: `User ${user.id} attempted to add file for user ${userId}`,
+            });
+            throw error;
+          }
+          
           // Check storage quota before upload
           const currentUsage = await get().getStorageUsage(userId);
           const newTotalBytes = currentUsage.usedBytes + metadata.fileSize;
@@ -610,13 +636,14 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Get all file attachments for a user
        * 
-       * Validates: Requirements 3.2, 5.1
+       * Validates: Requirements 3.2, 5.1, 6.1, 6.2
        * 
        * Retrieves all files uploaded by the user, ordered by upload date (newest first).
+       * Verifies user authentication and authorization.
        * 
        * @param userId - The user ID
        * @returns Array of file attachments
-       * @throws Error if fetch fails
+       * @throws Error if fetch fails or user not authenticated
        * 
        * @example
        * ```typescript
@@ -626,6 +653,31 @@ export const useContextStore = create<ContextStore>()(
        */
       getFileAttachments: async (userId) => {
         try {
+          // Verify user authentication (Requirement 6.1)
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          
+          if (authError || !user) {
+            const error = new Error('Authentication required to access file attachments');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT] Unauthenticated file access attempt');
+            throw error;
+          }
+          
+          // Verify the authenticated user matches the provided userId (Requirement 6.2)
+          if (user.id !== userId) {
+            const error = new Error('You can only access your own files');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT]', {
+              type: 'unauthorized_access_attempt',
+              userId: user.id,
+              targetUserId: userId,
+              operation: 'getFileAttachments',
+              timestamp: new Date().toISOString(),
+              message: `User ${user.id} attempted to access files for user ${userId}`,
+            });
+            throw error;
+          }
+          
           const { data, error } = await supabase
             .from('file_attachments')
             .select('*')
@@ -645,14 +697,15 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Delete a file attachment
        * 
-       * Validates: Requirements 5.3, 10.5
+       * Validates: Requirements 5.3, 10.5, 6.1, 6.2, 6.5
        * 
        * Removes the file metadata from the database. The caller is responsible
        * for also deleting the file from storage.
+       * Verifies user authentication and file ownership.
        * 
        * @param userId - The user ID (for authorization)
        * @param fileId - The file attachment ID
-       * @throws Error if deletion fails
+       * @throws Error if deletion fails, user not authenticated, or user doesn't own the file
        * 
        * @example
        * ```typescript
@@ -661,6 +714,58 @@ export const useContextStore = create<ContextStore>()(
        */
       deleteFileAttachment: async (userId, fileId) => {
         try {
+          // Verify user authentication (Requirement 6.1)
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          
+          if (authError || !user) {
+            const error = new Error('Authentication required to delete file attachments');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT] Unauthenticated file deletion attempt');
+            throw error;
+          }
+          
+          // Verify the authenticated user matches the provided userId (Requirement 6.2)
+          if (user.id !== userId) {
+            const error = new Error('You can only delete your own files');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT]', {
+              type: 'unauthorized_access_attempt',
+              userId: user.id,
+              targetUserId: userId,
+              fileId,
+              operation: 'deleteFileAttachment',
+              timestamp: new Date().toISOString(),
+              message: `User ${user.id} attempted to delete file ${fileId} for user ${userId}`,
+            });
+            throw error;
+          }
+          
+          // Verify file ownership before deletion (Requirement 6.5)
+          const { data: fileData, error: ownershipError } = await supabase
+            .from('file_attachments')
+            .select('user_id')
+            .eq('id', fileId)
+            .single();
+          
+          if (ownershipError || !fileData) {
+            throw new Error('File not found');
+          }
+          
+          if (fileData.user_id !== user.id) {
+            const error = new Error('You do not have permission to delete this file');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT]', {
+              type: 'file_ownership_violation',
+              userId: user.id,
+              fileId,
+              ownerId: fileData.user_id,
+              operation: 'deleteFileAttachment',
+              timestamp: new Date().toISOString(),
+              message: `User ${user.id} attempted to delete file ${fileId} owned by ${fileData.user_id}`,
+            });
+            throw error;
+          }
+          
           const { error } = await supabase
             .from('file_attachments')
             .delete()
@@ -678,15 +783,16 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Update a file's name
        * 
-       * Validates: Requirements 5.4
+       * Validates: Requirements 5.4, 6.1, 6.2, 6.5
        * 
        * Renames a file attachment. Only the filename metadata is updated;
        * the actual file in storage is not renamed.
+       * Verifies user authentication and file ownership.
        * 
        * @param userId - The user ID (for authorization)
        * @param fileId - The file attachment ID
        * @param newName - The new filename
-       * @throws Error if update fails
+       * @throws Error if update fails, user not authenticated, or user doesn't own the file
        * 
        * @example
        * ```typescript
@@ -695,6 +801,58 @@ export const useContextStore = create<ContextStore>()(
        */
       updateFileName: async (userId, fileId, newName) => {
         try {
+          // Verify user authentication (Requirement 6.1)
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          
+          if (authError || !user) {
+            const error = new Error('Authentication required to update file names');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT] Unauthenticated file update attempt');
+            throw error;
+          }
+          
+          // Verify the authenticated user matches the provided userId (Requirement 6.2)
+          if (user.id !== userId) {
+            const error = new Error('You can only update your own files');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT]', {
+              type: 'unauthorized_access_attempt',
+              userId: user.id,
+              targetUserId: userId,
+              fileId,
+              operation: 'updateFileName',
+              timestamp: new Date().toISOString(),
+              message: `User ${user.id} attempted to update file ${fileId} for user ${userId}`,
+            });
+            throw error;
+          }
+          
+          // Verify file ownership before update (Requirement 6.5)
+          const { data: fileData, error: ownershipError } = await supabase
+            .from('file_attachments')
+            .select('user_id')
+            .eq('id', fileId)
+            .single();
+          
+          if (ownershipError || !fileData) {
+            throw new Error('File not found');
+          }
+          
+          if (fileData.user_id !== user.id) {
+            const error = new Error('You do not have permission to update this file');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT]', {
+              type: 'file_ownership_violation',
+              userId: user.id,
+              fileId,
+              ownerId: fileData.user_id,
+              operation: 'updateFileName',
+              timestamp: new Date().toISOString(),
+              message: `User ${user.id} attempted to update file ${fileId} owned by ${fileData.user_id}`,
+            });
+            throw error;
+          }
+          
           const { error } = await supabase
             .from('file_attachments')
             .update({ filename: newName, updated_at: new Date().toISOString() })
@@ -712,14 +870,15 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Get storage usage for a user
        * 
-       * Validates: Requirements 10.1, 10.4
+       * Validates: Requirements 10.1, 10.4, 6.1, 6.2
        * 
        * Calculates total storage used by summing all file sizes.
        * Returns usage in bytes and as a percentage of the quota.
+       * Verifies user authentication and authorization.
        * 
        * @param userId - The user ID
        * @returns Storage usage information
-       * @throws Error if calculation fails
+       * @throws Error if calculation fails or user not authenticated
        * 
        * @example
        * ```typescript
@@ -729,6 +888,31 @@ export const useContextStore = create<ContextStore>()(
        */
       getStorageUsage: async (userId) => {
         try {
+          // Verify user authentication (Requirement 6.1)
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          
+          if (authError || !user) {
+            const error = new Error('Authentication required to access storage usage');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT] Unauthenticated storage usage access attempt');
+            throw error;
+          }
+          
+          // Verify the authenticated user matches the provided userId (Requirement 6.2)
+          if (user.id !== userId) {
+            const error = new Error('You can only access your own storage usage');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT]', {
+              type: 'unauthorized_access_attempt',
+              userId: user.id,
+              targetUserId: userId,
+              operation: 'getStorageUsage',
+              timestamp: new Date().toISOString(),
+              message: `User ${user.id} attempted to access storage usage for user ${userId}`,
+            });
+            throw error;
+          }
+          
           const { data, error } = await supabase
             .from('file_attachments')
             .select('file_size')
@@ -755,14 +939,15 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Set session-specific file selections
        * 
-       * Validates: Requirements 7.1, 7.4
+       * Validates: Requirements 7.1, 7.4, 6.1
        * 
        * Associates specific files with a chat session. Only these files
        * will be included in context injection for that session.
+       * Verifies user authentication.
        * 
        * @param sessionId - The chat session ID
        * @param fileIds - Array of file attachment IDs to include
-       * @throws Error if operation fails
+       * @throws Error if operation fails or user not authenticated
        * 
        * @example
        * ```typescript
@@ -771,6 +956,16 @@ export const useContextStore = create<ContextStore>()(
        */
       setSessionFiles: async (sessionId, fileIds) => {
         try {
+          // Verify user authentication (Requirement 6.1)
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          
+          if (authError || !user) {
+            const error = new Error('Authentication required to set session files');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT] Unauthenticated session file selection attempt');
+            throw error;
+          }
+          
           // First, delete existing selections for this session
           const { error: deleteError } = await supabase
             .from('session_file_selections')
@@ -802,15 +997,16 @@ export const useContextStore = create<ContextStore>()(
       /**
        * Get files selected for a specific session
        * 
-       * Validates: Requirements 7.2, 7.3
+       * Validates: Requirements 7.2, 7.3, 6.1
        * 
        * Retrieves file attachments that have been selected for a specific session.
        * If no files are selected for the session, returns an empty array
        * (the caller should then use all user files as default).
+       * Verifies user authentication.
        * 
        * @param sessionId - The chat session ID
        * @returns Array of file attachments selected for the session
-       * @throws Error if fetch fails
+       * @throws Error if fetch fails or user not authenticated
        * 
        * @example
        * ```typescript
@@ -823,6 +1019,16 @@ export const useContextStore = create<ContextStore>()(
        */
       getSessionFiles: async (sessionId) => {
         try {
+          // Verify user authentication (Requirement 6.1)
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          
+          if (authError || !user) {
+            const error = new Error('Authentication required to access session files');
+            set({ error: error.message });
+            console.warn('[SECURITY EVENT] Unauthenticated session file access attempt');
+            throw error;
+          }
+          
           const { data, error } = await supabase
             .from('session_file_selections')
             .select(`

@@ -4,10 +4,11 @@
  * This module provides text extraction functionality for uploaded files
  * including PDF, TXT, and MD formats.
  * 
- * Validates: Requirements 2.1, 2.2, 2.3, 2.4
+ * Validates: Requirements 2.1, 2.2, 2.3, 2.4, 8.2, 8.4, 8.5
  */
 
 import pdfParse from 'pdf-parse';
+import { logError, logSuccess, type ErrorContext } from './errorLogger';
 
 /**
  * Result of text extraction operation
@@ -17,6 +18,7 @@ export type ExtractedContent = {
   pageCount?: number;
   extractionSuccess: boolean;
   error?: string;
+  retryable?: boolean; // Indicates if the operation can be retried
 };
 
 /**
@@ -34,8 +36,9 @@ export interface FileData {
  * Features:
  * - PDF text extraction using pdf-parse library
  * - Text file reading (TXT, MD)
- * - Comprehensive error handling
+ * - Comprehensive error handling with retry support
  * - Success/failure tracking
+ * - Error logging for debugging
  * 
  * Usage:
  * ```typescript
@@ -47,10 +50,25 @@ export interface FileData {
  *   console.log('Extracted text:', result.text);
  * } else {
  *   console.error('Extraction failed:', result.error);
+ *   if (result.retryable) {
+ *     // Offer retry option to user
+ *   }
  * }
+ * 
+ * // Extract with retry
+ * const resultWithRetry = await processor.extractTextWithRetry(fileData, 3);
  * ```
  */
 export class FileProcessor {
+  /**
+   * Maximum number of retry attempts for extraction
+   */
+  private readonly MAX_RETRIES = 3;
+  
+  /**
+   * Delay between retry attempts in milliseconds
+   */
+  private readonly RETRY_DELAY = 1000;
   /**
    * Extracts text content from a PDF file
    * 
@@ -61,7 +79,7 @@ export class FileProcessor {
    * @returns Promise<string> containing extracted text from all pages
    * @throws Error if PDF parsing fails
    * 
-   * Validates: Requirements 2.2
+   * Validates: Requirements 2.2, 8.4
    * 
    * @example
    * ```typescript
@@ -70,6 +88,12 @@ export class FileProcessor {
    * ```
    */
   async processPDF(file: FileData): Promise<string> {
+    const errorContext: ErrorContext = {
+      operation: 'processPDF',
+      filename: file.name,
+      component: 'FileProcessor',
+    };
+    
     try {
       // Convert Uint8Array to Buffer if needed
       const buffer = Buffer.isBuffer(file.data) ? file.data : Buffer.from(file.data);
@@ -77,15 +101,26 @@ export class FileProcessor {
       // Parse PDF and extract text
       const data = await pdfParse(buffer);
       
+      // Log success
+      logSuccess('processPDF', {
+        ...errorContext,
+        additionalInfo: { pageCount: data.numpages },
+      });
+      
       // Return the extracted text from all pages
       return data.text;
     } catch (error) {
+      // Log error with context
+      logError(error as Error, errorContext, 'error');
+      
       // Handle specific PDF parsing errors
       if (error instanceof Error) {
         if (error.message.includes('password')) {
           throw new Error('PDF is password-protected and cannot be processed');
-        } else if (error.message.includes('Invalid PDF')) {
+        } else if (error.message.includes('Invalid PDF') || error.message.includes('corrupted')) {
           throw new Error('PDF file is corrupted or invalid');
+        } else if (error.message.includes('encrypted')) {
+          throw new Error('PDF is encrypted and cannot be processed');
         } else {
           throw new Error(`Failed to extract text from PDF: ${error.message}`);
         }
@@ -103,7 +138,7 @@ export class FileProcessor {
    * @param file - File data containing text content
    * @returns Promise<string> containing the complete file content
    * 
-   * Validates: Requirements 2.3
+   * Validates: Requirements 2.3, 8.5
    * 
    * @example
    * ```typescript
@@ -112,6 +147,12 @@ export class FileProcessor {
    * ```
    */
   async processTextFile(file: FileData): Promise<string> {
+    const errorContext: ErrorContext = {
+      operation: 'processTextFile',
+      filename: file.name,
+      component: 'FileProcessor',
+    };
+    
     try {
       // Convert Uint8Array to Buffer if needed
       const buffer = Buffer.isBuffer(file.data) ? file.data : Buffer.from(file.data);
@@ -119,9 +160,18 @@ export class FileProcessor {
       // Decode as UTF-8 text
       const text = buffer.toString('utf-8');
       
+      // Log success
+      logSuccess('processTextFile', {
+        ...errorContext,
+        additionalInfo: { textLength: text.length },
+      });
+      
       // Return the complete text content
       return text;
     } catch (error) {
+      // Log error with context
+      logError(error as Error, errorContext, 'error');
+      
       if (error instanceof Error) {
         throw new Error(`Failed to read text file: ${error.message}`);
       }
@@ -134,12 +184,12 @@ export class FileProcessor {
    * 
    * Automatically detects file type and routes to appropriate extraction method.
    * Provides comprehensive error handling and returns structured result with
-   * success flag and error details.
+   * success flag, error details, and retry information.
    * 
    * @param file - File data to extract text from
-   * @returns Promise<ExtractedContent> with text, success flag, and optional error
+   * @returns Promise<ExtractedContent> with text, success flag, optional error, and retry flag
    * 
-   * Validates: Requirements 2.1, 2.4
+   * Validates: Requirements 2.1, 2.4, 8.2, 8.4, 8.5
    * 
    * @example
    * ```typescript
@@ -148,19 +198,31 @@ export class FileProcessor {
    *   console.log('Success:', result.text);
    * } else {
    *   console.error('Failed:', result.error);
+   *   if (result.retryable) {
+   *     // Offer retry to user
+   *   }
    * }
    * ```
    */
   async extractText(file: FileData): Promise<ExtractedContent> {
+    const errorContext: ErrorContext = {
+      operation: 'extractText',
+      filename: file.name,
+      component: 'FileProcessor',
+    };
+    
     try {
       // Determine file type from filename extension
       const extension = this.getFileExtension(file.name);
       
       if (!extension) {
+        const error = 'File has no extension';
+        logError(error, errorContext, 'error');
         return {
           text: '',
           extractionSuccess: false,
-          error: 'File has no extension',
+          error,
+          retryable: false,
         };
       }
       
@@ -183,28 +245,141 @@ export class FileProcessor {
       } else if (extension === 'txt' || extension === 'md') {
         text = await this.processTextFile(file);
       } else {
+        const error = `Unsupported file type: ${extension}`;
+        logError(error, errorContext, 'error');
         return {
           text: '',
           extractionSuccess: false,
-          error: `Unsupported file type: ${extension}`,
+          error,
+          retryable: false,
         };
       }
+      
+      // Log success
+      logSuccess('extractText', {
+        ...errorContext,
+        additionalInfo: { textLength: text.length, pageCount },
+      });
       
       return {
         text,
         pageCount,
         extractionSuccess: true,
+        retryable: false,
       };
     } catch (error) {
       // Handle extraction errors gracefully
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
+      // Determine if error is retryable
+      const retryable = this.isRetryableError(errorMessage);
+      
+      // Log error with context
+      logError(error as Error, errorContext, 'error');
+      
       return {
         text: '',
         extractionSuccess: false,
         error: errorMessage,
+        retryable,
       };
     }
+  }
+  
+  /**
+   * Extract text with automatic retry on failure
+   * 
+   * Attempts extraction multiple times with exponential backoff.
+   * Useful for handling transient errors.
+   * 
+   * Validates: Requirements 8.2
+   * 
+   * @param file - File data to extract text from
+   * @param maxRetries - Maximum number of retry attempts (default: 3)
+   * @returns Promise<ExtractedContent> with extraction result
+   * 
+   * @example
+   * ```typescript
+   * const result = await processor.extractTextWithRetry(fileData, 3);
+   * ```
+   */
+  async extractTextWithRetry(
+    file: FileData,
+    maxRetries: number = this.MAX_RETRIES
+  ): Promise<ExtractedContent> {
+    let lastResult: ExtractedContent | null = null;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const result = await this.extractText(file);
+      
+      if (result.extractionSuccess) {
+        return result;
+      }
+      
+      lastResult = result;
+      
+      // Don't retry if error is not retryable
+      if (!result.retryable) {
+        break;
+      }
+      
+      // Don't retry on last attempt
+      if (attempt < maxRetries) {
+        // Wait before retrying (exponential backoff)
+        const delay = this.RETRY_DELAY * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        logError(
+          `Retry attempt ${attempt + 1}/${maxRetries} for file: ${file.name}`,
+          {
+            operation: 'extractTextWithRetry',
+            filename: file.name,
+            component: 'FileProcessor',
+            additionalInfo: { attempt: attempt + 1, maxRetries },
+          },
+          'warning'
+        );
+      }
+    }
+    
+    return lastResult || {
+      text: '',
+      extractionSuccess: false,
+      error: 'Extraction failed after all retry attempts',
+      retryable: false,
+    };
+  }
+  
+  /**
+   * Determine if an error is retryable
+   * 
+   * Some errors are permanent (corrupted file, password-protected)
+   * while others are transient (network issues, temporary failures).
+   * 
+   * @param errorMessage - The error message
+   * @returns true if the error is retryable
+   * 
+   * @private
+   */
+  private isRetryableError(errorMessage: string): boolean {
+    // Non-retryable errors
+    const nonRetryablePatterns = [
+      'password',
+      'encrypted',
+      'corrupted',
+      'invalid',
+      'unsupported',
+      'no extension',
+    ];
+    
+    for (const pattern of nonRetryablePatterns) {
+      if (errorMessage.toLowerCase().includes(pattern)) {
+        return false;
+      }
+    }
+    
+    // All other errors are considered retryable
+    return true;
   }
   
   /**

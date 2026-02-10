@@ -4,11 +4,32 @@
  * This module provides file storage operations using Supabase Storage.
  * Handles file uploads, deletions, URL generation, and storage usage tracking.
  * 
- * Validates: Requirements 1.3, 3.1, 3.4, 5.3, 6.3
+ * Validates: Requirements 1.3, 3.1, 3.4, 5.3, 6.3, 6.1, 6.2, 6.4, 6.5, 8.1, 8.5
  */
 
 import { supabase } from './supabase';
 import { v4 as uuidv4 } from 'uuid';
+import { logError, logSuccess, getUserFriendlyMessage, type ErrorContext } from './errorLogger';
+
+/**
+ * Security event types for logging
+ */
+type SecurityEventType = 
+  | 'unauthorized_access_attempt'
+  | 'unauthenticated_access_attempt'
+  | 'file_ownership_violation';
+
+/**
+ * Security event details
+ */
+interface SecurityEvent {
+  type: SecurityEventType;
+  userId?: string;
+  fileId?: string;
+  operation: string;
+  timestamp: string;
+  message: string;
+}
 
 /**
  * Result of a file upload operation
@@ -47,6 +68,8 @@ const SIGNED_URL_EXPIRATION = 3600; // 1 hour
  * - Delete files from storage
  * - Calculate user storage usage
  * - Enforce user-specific access control
+ * - Authentication and authorization checks
+ * - Security event logging
  * 
  * Usage:
  * ```typescript
@@ -70,6 +93,119 @@ const SIGNED_URL_EXPIRATION = 3600; // 1 hour
  */
 export class StorageService {
   /**
+   * Verify user authentication
+   * 
+   * Validates: Requirements 6.1, 6.4
+   * 
+   * @returns The authenticated user's ID
+   * @throws Error if user is not authenticated
+   * 
+   * @private
+   */
+  private async verifyAuthentication(): Promise<string> {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      this.logSecurityEvent({
+        type: 'unauthenticated_access_attempt',
+        operation: 'authentication_check',
+        timestamp: new Date().toISOString(),
+        message: 'Attempted file operation without authentication',
+      });
+      throw new Error('Authentication required to access files');
+    }
+    
+    return user.id;
+  }
+  
+  /**
+   * Verify file ownership
+   * 
+   * Validates: Requirements 6.2, 6.5
+   * 
+   * Checks that the authenticated user owns the specified file.
+   * This prevents users from accessing files belonging to other users.
+   * 
+   * @param authenticatedUserId - The authenticated user's ID
+   * @param fileId - The file ID to check ownership for
+   * @param operation - The operation being performed (for logging)
+   * @returns The file's user_id if ownership is verified
+   * @throws Error if user does not own the file
+   * 
+   * @private
+   */
+  private async verifyFileOwnership(
+    authenticatedUserId: string,
+    fileId: string,
+    operation: string
+  ): Promise<string> {
+    // Query the file to check ownership
+    const { data: fileData, error } = await supabase
+      .from('file_attachments')
+      .select('user_id')
+      .eq('id', fileId)
+      .single();
+    
+    if (error) {
+      console.error('[StorageService] Error checking file ownership:', error);
+      throw new Error('Failed to verify file ownership');
+    }
+    
+    if (!fileData) {
+      throw new Error('File not found');
+    }
+    
+    // Verify the authenticated user owns this file
+    if (fileData.user_id !== authenticatedUserId) {
+      this.logSecurityEvent({
+        type: 'file_ownership_violation',
+        userId: authenticatedUserId,
+        fileId,
+        operation,
+        timestamp: new Date().toISOString(),
+        message: `User ${authenticatedUserId} attempted to access file ${fileId} owned by ${fileData.user_id}`,
+      });
+      throw new Error('You do not have permission to access this file');
+    }
+    
+    return fileData.user_id;
+  }
+  
+  /**
+   * Log security events
+   * 
+   * Validates: Requirements 6.4, 6.5
+   * 
+   * Logs security-related events such as unauthorized access attempts.
+   * In production, these logs should be sent to a monitoring service.
+   * 
+   * @param event - The security event to log
+   * 
+   * @private
+   */
+  private logSecurityEvent(event: SecurityEvent): void {
+    // Log to console (in production, this should go to a monitoring service)
+    console.warn('[SECURITY EVENT]', {
+      type: event.type,
+      userId: event.userId,
+      fileId: event.fileId,
+      operation: event.operation,
+      timestamp: event.timestamp,
+      message: event.message,
+    });
+    
+    // TODO: In production, send to monitoring service (e.g., Sentry, DataDog)
+    // Example:
+    // Sentry.captureMessage(event.message, {
+    //   level: 'warning',
+    //   tags: {
+    //     type: event.type,
+    //     operation: event.operation,
+    //   },
+    //   extra: event,
+    // });
+  }
+  /**
    * Uploads a file to Supabase Storage in a user-specific path
    * 
    * Files are stored using the path format: {user_id}/{file_id}.{extension}
@@ -78,9 +214,9 @@ export class StorageService {
    * @param userId - The user's unique identifier
    * @param file - File data to upload
    * @returns Promise<StorageResult> containing file ID, URL, and storage path
-   * @throws Error if upload fails
+   * @throws Error if upload fails or user is not authenticated
    * 
-   * Validates: Requirements 1.3, 3.1, 3.4
+   * Validates: Requirements 1.3, 3.1, 3.4, 6.1, 6.2
    * 
    * @example
    * ```typescript
@@ -95,6 +231,21 @@ export class StorageService {
    */
   async uploadFile(userId: string, file: FileUpload): Promise<StorageResult> {
     try {
+      // Verify user authentication (Requirement 6.1)
+      const authenticatedUserId = await this.verifyAuthentication();
+      
+      // Verify the authenticated user matches the provided userId (Requirement 6.2)
+      if (authenticatedUserId !== userId) {
+        this.logSecurityEvent({
+          type: 'unauthorized_access_attempt',
+          userId: authenticatedUserId,
+          operation: 'uploadFile',
+          timestamp: new Date().toISOString(),
+          message: `User ${authenticatedUserId} attempted to upload file for user ${userId}`,
+        });
+        throw new Error('You can only upload files to your own account');
+      }
+      
       // Generate a unique file ID
       const fileId = uuidv4();
       
@@ -151,9 +302,9 @@ export class StorageService {
    * @param userId - The user's unique identifier
    * @param fileId - The unique file identifier
    * @returns Promise<void>
-   * @throws Error if deletion fails
+   * @throws Error if deletion fails, user is not authenticated, or user doesn't own the file
    * 
-   * Validates: Requirements 5.3
+   * Validates: Requirements 5.3, 6.1, 6.2, 6.5
    * 
    * @example
    * ```typescript
@@ -163,6 +314,25 @@ export class StorageService {
    */
   async deleteFile(userId: string, fileId: string): Promise<void> {
     try {
+      // Verify user authentication (Requirement 6.1)
+      const authenticatedUserId = await this.verifyAuthentication();
+      
+      // Verify the authenticated user matches the provided userId (Requirement 6.2)
+      if (authenticatedUserId !== userId) {
+        this.logSecurityEvent({
+          type: 'unauthorized_access_attempt',
+          userId: authenticatedUserId,
+          fileId,
+          operation: 'deleteFile',
+          timestamp: new Date().toISOString(),
+          message: `User ${authenticatedUserId} attempted to delete file ${fileId} for user ${userId}`,
+        });
+        throw new Error('You can only delete your own files');
+      }
+      
+      // Verify file ownership (Requirement 6.5)
+      await this.verifyFileOwnership(authenticatedUserId, fileId, 'deleteFile');
+      
       // First, get the file path from the database to know the extension
       const { data: fileData, error: queryError } = await supabase
         .from('file_attachments')
@@ -206,9 +376,9 @@ export class StorageService {
    * @param userId - The user's unique identifier
    * @param fileId - The unique file identifier
    * @returns Promise<string> containing the signed URL
-   * @throws Error if URL generation fails
+   * @throws Error if URL generation fails, user is not authenticated, or user doesn't own the file
    * 
-   * Validates: Requirements 6.3
+   * Validates: Requirements 6.3, 6.1, 6.2, 6.5
    * 
    * @example
    * ```typescript
@@ -218,6 +388,25 @@ export class StorageService {
    */
   async getFileUrl(userId: string, fileId: string): Promise<string> {
     try {
+      // Verify user authentication (Requirement 6.1)
+      const authenticatedUserId = await this.verifyAuthentication();
+      
+      // Verify the authenticated user matches the provided userId (Requirement 6.2)
+      if (authenticatedUserId !== userId) {
+        this.logSecurityEvent({
+          type: 'unauthorized_access_attempt',
+          userId: authenticatedUserId,
+          fileId,
+          operation: 'getFileUrl',
+          timestamp: new Date().toISOString(),
+          message: `User ${authenticatedUserId} attempted to access file ${fileId} for user ${userId}`,
+        });
+        throw new Error('You can only access your own files');
+      }
+      
+      // Verify file ownership (Requirement 6.5)
+      await this.verifyFileOwnership(authenticatedUserId, fileId, 'getFileUrl');
+      
       // Get the file path from the database
       const { data: fileData, error: queryError } = await supabase
         .from('file_attachments')
@@ -235,7 +424,7 @@ export class StorageService {
         throw new Error('File not found');
       }
       
-      // Generate a signed URL with expiration
+      // Generate a signed URL with expiration (Requirement 6.3)
       const { data, error } = await supabase.storage
         .from(STORAGE_BUCKET)
         .createSignedUrl(fileData.storage_path, SIGNED_URL_EXPIRATION);
@@ -266,9 +455,9 @@ export class StorageService {
    * 
    * @param userId - The user's unique identifier
    * @returns Promise<number> total storage used in bytes
-   * @throws Error if calculation fails
+   * @throws Error if calculation fails or user is not authenticated
    * 
-   * Validates: Requirements 3.1
+   * Validates: Requirements 3.1, 6.1, 6.2
    * 
    * @example
    * ```typescript
@@ -279,6 +468,21 @@ export class StorageService {
    */
   async getUserStorageUsage(userId: string): Promise<number> {
     try {
+      // Verify user authentication (Requirement 6.1)
+      const authenticatedUserId = await this.verifyAuthentication();
+      
+      // Verify the authenticated user matches the provided userId (Requirement 6.2)
+      if (authenticatedUserId !== userId) {
+        this.logSecurityEvent({
+          type: 'unauthorized_access_attempt',
+          userId: authenticatedUserId,
+          operation: 'getUserStorageUsage',
+          timestamp: new Date().toISOString(),
+          message: `User ${authenticatedUserId} attempted to access storage usage for user ${userId}`,
+        });
+        throw new Error('You can only access your own storage usage');
+      }
+      
       // Query all files for this user and sum their sizes
       const { data, error } = await supabase
         .from('file_attachments')

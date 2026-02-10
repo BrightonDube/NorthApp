@@ -13,6 +13,9 @@ import { supabase } from '../supabase';
 // Mock Supabase
 jest.mock('../supabase', () => ({
   supabase: {
+    auth: {
+      getUser: jest.fn(),
+    },
     storage: {
       from: jest.fn(),
     },
@@ -24,12 +27,20 @@ describe('StorageService', () => {
   let storage: StorageService;
   let mockStorageFrom: jest.Mock;
   let mockDbFrom: jest.Mock;
+  let mockGetUser: jest.Mock;
 
   beforeEach(() => {
     storage = new StorageService();
     mockStorageFrom = supabase.storage.from as jest.Mock;
     mockDbFrom = supabase.from as jest.Mock;
+    mockGetUser = supabase.auth.getUser as jest.Mock;
     jest.clearAllMocks();
+    
+    // Mock authenticated user by default
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-123' } },
+      error: null,
+    });
   });
 
   describe('uploadFile', () => {
@@ -108,8 +119,18 @@ describe('StorageService', () => {
 
   describe('deleteFile', () => {
     it('should successfully delete a file', async () => {
-      // Mock database query
-      mockDbFrom.mockReturnValue({
+      // Mock file ownership check
+      mockDbFrom.mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { user_id: 'user-123' },
+          error: null,
+        }),
+      });
+      
+      // Mock database query for storage path
+      mockDbFrom.mockReturnValueOnce({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
@@ -133,7 +154,7 @@ describe('StorageService', () => {
     });
 
     it('should handle deletion errors', async () => {
-      // Mock database query returning no file
+      // Mock file ownership check returning no file
       mockDbFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
@@ -146,14 +167,24 @@ describe('StorageService', () => {
       const userId = 'user-123';
       const fileId = 'nonexistent-file';
 
-      await expect(storage.deleteFile(userId, fileId)).rejects.toThrow('File not found');
+      await expect(storage.deleteFile(userId, fileId)).rejects.toThrow('Failed to verify file ownership');
     });
   });
 
   describe('getFileUrl', () => {
     it('should generate a signed URL for a file', async () => {
-      // Mock database query
-      mockDbFrom.mockReturnValue({
+      // Mock file ownership check
+      mockDbFrom.mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { user_id: 'user-123' },
+          error: null,
+        }),
+      });
+      
+      // Mock database query for storage path
+      mockDbFrom.mockReturnValueOnce({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({
@@ -179,7 +210,7 @@ describe('StorageService', () => {
     });
 
     it('should handle URL generation errors', async () => {
-      // Mock database query returning no file
+      // Mock file ownership check returning no file
       mockDbFrom.mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
@@ -192,7 +223,7 @@ describe('StorageService', () => {
       const userId = 'user-123';
       const fileId = 'file-456';
 
-      await expect(storage.getFileUrl(userId, fileId)).rejects.toThrow('Failed to find file');
+      await expect(storage.getFileUrl(userId, fileId)).rejects.toThrow('Failed to verify file ownership');
     });
   });
 

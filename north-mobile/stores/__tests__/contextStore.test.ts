@@ -11,6 +11,12 @@ import type { ContextCategory } from '@/types';
 // Mock Supabase
 jest.mock('@/lib/supabase', () => ({
   supabase: {
+    auth: {
+      getUser: jest.fn(() => Promise.resolve({
+        data: { user: { id: 'user-123' } },
+        error: null,
+      })),
+    },
     from: jest.fn(() => ({
       select: jest.fn(() => ({
         order: jest.fn(() => ({
@@ -710,10 +716,30 @@ describe('contextStore', () => {
       it('should delete a file attachment', async () => {
         const { result } = renderHook(() => useContextStore());
         
+        // Mock file ownership check (first call)
+        const mockOwnershipSingle = jest.fn(() => Promise.resolve({
+          data: { user_id: 'user-123' },
+          error: null,
+        }));
+        const mockOwnershipEq = jest.fn(() => ({ single: mockOwnershipSingle }));
+        const mockOwnershipSelect = jest.fn(() => ({ eq: mockOwnershipEq }));
+        
+        // Mock delete operation (second call)
         const mockEq2 = jest.fn(() => Promise.resolve({ error: null }));
         const mockEq1 = jest.fn(() => ({ eq: mockEq2 }));
         const mockDelete = jest.fn(() => ({ eq: mockEq1 }));
-        const mockFrom = jest.fn(() => ({ delete: mockDelete }));
+        
+        let callCount = 0;
+        const mockFrom = jest.fn(() => {
+          callCount++;
+          if (callCount === 1) {
+            // First call: ownership check
+            return { select: mockOwnershipSelect };
+          } else {
+            // Second call: delete operation
+            return { delete: mockDelete };
+          }
+        });
 
         const { supabase } = require('@/lib/supabase');
         supabase.from = mockFrom;
@@ -730,10 +756,14 @@ describe('contextStore', () => {
       it('should throw error if deletion fails', async () => {
         const { result } = renderHook(() => useContextStore());
         
-        const mockEq2 = jest.fn(() => Promise.resolve({ error: { message: 'Delete failed' } }));
-        const mockEq1 = jest.fn(() => ({ eq: mockEq2 }));
-        const mockDelete = jest.fn(() => ({ eq: mockEq1 }));
-        const mockFrom = jest.fn(() => ({ delete: mockDelete }));
+        // Mock file ownership check returning error
+        const mockOwnershipSingle = jest.fn(() => Promise.resolve({
+          data: null,
+          error: { message: 'File not found' },
+        }));
+        const mockOwnershipEq = jest.fn(() => ({ single: mockOwnershipSingle }));
+        const mockOwnershipSelect = jest.fn(() => ({ eq: mockOwnershipEq }));
+        const mockFrom = jest.fn(() => ({ select: mockOwnershipSelect }));
 
         const { supabase } = require('@/lib/supabase');
         supabase.from = mockFrom;
@@ -741,7 +771,7 @@ describe('contextStore', () => {
         await act(async () => {
           await expect(
             result.current.deleteFileAttachment('user-123', 'file-123')
-          ).rejects.toEqual({ message: 'Delete failed' });
+          ).rejects.toThrow('File not found');
         });
       });
     });
@@ -750,10 +780,30 @@ describe('contextStore', () => {
       it('should update a file name', async () => {
         const { result } = renderHook(() => useContextStore());
         
+        // Mock file ownership check (first call)
+        const mockOwnershipSingle = jest.fn(() => Promise.resolve({
+          data: { user_id: 'user-123' },
+          error: null,
+        }));
+        const mockOwnershipEq = jest.fn(() => ({ single: mockOwnershipSingle }));
+        const mockOwnershipSelect = jest.fn(() => ({ eq: mockOwnershipEq }));
+        
+        // Mock update operation (second call)
         const mockEq2 = jest.fn(() => Promise.resolve({ error: null }));
         const mockEq1 = jest.fn(() => ({ eq: mockEq2 }));
         const mockUpdate = jest.fn(() => ({ eq: mockEq1 }));
-        const mockFrom = jest.fn(() => ({ update: mockUpdate }));
+        
+        let callCount = 0;
+        const mockFrom = jest.fn(() => {
+          callCount++;
+          if (callCount === 1) {
+            // First call: ownership check
+            return { select: mockOwnershipSelect };
+          } else {
+            // Second call: update operation
+            return { update: mockUpdate };
+          }
+        });
 
         const { supabase } = require('@/lib/supabase');
         supabase.from = mockFrom;

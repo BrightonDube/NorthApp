@@ -4,10 +4,11 @@
  * This module provides validation for file uploads including type checking,
  * size validation, and storage quota verification.
  * 
- * Validates: Requirements 1.1, 1.2, 1.4, 1.5
+ * Validates: Requirements 1.1, 1.2, 1.4, 1.5, 8.1, 8.3, 8.5
  */
 
 import { supabase } from './supabase';
+import { logError, logSuccess, type ErrorContext } from './errorLogger';
 
 /**
  * Result of a file validation operation
@@ -15,6 +16,13 @@ import { supabase } from './supabase';
 export type ValidationResult = {
   valid: boolean;
   error?: string;
+  details?: {
+    currentUsageMB?: number;
+    remainingMB?: number;
+    fileSizeMB?: number;
+    quotaMB?: number;
+    percentageUsed?: number;
+  };
 };
 
 /**
@@ -82,7 +90,7 @@ export class FileValidator {
    * @param file - File metadata containing name and size
    * @returns ValidationResult indicating if the file type is valid
    * 
-   * Validates: Requirements 1.1, 1.4
+   * Validates: Requirements 1.1, 1.4, 8.1
    * 
    * @example
    * ```typescript
@@ -95,13 +103,21 @@ export class FileValidator {
    * ```
    */
   validateFileType(file: FileMetadata): ValidationResult {
+    const errorContext: ErrorContext = {
+      operation: 'validateFileType',
+      filename: file.name,
+      component: 'FileValidator',
+    };
+    
     // Extract file extension from filename
     const extension = this.getFileExtension(file.name);
     
     if (!extension) {
+      const error = 'File has no extension. Please upload PDF, TXT, or MD files.';
+      logError(error, errorContext, 'warning');
       return {
         valid: false,
-        error: 'File has no extension. Please upload PDF, TXT, or MD files.',
+        error,
       };
     }
     
@@ -109,12 +125,15 @@ export class FileValidator {
     const isAllowed = ALLOWED_FILE_TYPES.includes(extension.toLowerCase() as AllowedFileType);
     
     if (!isAllowed) {
+      const error = `File type ".${extension}" is not supported. Please upload PDF, TXT, or MD files only.`;
+      logError(error, errorContext, 'warning');
       return {
         valid: false,
-        error: 'File type not supported. Please upload PDF, TXT, or MD files.',
+        error,
       };
     }
     
+    logSuccess('validateFileType', errorContext);
     return { valid: true };
   }
   
@@ -126,7 +145,7 @@ export class FileValidator {
    * @param file - File metadata containing name and size
    * @returns ValidationResult indicating if the file size is valid
    * 
-   * Validates: Requirements 1.2, 1.5
+   * Validates: Requirements 1.2, 1.5, 8.1
    * 
    * @example
    * ```typescript
@@ -139,14 +158,30 @@ export class FileValidator {
    * ```
    */
   validateFileSize(file: FileMetadata): ValidationResult {
+    const errorContext: ErrorContext = {
+      operation: 'validateFileSize',
+      filename: file.name,
+      fileSize: file.size,
+      component: 'FileValidator',
+    };
+    
     if (file.size > MAX_FILE_SIZE) {
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const maxSizeMB = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+      const error = `File size exceeds ${maxSizeMB}MB limit. Your file is ${fileSizeMB}MB. Please upload a smaller file or compress it.`;
+      
+      logError(error, errorContext, 'warning');
+      
       return {
         valid: false,
-        error: `File size exceeds 10MB limit. Your file is ${fileSizeMB}MB. Please upload a smaller file.`,
+        error,
+        details: {
+          fileSizeMB: parseFloat(fileSizeMB),
+        },
       };
     }
     
+    logSuccess('validateFileSize', errorContext);
     return { valid: true };
   }
   
@@ -154,23 +189,32 @@ export class FileValidator {
    * Checks if a user has sufficient storage quota for a file upload
    * 
    * Queries the database to calculate current storage usage and verifies
-   * that adding the new file would not exceed the 100MB quota
+   * that adding the new file would not exceed the 100MB quota.
+   * Provides detailed quota information in the response.
    * 
    * @param userId - The user's unique identifier
    * @param fileSize - The size of the file to be uploaded in bytes
-   * @returns Promise<ValidationResult> indicating if quota is available
+   * @returns Promise<ValidationResult> indicating if quota is available with detailed info
    * 
-   * Validates: Requirements 1.2, 1.5
+   * Validates: Requirements 1.2, 1.5, 8.1, 8.3
    * 
    * @example
    * ```typescript
    * const result = await validator.checkStorageQuota(userId, 5 * 1024 * 1024);
    * if (!result.valid) {
    *   console.error(result.error);
+   *   console.log('Remaining:', result.details?.remainingMB, 'MB');
    * }
    * ```
    */
   async checkStorageQuota(userId: string, fileSize: number): Promise<ValidationResult> {
+    const errorContext: ErrorContext = {
+      operation: 'checkStorageQuota',
+      userId,
+      fileSize,
+      component: 'FileValidator',
+    };
+    
     try {
       // Query the database to get the sum of all file sizes for this user
       const { data, error } = await supabase
@@ -180,6 +224,7 @@ export class FileValidator {
       
       if (error) {
         console.error('Error checking storage quota:', error);
+        logError(error, errorContext, 'error');
         return {
           valid: false,
           error: 'Unable to verify storage quota. Please try again.',
@@ -190,20 +235,63 @@ export class FileValidator {
       const currentUsage = data?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
       const newUsage = currentUsage + fileSize;
       
+      // Calculate values in MB for display
+      const currentUsageMB = currentUsage / (1024 * 1024);
+      const remainingBytes = MAX_STORAGE_QUOTA - currentUsage;
+      const remainingMB = remainingBytes / (1024 * 1024);
+      const fileSizeMB = fileSize / (1024 * 1024);
+      const quotaMB = MAX_STORAGE_QUOTA / (1024 * 1024);
+      const percentageUsed = Math.round((currentUsage / MAX_STORAGE_QUOTA) * 100);
+      
       // Check if new usage would exceed quota
       if (newUsage > MAX_STORAGE_QUOTA) {
-        const remainingMB = ((MAX_STORAGE_QUOTA - currentUsage) / (1024 * 1024)).toFixed(2);
-        const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+        const error = `Storage quota exceeded. You have ${remainingMB.toFixed(2)}MB remaining of your ${quotaMB}MB quota. Your file is ${fileSizeMB.toFixed(2)}MB. Please delete files to free up space.`;
+        
+        logError(error, {
+          ...errorContext,
+          additionalInfo: {
+            currentUsageMB: currentUsageMB.toFixed(2),
+            remainingMB: remainingMB.toFixed(2),
+            fileSizeMB: fileSizeMB.toFixed(2),
+            percentageUsed,
+          },
+        }, 'warning');
         
         return {
           valid: false,
-          error: `Storage quota exceeded. You have ${remainingMB}MB remaining. Your file is ${fileSizeMB}MB. Please delete files to free up space.`,
+          error,
+          details: {
+            currentUsageMB: parseFloat(currentUsageMB.toFixed(2)),
+            remainingMB: parseFloat(remainingMB.toFixed(2)),
+            fileSizeMB: parseFloat(fileSizeMB.toFixed(2)),
+            quotaMB,
+            percentageUsed,
+          },
         };
       }
       
-      return { valid: true };
+      logSuccess('checkStorageQuota', {
+        ...errorContext,
+        additionalInfo: {
+          currentUsageMB: currentUsageMB.toFixed(2),
+          remainingMB: remainingMB.toFixed(2),
+          percentageUsed,
+        },
+      });
+      
+      return {
+        valid: true,
+        details: {
+          currentUsageMB: parseFloat(currentUsageMB.toFixed(2)),
+          remainingMB: parseFloat(remainingMB.toFixed(2)),
+          fileSizeMB: parseFloat(fileSizeMB.toFixed(2)),
+          quotaMB,
+          percentageUsed,
+        },
+      };
     } catch (err) {
       console.error('Unexpected error checking storage quota:', err);
+      logError(err as Error, errorContext, 'error');
       return {
         valid: false,
         error: 'Unable to verify storage quota. Please try again.',
