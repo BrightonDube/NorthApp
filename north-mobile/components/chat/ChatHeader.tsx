@@ -16,6 +16,7 @@ import type { Coach } from '@/types';
 export interface ChatHeaderProps {
   coach: Coach;
   onBack: () => void;
+  onOpenFileSelector?: () => void;
 }
 
 /**
@@ -25,25 +26,35 @@ export interface ChatHeaderProps {
  * Features:
  * - Coach name and icon
  * - Back button with haptic feedback
+ * - File selector button for session-specific file selection
  * - Safe area handling for notched devices
  * 
  * @param coach - The coach for this chat
  * @param onBack - Callback when back button is pressed
+ * @param onOpenFileSelector - Optional callback to open file selector
  * 
  * @example
  * ```tsx
  * <ChatHeader
  *   coach={coach}
  *   onBack={() => router.back()}
+ *   onOpenFileSelector={() => setShowFileSelector(true)}
  * />
  * ```
  */
-export function ChatHeader({ coach, onBack }: ChatHeaderProps) {
+export function ChatHeader({ coach, onBack, onOpenFileSelector }: ChatHeaderProps) {
   const handleBack = () => {
     if (Platform.OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     onBack();
+  };
+
+  const handleFileSelector = () => {
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onOpenFileSelector?.();
   };
 
   return (
@@ -89,6 +100,26 @@ export function ChatHeader({ coach, onBack }: ChatHeaderProps) {
             </Text>
           </View>
         </View>
+
+        {/* File Selector Button */}
+        {onOpenFileSelector && (
+          <TouchableOpacity
+            onPress={handleFileSelector}
+            className="ml-2 items-center justify-center"
+            style={{ width: 44, height: 44 }}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Select files for this conversation"
+            accessibilityHint="Opens file selector to choose which files to include"
+          >
+            <Ionicons
+              name="document-text-outline"
+              size={24}
+              color={Platform.OS === 'ios' ? '#09090B' : '#09090B'}
+              className="dark:text-white"
+            />
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );

@@ -24,7 +24,9 @@ import * as Haptics from 'expo-haptics';
 import { FileValidator, type FileMetadata } from '@/lib/fileValidator';
 import { FileProcessor, type FileData } from '@/lib/fileProcessor';
 import { StorageService } from '@/lib/storageService';
+import { useContextStore } from '@/stores/contextStore';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { logError, getUserFriendlyMessage, type ErrorContext } from '@/lib/errorLogger';
 
 /**
  * Props for FileUploadComponent
@@ -47,6 +49,16 @@ interface SelectedFile {
   type: string;
   data: Uint8Array;
   preview?: string;
+}
+
+/**
+ * Extraction result with retry information
+ */
+interface ExtractionResult {
+  success: boolean;
+  content?: string;
+  error?: string;
+  retryable?: boolean;
 }
 
 /**
@@ -85,6 +97,8 @@ export function FileUploadComponent({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   const prefersReducedMotion = useReducedMotion();
   const colorScheme = useColorScheme();
@@ -93,6 +107,7 @@ export function FileUploadComponent({
   const fileValidator = new FileValidator();
   const fileProcessor = new FileProcessor();
   const storageService = new StorageService();
+  const { addFileAttachment } = useContextStore();
 
   /**
    * Handle file selection
@@ -227,16 +242,25 @@ export function FileUploadComponent({
   /**
    * Handle file upload confirmation
    * 
-   * Validates file, processes content, uploads to storage, and saves metadata
+   * Validates file, processes content with retry, uploads to storage, saves metadata to database
    * 
-   * Validates: Requirements 1.1, 1.2, 1.3, 2.1, 2.5
+   * Validates: Requirements 1.1, 1.2, 1.3, 2.1, 2.5, 3.2, 3.5, 8.2, 8.5
    */
   const handleConfirmUpload = async () => {
     if (!selectedFile) return;
     
+    const errorContext: ErrorContext = {
+      operation: 'handleConfirmUpload',
+      userId,
+      filename: selectedFile.name,
+      fileSize: selectedFile.size,
+      component: 'FileUploadComponent',
+    };
+    
     try {
       setIsUploading(true);
       setUploadProgress(0);
+      setValidationError(null);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       
       // Validate file again before upload
@@ -248,21 +272,71 @@ export function FileUploadComponent({
       
       const validationResult = await fileValidator.validateFile(fileMetadata, userId);
       if (!validationResult.valid) {
-        setValidationError(validationResult.error || 'Validation failed');
+        // Show detailed quota information if available
+        let errorMessage = validationResult.error || 'Validation failed';
+        if (validationResult.details) {
+          const { remainingMB, quotaMB, percentageUsed } = validationResult.details;
+          if (remainingMB !== undefined && quotaMB !== undefined) {
+            errorMessage += `\n\nStorage: ${percentageUsed}% used (${remainingMB.toFixed(2)}MB of ${quotaMB}MB remaining)`;
+          }
+        }
+        
+        setValidationError(errorMessage);
         setIsUploading(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        logError(errorMessage, errorContext, 'warning');
         return;
       }
       
-      setUploadProgress(25);
+      setUploadProgress(20);
       
-      // Extract text content
-      const extractionResult = await fileProcessor.extractText({
+      // Extract text content with retry
+      const extractionResult = await fileProcessor.extractTextWithRetry({
         name: selectedFile.name,
         data: selectedFile.data,
+      }, 3);
+      
+      setExtractionResult({
+        success: extractionResult.extractionSuccess,
+        content: extractionResult.text,
+        error: extractionResult.error,
+        retryable: extractionResult.retryable,
       });
       
-      setUploadProgress(50);
+      // If extraction failed and is retryable, offer retry option
+      if (!extractionResult.extractionSuccess && extractionResult.retryable) {
+        setIsUploading(false);
+        setValidationError(
+          `Text extraction failed: ${extractionResult.error}\n\nThe file will be uploaded, but content may not be searchable.`
+        );
+        
+        // Show retry option
+        Alert.alert(
+          'Extraction Failed',
+          `Unable to extract text from file: ${extractionResult.error}\n\nWould you like to retry or continue without extracted content?`,
+          [
+            {
+              text: 'Retry',
+              onPress: () => handleRetryExtraction(),
+            },
+            {
+              text: 'Continue Anyway',
+              onPress: () => continueUploadWithExtraction(extractionResult.text || ''),
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => {
+                setIsUploading(false);
+                setValidationError(null);
+              },
+            },
+          ]
+        );
+        return;
+      }
+      
+      setUploadProgress(40);
       
       // Upload file to storage
       const storageResult = await storageService.uploadFile(userId, {
@@ -271,11 +345,25 @@ export function FileUploadComponent({
         type: selectedFile.type,
       });
       
-      setUploadProgress(75);
+      setUploadProgress(60);
       
-      // Note: In a complete implementation, you would also save the file metadata
-      // and extracted content to the database using the Context Engine.
-      // This is handled in task 6.1 (Context Engine extension).
+      // Save file metadata and extracted content to database using Context Engine
+      // This completes the end-to-end flow: FileUploadComponent → FileValidator → 
+      // FileProcessor → StorageService → ContextEngine
+      const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase() as 'pdf' | 'txt' | 'md';
+      
+      await addFileAttachment(
+        userId,
+        {
+          filename: selectedFile.name,
+          fileType: fileExtension,
+          fileSize: selectedFile.size,
+          uploadDate: new Date(),
+        },
+        extractionResult.text || '',
+        storageResult.url,
+        storageResult.path
+      );
       
       setUploadProgress(100);
       
@@ -290,14 +378,143 @@ export function FileUploadComponent({
       setIsUploading(false);
       setUploadProgress(0);
       setValidationError(null);
+      setExtractionResult(null);
+      setRetryCount(0);
     } catch (error) {
       console.error('Error uploading file:', error);
-      setValidationError(
-        error instanceof Error ? error.message : 'Upload failed. Please try again.'
-      );
+      const errorMessage = getUserFriendlyMessage(error as Error, 'upload');
+      setValidationError(errorMessage);
       setIsUploading(false);
       setUploadProgress(0);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      logError(error as Error, errorContext, 'error');
+    }
+  };
+  
+  /**
+   * Retry text extraction
+   * 
+   * Validates: Requirement 8.2
+   */
+  const handleRetryExtraction = async () => {
+    if (!selectedFile) return;
+    
+    setRetryCount(prev => prev + 1);
+    setIsUploading(true);
+    setValidationError(null);
+    
+    try {
+      const result = await fileProcessor.extractText({
+        name: selectedFile.name,
+        data: selectedFile.data,
+      });
+      
+      setExtractionResult({
+        success: result.extractionSuccess,
+        content: result.text,
+        error: result.error,
+        retryable: result.retryable,
+      });
+      
+      if (result.extractionSuccess) {
+        // Success! Continue with upload
+        continueUploadWithExtraction(result.text);
+      } else {
+        // Still failed
+        setIsUploading(false);
+        Alert.alert(
+          'Extraction Failed Again',
+          `Still unable to extract text: ${result.error}\n\nWould you like to continue without extracted content?`,
+          [
+            {
+              text: 'Continue Anyway',
+              onPress: () => continueUploadWithExtraction(''),
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => {
+                setIsUploading(false);
+                setValidationError(null);
+              },
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      setIsUploading(false);
+      setValidationError('Retry failed. Please try again later.');
+    }
+  };
+  
+  /**
+   * Continue upload with extracted content (or empty string if extraction failed)
+   * 
+   * Validates: Requirement 2.4 (graceful degradation), 2.5, 3.2, 3.5
+   */
+  const continueUploadWithExtraction = async (extractedContent: string) => {
+    if (!selectedFile) return;
+    
+    const errorContext: ErrorContext = {
+      operation: 'continueUploadWithExtraction',
+      userId,
+      filename: selectedFile.name,
+      fileSize: selectedFile.size,
+      component: 'FileUploadComponent',
+    };
+    
+    try {
+      setIsUploading(true);
+      setUploadProgress(40);
+      
+      // Upload file to storage
+      const storageResult = await storageService.uploadFile(userId, {
+        name: selectedFile.name,
+        data: selectedFile.data,
+        type: selectedFile.type,
+      });
+      
+      setUploadProgress(60);
+      
+      // Save file metadata and extracted content to database
+      const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase() as 'pdf' | 'txt' | 'md';
+      
+      await addFileAttachment(
+        userId,
+        {
+          filename: selectedFile.name,
+          fileType: fileExtension,
+          fileSize: selectedFile.size,
+          uploadDate: new Date(),
+        },
+        extractedContent,
+        storageResult.url,
+        storageResult.path
+      );
+      
+      setUploadProgress(100);
+      
+      // Success!
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Call completion callback
+      onUploadComplete(storageResult.fileId, selectedFile.name);
+      
+      // Reset state
+      setSelectedFile(null);
+      setIsUploading(false);
+      setUploadProgress(0);
+      setValidationError(null);
+      setExtractionResult(null);
+      setRetryCount(0);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      const errorMessage = getUserFriendlyMessage(error as Error, 'upload');
+      setValidationError(errorMessage);
+      setIsUploading(false);
+      setUploadProgress(0);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      logError(error as Error, errorContext, 'error');
     }
   };
 

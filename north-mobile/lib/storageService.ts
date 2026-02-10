@@ -216,7 +216,7 @@ export class StorageService {
    * @returns Promise<StorageResult> containing file ID, URL, and storage path
    * @throws Error if upload fails or user is not authenticated
    * 
-   * Validates: Requirements 1.3, 3.1, 3.4, 6.1, 6.2
+   * Validates: Requirements 1.3, 3.1, 3.4, 6.1, 6.2, 8.1, 8.5
    * 
    * @example
    * ```typescript
@@ -230,6 +230,13 @@ export class StorageService {
    * ```
    */
   async uploadFile(userId: string, file: FileUpload): Promise<StorageResult> {
+    const errorContext: ErrorContext = {
+      operation: 'uploadFile',
+      userId,
+      filename: file.name,
+      component: 'StorageService',
+    };
+    
     try {
       // Verify user authentication (Requirement 6.1)
       const authenticatedUserId = await this.verifyAuthentication();
@@ -243,7 +250,9 @@ export class StorageService {
           timestamp: new Date().toISOString(),
           message: `User ${authenticatedUserId} attempted to upload file for user ${userId}`,
         });
-        throw new Error('You can only upload files to your own account');
+        const error = new Error('You can only upload files to your own account');
+        logError(error, errorContext, 'error');
+        throw error;
       }
       
       // Generate a unique file ID
@@ -252,7 +261,9 @@ export class StorageService {
       // Extract file extension from filename
       const extension = this.getFileExtension(file.name);
       if (!extension) {
-        throw new Error('File must have an extension');
+        const error = new Error('File must have an extension');
+        logError(error, errorContext, 'error');
+        throw error;
       }
       
       // Construct user-specific storage path: {user_id}/{file_id}.{extension}
@@ -268,17 +279,26 @@ export class StorageService {
       
       if (error) {
         console.error('Storage upload error:', error);
+        logError(error, errorContext, 'error');
         throw new Error(`Failed to upload file: ${error.message}`);
       }
       
       if (!data) {
-        throw new Error('Upload succeeded but no data returned');
+        const error = new Error('Upload succeeded but no data returned');
+        logError(error, errorContext, 'error');
+        throw error;
       }
       
       // Get the public URL for the uploaded file
       const { data: urlData } = supabase.storage
         .from(STORAGE_BUCKET)
         .getPublicUrl(path);
+      
+      logSuccess('uploadFile', {
+        ...errorContext,
+        fileId,
+        additionalInfo: { path: data.path },
+      });
       
       return {
         fileId,
@@ -287,9 +307,12 @@ export class StorageService {
       };
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(`File upload failed: ${error.message}`);
+        logError(error, errorContext, 'error');
+        throw new Error(getUserFriendlyMessage(error, 'upload'));
       }
-      throw new Error('File upload failed: Unknown error');
+      const err = new Error('File upload failed: Unknown error');
+      logError(err, errorContext, 'error');
+      throw err;
     }
   }
   

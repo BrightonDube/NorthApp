@@ -31,6 +31,7 @@ import { StorageService } from '@/lib/storageService';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import type { FileAttachment } from '@/types';
 import { Modal } from '@/components/ui/Modal';
+import { logError, getUserFriendlyMessage, type ErrorContext } from '@/lib/errorLogger';
 
 interface FileManagementUIProps {
   /** User ID for fetching files */
@@ -88,16 +89,23 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
 
   /**
    * Load all user files
-   * Validates: Requirements 5.1
+   * Validates: Requirements 5.1, 8.5
    */
   const loadFiles = async () => {
+    const errorContext: ErrorContext = {
+      operation: 'loadFiles',
+      userId,
+      component: 'FileManagementUI',
+    };
+    
     try {
       setIsLoading(true);
       const userFiles = await getFileAttachments(userId);
       setFiles(userFiles);
     } catch (error) {
       console.error('Error loading files:', error);
-      Alert.alert('Error', 'Failed to load files. Please try again.');
+      logError(error as Error, errorContext, 'error');
+      Alert.alert('Error', getUserFriendlyMessage(error as Error, 'load'));
     } finally {
       setIsLoading(false);
     }
@@ -105,14 +113,22 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
 
   /**
    * Load storage usage
-   * Validates: Requirements 5.5, 10.4
+   * Validates: Requirements 5.5, 10.4, 8.5
    */
   const loadStorageUsage = async () => {
+    const errorContext: ErrorContext = {
+      operation: 'loadStorageUsage',
+      userId,
+      component: 'FileManagementUI',
+    };
+    
     try {
       const usage = await getStorageUsage(userId);
       setStorageUsage(usage);
     } catch (error) {
       console.error('Error loading storage usage:', error);
+      logError(error as Error, errorContext, 'warning');
+      // Don't show alert for storage usage errors, just log them
     }
   };
 
@@ -127,7 +143,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
 
   /**
    * Handle file deletion with confirmation
-   * Validates: Requirements 5.3, 10.5
+   * Validates: Requirements 5.3, 10.5, 8.1, 8.5
    */
   const handleDeleteFile = (file: FileAttachment) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -145,6 +161,14 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            const errorContext: ErrorContext = {
+              operation: 'deleteFile',
+              userId,
+              fileId: file.id,
+              filename: file.filename,
+              component: 'FileManagementUI',
+            };
+            
             try {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               
@@ -165,11 +189,12 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
               
               onFilesUpdated?.();
               
-              Alert.alert('Success', 'File deleted successfully');
+              Alert.alert('Success', 'File deleted successfully. Your storage quota has been updated.');
             } catch (error) {
               console.error('Error deleting file:', error);
+              logError(error as Error, errorContext, 'error');
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Error', 'Failed to delete file. Please try again.');
+              Alert.alert('Error', getUserFriendlyMessage(error as Error, 'delete'));
             }
           },
         },
@@ -189,13 +214,21 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
 
   /**
    * Save renamed file
-   * Validates: Requirements 5.4
+   * Validates: Requirements 5.4, 8.1, 8.5
    */
   const handleSaveRename = async (fileId: string) => {
     if (!editingFileName.trim()) {
       Alert.alert('Error', 'Filename cannot be empty');
       return;
     }
+    
+    const errorContext: ErrorContext = {
+      operation: 'renameFile',
+      userId,
+      fileId,
+      filename: editingFileName,
+      component: 'FileManagementUI',
+    };
     
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -218,8 +251,9 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Error renaming file:', error);
+      logError(error as Error, errorContext, 'error');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', 'Failed to rename file. Please try again.');
+      Alert.alert('Error', getUserFriendlyMessage(error as Error, 'rename'));
     }
   };
 

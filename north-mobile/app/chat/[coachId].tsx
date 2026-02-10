@@ -22,6 +22,7 @@ import {
   KeyboardAvoidingView, 
   Platform,
   Pressable,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
@@ -30,6 +31,7 @@ import * as Haptics from 'expo-haptics';
 import { useChatStore, useSessionMessages, useStreamingMessage, useIsSending } from '@/stores/chatStore';
 import { useCoachStore, useCoachById } from '@/stores/coachStore';
 import { ChatHeader, MessageList, ChatInput } from '@/components/chat';
+import { SessionFileSelector } from '@/components/chat/SessionFileSelector';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ChatLoadingSkeleton } from '@/components/SkeletonLoader';
 import type { Coach } from '@/types';
@@ -103,6 +105,7 @@ export default function ChatScreen() {
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalLoaded, setTotalLoaded] = useState(0);
+  const [showFileSelector, setShowFileSelector] = useState(false);
   
   // Get messages for current session
   const messages = useSessionMessages(sessionId || '');
@@ -193,6 +196,20 @@ export default function ChatScreen() {
       console.error('Failed to send message:', err);
     }
   }, [sessionId, coachId, sendMessage]);
+
+  const handleOpenFileSelector = useCallback(() => {
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setShowFileSelector(true);
+  }, []);
+
+  const handleCloseFileSelector = useCallback(() => {
+    if (Platform.OS === 'ios') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setShowFileSelector(false);
+  }, []);
 
   // Loading state
   if (isInitializing) {
