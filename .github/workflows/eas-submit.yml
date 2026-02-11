@@ -52,6 +52,7 @@ jobs:
           token_format: 'access_token'
           workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.SERVICE_ACCOUNT_EMAIL }}
+          audience: 'https://github.com/BrightonDube/NorthApp'
 
       - name: 🚀 Submit to stores
         run: eas submit --platform ${{ github.event.inputs.platform }} --latest --non-interactive

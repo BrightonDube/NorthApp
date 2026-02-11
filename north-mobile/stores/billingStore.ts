@@ -214,30 +214,74 @@ export const useBillingStore = create<BillingStoreInternal>()(
   /**
    * Fetch current entitlements from RevenueCat
    * Updates isProUser based on active entitlements
+   * 
+   * FALLBACK: If RevenueCat is not initialized or returns no entitlements,
+   * checks user metadata for is_pro flag (useful for testing and development)
    */
   fetchEntitlements: async () => {
-    if (!isInitialized) {
-      console.warn('[BillingStore] Cannot fetch entitlements - not initialized');
-      return;
-    }
-
     set({ isLoading: true, error: null });
 
     try {
-      const customerInfo = await Purchases.getCustomerInfo();
-      const entitlements = convertToEntitlements(customerInfo);
+      // Try RevenueCat first if initialized
+      if (isInitialized) {
+        const customerInfo = await Purchases.getCustomerInfo();
+        const entitlements = convertToEntitlements(customerInfo);
+        
+        // If we have active entitlements from RevenueCat, use them
+        if (entitlements.pro.isActive) {
+          set({
+            entitlements,
+            isProUser: true,
+            isLoading: false,
+            lastSynced: Date.now(),
+          });
+
+          console.log('[BillingStore] Entitlements fetched from RevenueCat:', {
+            isProUser: true,
+            expirationDate: entitlements.pro.expirationDate,
+          });
+          return;
+        }
+      }
+
+      // FALLBACK: Check user metadata for is_pro flag
+      // This is useful for:
+      // 1. Testing without RevenueCat products configured
+      // 2. Development builds in Expo Go
+      // 3. Manual Pro grants for special users
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
       
+      if (user?.user_metadata?.is_pro === true) {
+        console.log('[BillingStore] Pro status granted via user metadata');
+        set({
+          entitlements: {
+            pro: {
+              isActive: true,
+              expirationDate: null, // No expiration for metadata-based Pro
+            },
+          },
+          isProUser: true,
+          isLoading: false,
+          lastSynced: Date.now(),
+        });
+        return;
+      }
+
+      // No Pro status from either source
       set({
-        entitlements,
-        isProUser: entitlements.pro.isActive,
+        entitlements: {
+          pro: {
+            isActive: false,
+            expirationDate: null,
+          },
+        },
+        isProUser: false,
         isLoading: false,
         lastSynced: Date.now(),
       });
 
-      console.log('[BillingStore] Entitlements fetched:', {
-        isProUser: entitlements.pro.isActive,
-        expirationDate: entitlements.pro.expirationDate,
-      });
+      console.log('[BillingStore] No Pro entitlements found');
     } catch (error) {
       console.error('[BillingStore] Error fetching entitlements:', error);
       set({ 

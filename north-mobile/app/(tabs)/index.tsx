@@ -7,23 +7,27 @@
  * Design: "Beautiful, minimal, clean" - Premium feel, not "techy"
  * 
  * Features:
+ * - App logo/branding in header
  * - 2-column grid layout using CoachGrid component
+ * - Clear labels and descriptions for each coach
  * - Floating action button for creating coaches (Pro feature)
  * - Pull-to-refresh functionality
  * - Navigation to chat on coach tap
  * - Long-press to edit user coaches
  * - Pro upgrade prompt for free users
+ * - Pro features unlocked display
  * - Empty state handling
  * - Target: Load within 2 seconds on cold start
  * 
  * Validates: Requirements 6.2, 6.3, 13.1-13.7
  */
 
-import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useCoachStore } from '@/stores/coachStore';
 import { useBillingStore } from '@/stores/billingStore';
@@ -31,13 +35,65 @@ import { CoachGrid, CoachCreateModal, CoachEditModal } from '@/components/coach'
 import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { CoachGridSkeleton } from '@/components/SkeletonLoader';
+import { Logo } from '@/components/Logo';
 import type { Coach } from '@/types';
 
 /**
- * Section Header Component
- * Simplified: removed count badge for cleaner look
+ * App Logo Component
  */
-function SectionHeader({ title }: { title: string }) {
+function AppLogo() {
+  return (
+    <View style={styles.logoContainer}>
+      <Logo size={40} />
+    </View>
+  );
+}
+
+/**
+ * Pro Badge Component
+ */
+function ProBadge() {
+  return (
+    <View style={styles.proBadge}>
+      <Ionicons name="diamond" size={12} color="#FFFFFF" />
+      <Text style={styles.proBadgeText}>PRO</Text>
+    </View>
+  );
+}
+
+/**
+ * Pro Features Banner
+ */
+function ProFeaturesBanner() {
+  return (
+    <View style={styles.proFeaturesBanner}>
+      <View style={styles.proFeaturesHeader}>
+        <Ionicons name="diamond" size={20} color="#09090B" />
+        <Text style={styles.proFeaturesTitle}>Pro Features Unlocked</Text>
+      </View>
+      <View style={styles.proFeaturesList}>
+        <View style={styles.proFeatureItem}>
+          <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+          <Text style={styles.proFeatureText}>Unlimited context items</Text>
+        </View>
+        <View style={styles.proFeatureItem}>
+          <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+          <Text style={styles.proFeatureText}>Create custom coaches</Text>
+        </View>
+        <View style={styles.proFeatureItem}>
+          <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+          <Text style={styles.proFeatureText}>Priority AI responses</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Section Header Component
+ * With subtitle for clarity
+ */
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <View style={styles.sectionHeader}>
       <Text 
@@ -46,6 +102,9 @@ function SectionHeader({ title }: { title: string }) {
       >
         {title}
       </Text>
+      {subtitle && (
+        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+      )}
     </View>
   );
 }
@@ -72,14 +131,19 @@ function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProU
       accessibilityHint="Opens coach creation modal (Pro feature)"
     >
       <View style={styles.createIconContainer}>
-        <Text style={styles.createIcon}>+</Text>
+        <Ionicons name="add" size={28} color="#09090B" />
       </View>
       <View style={styles.createContent}>
         <Text style={styles.createTitle}>Create Custom Coach</Text>
         <Text style={styles.createSubtitle}>
-          {isProUser ? 'Pro Feature' : 'Requires Pro'}
+          {isProUser ? 'Design your own AI advisor' : 'Upgrade to Pro to unlock'}
         </Text>
       </View>
+      {!isProUser && (
+        <View style={styles.createLockBadge}>
+          <Ionicons name="lock-closed" size={14} color="#71717A" />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -226,6 +290,10 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
+          <AppLogo />
+          {isProUser && <ProBadge />}
+        </View>
+        <View style={styles.welcomeSection}>
           <Text style={styles.greeting}>Welcome back,</Text>
           <Text style={styles.userName}>{user?.name || 'Friend'}</Text>
         </View>
@@ -235,7 +303,10 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
-            <SectionHeader title="Your Board of Directors" />
+            <SectionHeader 
+              title="Your Board of Directors" 
+              subtitle="Tap a coach to start chatting"
+            />
             <CoachGridSkeleton count={4} />
           </View>
         </ScrollView>
@@ -246,6 +317,13 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <OfflineIndicator />
+      
+      {/* Fixed Header */}
+      <View style={styles.header}>
+        <AppLogo />
+        {isProUser && <ProBadge />}
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -258,8 +336,8 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
           <Text style={styles.greeting}>Welcome back,</Text>
           <Text 
             style={styles.userName}
@@ -269,6 +347,9 @@ export default function HomeScreen() {
           </Text>
         </View>
 
+        {/* Pro Features Banner - show if Pro user */}
+        {isProUser && <ProFeaturesBanner />}
+
         {/* Error State */}
         {error && coaches.length === 0 ? (
           <ErrorState message={error} onRetry={onRefresh} />
@@ -277,7 +358,10 @@ export default function HomeScreen() {
             {/* Default Coaches Section */}
             {defaultCoaches.length > 0 && (
               <View style={styles.section}>
-                <SectionHeader title="Your Board of Directors" />
+                <SectionHeader 
+                  title="Your Board of Directors" 
+                  subtitle="Tap a coach to start chatting"
+                />
                 <CoachGrid
                   coaches={defaultCoaches}
                   onCoachPress={handleCoachPress}
@@ -289,7 +373,10 @@ export default function HomeScreen() {
             {/* User's Custom Coaches Section */}
             {myCoaches.length > 0 && (
               <View style={styles.section}>
-                <SectionHeader title="My Coaches" />
+                <SectionHeader 
+                  title="My Custom Coaches" 
+                  subtitle="Long press to edit"
+                />
                 <CoachGrid
                   coaches={myCoaches}
                   onCoachPress={handleCoachPress}
@@ -346,17 +433,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F4F4F5',
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#09090B',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  proBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 4,
+    letterSpacing: 0.5,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 24, // Updated to screen-margin-x (24px)
-    paddingBottom: 32, // screen-margin-y
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
-  header: {
+  welcomeSection: {
     marginTop: 24,
-    marginBottom: 48, // Updated to 2xl spacing for generous breathing room
-    paddingHorizontal: 24, // Updated to screen-margin-x (24px)
+    marginBottom: 24,
   },
   greeting: {
     fontSize: 15,
@@ -369,20 +483,56 @@ const styles = StyleSheet.create({
     color: '#09090B',
     letterSpacing: -0.5,
   },
+  proFeaturesBanner: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  proFeaturesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  proFeaturesTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#09090B',
+    marginLeft: 8,
+  },
+  proFeaturesList: {
+    gap: 8,
+  },
+  proFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  proFeatureText: {
+    fontSize: 14,
+    color: '#374151',
+    marginLeft: 8,
+  },
   section: {
-    marginBottom: 48, // Updated to 2xl spacing (48px) for section spacing
+    marginBottom: 32,
   },
   sectionHeader: {
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#09090B',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#71717A',
   },
   createButton: {
     backgroundColor: '#F4F4F5',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -393,16 +543,11 @@ const styles = StyleSheet.create({
   createIconContainer: {
     width: 56,
     height: 56,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-  },
-  createIcon: {
-    fontSize: 28,
-    color: '#09090B',
-    fontWeight: '300',
   },
   createContent: {
     flex: 1,
@@ -417,35 +562,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#71717A',
   },
+  createLockBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E4E4E7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 48,
+    paddingVertical: 64,
   },
   emptyIcon: {
-    fontSize: 48,
+    fontSize: 64,
     marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#09090B',
     marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#71717A',
     textAlign: 'center',
   },
   retryButton: {
-    marginTop: 16,
+    marginTop: 24,
     backgroundColor: '#09090B',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     minHeight: 48,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   retryText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },

@@ -19,6 +19,7 @@ export interface User {
   email: string;
   name: string;
   createdAt: string;
+  isAdmin?: boolean; // Admin role for management screens
 }
 
 /**

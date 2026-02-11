@@ -2,7 +2,8 @@
  * Tabs Layout
  * 
  * Main navigation layout for authenticated users.
- * Uses bottom tab navigation with Home, Context, and Settings tabs.
+ * Uses bottom tab navigation with Home, Context, Settings, and Admin tabs.
+ * Admin tab is only visible to users with admin privileges.
  * 
  * Performance optimization: Tabs are lazy-loaded to improve cold start time.
  * Animations: Subtle fade transitions between tabs (< 200ms)
@@ -13,6 +14,10 @@
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useAuthStore } from '@/stores/authStore';
+
+// Admin email for access control
+const ADMIN_EMAIL = 'max@north.app';
 
 /**
  * Tab icon component
@@ -37,6 +42,10 @@ function TabIcon({ icon, label, focused }: { icon: string; label: string; focuse
 
 export default function TabsLayout() {
   const prefersReducedMotion = useReducedMotion();
+  const { user } = useAuthStore();
+  
+  // Check if user is admin
+  const isAdmin = user?.email === ADMIN_EMAIL || user?.isAdmin === true;
 
   return (
     <Tabs
@@ -85,6 +94,17 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="⚙️" label="Settings" focused={focused} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: 'Admin',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="🛡️" label="Admin" focused={focused} />
+          ),
+          // Hide admin tab for non-admin users
+          href: isAdmin ? '/admin' : null,
         }}
       />
     </Tabs>

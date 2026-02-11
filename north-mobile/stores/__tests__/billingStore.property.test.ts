@@ -19,6 +19,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBillingStore, resetInitialization } from '../billingStore';
 import type { Entitlements } from '@/types';
 
+// Mock Supabase
+jest.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getUser: jest.fn().mockResolvedValue({
+        data: {
+          user: {
+            id: 'test-user',
+            user_metadata: {
+              is_pro: false,
+            },
+          },
+        },
+        error: null,
+      }),
+    },
+  },
+}));
+
 // Mock RevenueCat
 jest.mock('react-native-purchases', () => ({
   configure: jest.fn().mockResolvedValue(undefined),
@@ -105,6 +124,7 @@ describe('Billing Store Property-Based Tests', () => {
             jest.clearAllMocks();
             
             // Mock RevenueCat response
+            const Purchases = require('react-native-purchases');
             Purchases.getCustomerInfo.mockResolvedValue({
               entitlements: {
                 active: entitlements.pro.isActive ? {
@@ -115,14 +135,29 @@ describe('Billing Store Property-Based Tests', () => {
               }
             });
 
+            // Mock Supabase auth for metadata fallback
+            const { supabase } = require('@/lib/supabase');
+            supabase.auth.getUser.mockResolvedValue({
+              data: {
+                user: {
+                  id: 'test-user',
+                  user_metadata: {
+                    is_pro: false, // No metadata Pro status for this test
+                  },
+                },
+              },
+              error: null,
+            });
+
             // Initialize RevenueCat (sets isInitialized flag)
             await useBillingStore.getState().initialize('test-user');
 
-            // Wait for state update
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Wait for state update (longer timeout for async operations)
+            await new Promise(resolve => setTimeout(resolve, 200));
 
             // Verify entitlements were fetched and stored
             const state = useBillingStore.getState();
+            // Entitlements should always be set (either from RevenueCat or fallback)
             expect(state.entitlements).toBeTruthy();
             expect(state.entitlements?.pro.isActive).toBe(entitlements.pro.isActive);
             expect(state.isProUser).toBe(entitlements.pro.isActive);

@@ -13,6 +13,7 @@
  * - Category badge display
  * - Creator name display (marketplace mode)
  * - Description truncation (marketplace mode)
+ * - Coach role/description label for clarity
  * 
  * Validates: Requirements 1.2, 2.5, 9.2, 13.1, 13.2, 13.6, 19.7, 23.7
  */
@@ -36,6 +37,23 @@ interface CoachCardProps {
 }
 
 /**
+ * Get a short description for default coaches based on their name
+ */
+function getCoachDescription(name: string): string {
+  const descriptions: Record<string, string> = {
+    'Strategy': 'Business planning & decisions',
+    'Marketing': 'Growth & brand strategy',
+    'Finance': 'Money & investments',
+    'Tech': 'Technology guidance',
+    'Leadership': 'Team & management',
+    'Wellness': 'Health & balance',
+    'Career': 'Professional growth',
+    'Creative': 'Ideas & innovation',
+  };
+  return descriptions[name] || 'Tap to start chatting';
+}
+
+/**
  * Check if coach is a PublicCoach with creator information
  */
 function isPublicCoach(coach: Coach | PublicCoach): coach is PublicCoach {
@@ -43,7 +61,7 @@ function isPublicCoach(coach: Coach | PublicCoach): coach is PublicCoach {
 }
 
 /**
- * CoachCard displays a coach with icon, name, and optional marketplace details.
+ * CoachCard displays a coach with icon, name, description, and optional marketplace details.
  * Provides haptic feedback on press for premium feel.
  * 
  * @example
@@ -112,6 +130,9 @@ export function CoachCard({
   // Determine if we should show marketplace details
   const isMarketplaceMode = variant === 'marketplace';
   const publicCoach = isPublicCoach(coach) ? coach : null;
+  
+  // Get coach description
+  const coachDescription = coach.systemPrompt || getCoachDescription(coach.name);
 
   return (
     <Animated.View
@@ -122,7 +143,7 @@ export function CoachCard({
         onLongPress={handleLongPress}
         accessible
         accessibilityRole="button"
-        accessibilityLabel={`${isMarketplaceMode ? 'Preview' : 'Chat with'} ${coach.name}`}
+        accessibilityLabel={`${isMarketplaceMode ? 'Preview' : 'Chat with'} ${coach.name}. ${coachDescription}`}
         accessibilityHint={onLongPress ? "Long press to edit" : isMarketplaceMode ? "Opens coach preview" : "Opens chat conversation with this coach"}
         testID={testID}
         style={({ pressed, focused }) => [
@@ -151,42 +172,57 @@ export function CoachCard({
           </Pressable>
         )}
 
-        {/* Coach icon */}
-        <Text className="text-5xl mb-3">{coach.icon}</Text>
+        {/* Coach icon - left side */}
+        <View style={styles.iconContainer}>
+          <Text style={styles.coachIcon}>{coach.icon}</Text>
+        </View>
 
-        {/* Coach name */}
-        <Text 
-          className="text-base font-semibold text-zinc-900 dark:text-white leading-5 mb-2"
-          numberOfLines={1}
-        >
-          {coach.name}
-        </Text>
+        {/* Coach info - right side */}
+        <View style={{ flex: 1 }}>
+          {/* Coach name */}
+          <Text 
+            style={[styles.coachName, colorScheme === 'dark' && styles.coachNameDark]}
+            numberOfLines={1}
+          >
+            {coach.name}
+          </Text>
 
-        {/* Marketplace-specific content */}
-        {isMarketplaceMode && publicCoach && (
-          <>
-            {/* Description */}
+          {/* Coach description/role label - always show for clarity */}
+          {!isMarketplaceMode && (
             <Text 
-              className="text-sm text-zinc-600 dark:text-zinc-400 leading-5 mb-3"
+              style={[styles.coachDescription, colorScheme === 'dark' && styles.coachDescriptionDark]}
               numberOfLines={2}
             >
-              {publicCoach.systemPrompt}
+              {coachDescription}
             </Text>
+          )}
 
-            {/* Creator name */}
-            <Text 
-              className="text-xs text-zinc-500 dark:text-zinc-500 mb-2"
-              numberOfLines={1}
-            >
-              by {publicCoach.creatorName}
-            </Text>
+          {/* Marketplace-specific content */}
+          {isMarketplaceMode && publicCoach && (
+            <>
+              {/* Description */}
+              <Text 
+                style={[styles.marketplaceDescription, colorScheme === 'dark' && styles.marketplaceDescriptionDark]}
+                numberOfLines={2}
+              >
+                {publicCoach.systemPrompt}
+              </Text>
 
-            {/* Category badge */}
-            <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
-              <Text style={styles.categoryText}>{coach.category}</Text>
-            </View>
-          </>
-        )}
+              {/* Creator name */}
+              <Text 
+                style={styles.creatorName}
+                numberOfLines={1}
+              >
+                by {publicCoach.creatorName}
+              </Text>
+
+              {/* Category badge */}
+              <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
+                <Text style={styles.categoryText}>{coach.category}</Text>
+              </View>
+            </>
+          )}
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -195,11 +231,13 @@ export function CoachCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#F4F4F5', // Light mode
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
-    flex: 1,
-    minHeight: 130,
+    width: '100%',
+    minHeight: 100,
     position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
     // Shadow for depth
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -214,9 +252,12 @@ const styles = StyleSheet.create({
   marketplaceCard: {
     minHeight: 220,
     padding: 16,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
   },
   pressed: {
     opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
   shareButton: {
     position: 'absolute',
@@ -238,6 +279,51 @@ const styles = StyleSheet.create({
   },
   shareIcon: {
     fontSize: 16,
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  coachIcon: {
+    fontSize: 32,
+  },
+  coachName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#09090B',
+    marginBottom: 4,
+    flex: 1,
+  },
+  coachNameDark: {
+    color: '#FFFFFF',
+  },
+  coachDescription: {
+    fontSize: 13,
+    color: '#71717A',
+    lineHeight: 18,
+    flex: 1,
+  },
+  coachDescriptionDark: {
+    color: '#A1A1AA',
+  },
+  marketplaceDescription: {
+    fontSize: 14,
+    color: '#52525B',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  marketplaceDescriptionDark: {
+    color: '#A1A1AA',
+  },
+  creatorName: {
+    fontSize: 12,
+    color: '#71717A',
+    marginBottom: 8,
   },
   categoryBadge: {
     alignSelf: 'flex-start',

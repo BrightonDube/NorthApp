@@ -14,6 +14,7 @@
  */
 
 import { supabase } from './supabase';
+import OpenAI from 'openai';
 import type { 
   SessionReport, 
   SessionReportInsert,
@@ -46,6 +47,17 @@ export const REPORT_CONFIG = {
    */
   MIN_SUMMARY_SENTENCES: 2,
   MAX_SUMMARY_SENTENCES: 4,
+  
+  /**
+   * AI provider to use: 'openai' or 'gemini'
+   * Defaults to 'gemini' if OPENAI_API_KEY is not set
+   */
+  AI_PROVIDER: (process.env.EXPO_PUBLIC_OPENAI_API_KEY ? 'openai' : 'gemini') as 'openai' | 'gemini',
+  
+  /**
+   * OpenAI model to use for report generation
+   */
+  OPENAI_MODEL: 'gpt-4o-mini',
 } as const;
 
 /**
@@ -93,7 +105,8 @@ interface AIReportResponse {
  * Report Generator Class
  * 
  * Generates structured session reports by analyzing conversation messages
- * using AI. Implements retry logic and handles various error scenarios.
+ * using AI. Supports both OpenAI and Google Gemini as AI providers.
+ * Implements retry logic and handles various error scenarios.
  * 
  * @example
  * ```typescript
@@ -103,6 +116,16 @@ interface AIReportResponse {
  * ```
  */
 export class ReportGenerator {
+  private openaiClient: OpenAI | null = null;
+
+  constructor() {
+    // Initialize OpenAI client if API key is available
+    if (process.env.EXPO_PUBLIC_OPENAI_API_KEY) {
+      this.openaiClient = new OpenAI({
+        apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+      });
+    }
+  }
   /**
    * Generate a report for a completed session
    * 
@@ -112,12 +135,13 @@ export class ReportGenerator {
    * 3. Parses the AI response into a structured report
    * 4. Stores the report in the database
    * 5. Creates action items from the report
+   * 6. Automatically retries up to 3 times on failure (Requirement 2.7)
    * 
-   * Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
+   * Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7
    * 
    * @param sessionId - The ID of the session to generate a report for
    * @returns The generated session report
-   * @throws Error if session not found or report generation fails
+   * @throws Error if session not found or report generation fails after all retries
    * 
    * @example
    * ```typescript
@@ -126,6 +150,24 @@ export class ReportGenerator {
    * ```
    */
   async generateReport(sessionId: string): Promise<SessionReport> {
+    return this.generateReportWithRetries(sessionId, 1);
+  }
+
+  /**
+   * Internal method to generate report with automatic retry logic
+   * 
+   * Implements Requirement 2.7: Retry up to 3 times with exponential backoff
+   * 
+   * @param sessionId - The ID of the session to generate a report for
+   * @param attemptNumber - Current attempt number (1-based)
+   * @returns The generated session report
+   * @throws Error if all retry attempts fail
+   * @private
+   */
+  private async generateReportWithRetries(
+    sessionId: string,
+    attemptNumber: number
+  ): Promise<SessionReport> {
     try {
       // Fetch the session
       const { data: session, error: sessionError } = await supabase
@@ -148,6 +190,7 @@ export class ReportGenerator {
 
       if (messages.length === 0) {
         // Handle empty session - create minimal report
+        console.log(`[ReportGenerator] Session ${sessionId} has no messages, creating empty report`);
         return this.createEmptySessionReport(session);
       }
 
@@ -162,81 +205,16 @@ export class ReportGenerator {
         throw new Error(`Coach not found: ${session.coach_id}`);
       }
 
-      // Generate report with retry logic
-      const aiResponse = await this.generateReportWithRetry(
-        session,
-        messages,
-        coach.name,
-        1
-      );
-
-      // Create and store the report
-      const report = await this.storeReport(session, aiResponse, 1);
-
-      // Create action items
-      await this.createActionItems(report, aiResponse.actionItems);
-
-      return report;
-    } catch (error) {
-      console.error('Error generating report:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Retry report generation with exponential backoff
-   * 
-   * Implements retry logic as specified in Requirement 2.7.
-   * Retries up to MAX_RETRY_ATTEMPTS times with exponential backoff.
-   * 
-   * Validates: Requirement 2.7
-   * 
-   * @param sessionId - The session ID to retry
-   * @param attemptNumber - The current attempt number (1-based)
-   * @returns The generated session report
-   * @throws Error if all retry attempts fail
-   */
-  async retryReportGeneration(
-    sessionId: string,
-    attemptNumber: number
-  ): Promise<SessionReport> {
-    if (attemptNumber > REPORT_CONFIG.MAX_RETRY_ATTEMPTS) {
-      throw new Error(
-        `Report generation failed after ${REPORT_CONFIG.MAX_RETRY_ATTEMPTS} attempts`
-      );
-    }
-
-    try {
-      // Fetch the session
-      const { data: session, error: sessionError } = await supabase
-        .from('coaching_sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .single();
-
-      if (sessionError || !session) {
-        throw new Error(`Session not found: ${sessionId}`);
+      // Apply exponential backoff delay if this is a retry
+      if (attemptNumber > 1) {
+        const delay = REPORT_CONFIG.BASE_RETRY_DELAY_MS * Math.pow(2, attemptNumber - 1);
+        console.log(`[ReportGenerator] Retry attempt ${attemptNumber} for session ${sessionId}, waiting ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
 
-      // Fetch messages
-      const messages = await this.fetchSessionMessages(session);
+      console.log(`[ReportGenerator] Generating report for session ${sessionId}, attempt ${attemptNumber}/${REPORT_CONFIG.MAX_RETRY_ATTEMPTS}`);
 
-      // Fetch coach
-      const { data: coach, error: coachError } = await supabase
-        .from('coaches')
-        .select('name')
-        .eq('id', session.coach_id)
-        .single();
-
-      if (coachError || !coach) {
-        throw new Error(`Coach not found: ${session.coach_id}`);
-      }
-
-      // Calculate delay for exponential backoff
-      const delay = REPORT_CONFIG.BASE_RETRY_DELAY_MS * Math.pow(2, attemptNumber - 1);
-      await new Promise(resolve => setTimeout(resolve, delay));
-
-      // Generate report
+      // Generate report with AI
       const aiResponse = await this.generateReportWithRetry(
         session,
         messages,
@@ -244,23 +222,62 @@ export class ReportGenerator {
         attemptNumber
       );
 
-      // Store report with attempt number
+      // Create and store the report
       const report = await this.storeReport(session, aiResponse, attemptNumber);
 
       // Create action items
       await this.createActionItems(report, aiResponse.actionItems);
 
+      console.log(`[ReportGenerator] Successfully generated report ${report.id} for session ${sessionId} on attempt ${attemptNumber}`);
       return report;
     } catch (error) {
-      console.error(`Retry attempt ${attemptNumber} failed:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[ReportGenerator] Attempt ${attemptNumber}/${REPORT_CONFIG.MAX_RETRY_ATTEMPTS} failed for session ${sessionId}:`, errorMessage);
       
       // If we haven't exhausted retries, try again
       if (attemptNumber < REPORT_CONFIG.MAX_RETRY_ATTEMPTS) {
-        return this.retryReportGeneration(sessionId, attemptNumber + 1);
+        console.log(`[ReportGenerator] Retrying report generation for session ${sessionId}...`);
+        return this.generateReportWithRetries(sessionId, attemptNumber + 1);
       }
       
-      throw error;
+      // All retries exhausted, log final failure and throw
+      console.error(`[ReportGenerator] FAILED: Report generation for session ${sessionId} failed after ${REPORT_CONFIG.MAX_RETRY_ATTEMPTS} attempts`);
+      throw new Error(`Report generation failed after ${REPORT_CONFIG.MAX_RETRY_ATTEMPTS} attempts: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Retry report generation with exponential backoff
+   * 
+   * Public method to manually retry report generation for a session.
+   * This is useful when a previous generation attempt failed and you want
+   * to retry it manually.
+   * 
+   * Note: The generateReport() method already includes automatic retry logic.
+   * This method is provided for explicit retry scenarios.
+   * 
+   * Implements retry logic as specified in Requirement 2.7.
+   * Retries up to MAX_RETRY_ATTEMPTS times with exponential backoff.
+   * 
+   * Validates: Requirement 2.7
+   * 
+   * @param sessionId - The session ID to retry
+   * @param attemptNumber - The current attempt number (1-based, defaults to 1)
+   * @returns The generated session report
+   * @throws Error if all retry attempts fail
+   */
+  async retryReportGeneration(
+    sessionId: string,
+    attemptNumber: number = 1
+  ): Promise<SessionReport> {
+    if (attemptNumber > REPORT_CONFIG.MAX_RETRY_ATTEMPTS) {
+      throw new Error(
+        `Report generation failed after ${REPORT_CONFIG.MAX_RETRY_ATTEMPTS} attempts`
+      );
+    }
+
+    console.log(`[ReportGenerator] Manual retry requested for session ${sessionId}, attempt ${attemptNumber}`);
+    return this.generateReportWithRetries(sessionId, attemptNumber);
   }
 
   /**
@@ -414,14 +431,79 @@ Respond with a JSON object in this exact format:
   /**
    * Call the AI service to analyze the conversation
    * 
-   * This method makes an HTTP request to the Supabase Edge Function
-   * that uses the Gemini API to analyze the conversation.
+   * This method supports two AI providers:
+   * - OpenAI: Direct API call using OpenAI SDK
+   * - Gemini: HTTP request to Supabase Edge Function
+   * 
+   * The provider is selected based on REPORT_CONFIG.AI_PROVIDER
    * 
    * @param prompt - The analysis prompt
    * @returns The AI response as a string
    * @private
    */
   private async callAIService(prompt: string): Promise<string> {
+    if (REPORT_CONFIG.AI_PROVIDER === 'openai') {
+      return this.callOpenAI(prompt);
+    } else {
+      return this.callGemini(prompt);
+    }
+  }
+
+  /**
+   * Call OpenAI API to analyze the conversation
+   * 
+   * Uses the OpenAI SDK to make a direct API call to GPT-4.
+   * 
+   * @param prompt - The analysis prompt
+   * @returns The AI response as a string
+   * @private
+   */
+  private async callOpenAI(prompt: string): Promise<string> {
+    if (!this.openaiClient) {
+      throw new Error('OpenAI client not initialized. Please set EXPO_PUBLIC_OPENAI_API_KEY environment variable.');
+    }
+
+    try {
+      const completion = await this.openaiClient.chat.completions.create({
+        model: REPORT_CONFIG.OPENAI_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert at analyzing coaching conversations and generating structured session reports. Always respond with valid JSON in the exact format requested.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+      });
+
+      const response = completion.choices[0]?.message?.content;
+      
+      if (!response) {
+        throw new Error('Empty response from OpenAI');
+      }
+
+      return response;
+    } catch (error) {
+      console.error('OpenAI API error:', error);
+      throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Call Gemini API via Supabase Edge Function
+   * 
+   * Makes an HTTP request to the Supabase Edge Function
+   * that uses the Gemini API to analyze the conversation.
+   * 
+   * @param prompt - The analysis prompt
+   * @returns The AI response as a string
+   * @private
+   */
+  private async callGemini(prompt: string): Promise<string> {
     try {
       // Get the current session to access auth token
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -448,7 +530,7 @@ Respond with a JSON object in this exact format:
 
       return data.response;
     } catch (error) {
-      console.error('Failed to call AI service:', error);
+      console.error('Failed to call Gemini service:', error);
       throw error;
     }
   }

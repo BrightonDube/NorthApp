@@ -395,7 +395,7 @@ function RootLayoutNav() {
         }} 
       />
       <Stack.Screen 
-        name="chat" 
+        name="chat/[coachId]" 
         options={{ 
           headerShown: false,
           // Slide from right for chat screens (feels like drilling into content)

@@ -4,7 +4,7 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start --host lan",
-    "dev": "expo start --dev-client --host lan",
+    "dev": "expo start --dev-client --tunnel",
     "dev:tunnel": "expo start --dev-client --tunnel",
     "android": "expo start --android --dev-client",
     "ios": "expo start --ios --dev-client",
@@ -40,6 +40,7 @@
     "expo-updates": "~29.0.16",
     "expo-web-browser": "~15.0.10",
     "nativewind": "^4.2.1",
+    "openai": "^6.21.0",
     "pdf-parse": "^2.4.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",

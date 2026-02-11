@@ -23,7 +23,7 @@ interface CoachGridProps {
 }
 
 /**
- * CoachGrid displays coaches in a responsive 2-column grid.
+ * CoachGrid displays coaches in a single column layout with full-width cards.
  * Provides consistent spacing and layout for coach cards.
  * Cards animate in with a subtle stagger effect.
  * 
@@ -42,32 +42,17 @@ export function CoachGrid({
   onCoachLongPress,
   testID 
 }: CoachGridProps) {
-  // Group coaches into rows of 2
-  const rows: Coach[][] = [];
-  for (let i = 0; i < coaches.length; i += 2) {
-    rows.push(coaches.slice(i, i + 2));
-  }
-
   return (
-    <View className="gap-4" testID={testID}>
-      {rows.map((row, rowIndex) => (
-        <View key={rowIndex} className="flex-row gap-4">
-          {row.map((coach, colIndex) => {
-            const index = rowIndex * 2 + colIndex;
-            return (
-              <CoachCard
-                key={coach.id}
-                coach={coach}
-                onPress={() => onCoachPress(coach)}
-                onLongPress={onCoachLongPress ? () => onCoachLongPress(coach) : undefined}
-                testID={`coach-card-${coach.id}`}
-                index={index}
-              />
-            );
-          })}
-          {/* Add spacer if odd number of coaches in last row */}
-          {row.length === 1 && <View className="flex-1" />}
-        </View>
+    <View className="gap-3" testID={testID}>
+      {coaches.map((coach, index) => (
+        <CoachCard
+          key={coach.id}
+          coach={coach}
+          onPress={() => onCoachPress(coach)}
+          onLongPress={onCoachLongPress ? () => onCoachLongPress(coach) : undefined}
+          testID={`coach-card-${coach.id}`}
+          index={index}
+        />
       ))}
     </View>
   );
