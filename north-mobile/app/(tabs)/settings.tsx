@@ -19,25 +19,22 @@
  */
 
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, Linking, ActivityIndicator, StyleSheet, Platform, useColorScheme, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, Linking, ActivityIndicator, StyleSheet, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { useAuthStore } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
 import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { NotificationSettings } from '@/components/notifications';
+import { useTheme as useThemeContext, useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
 // Legal URLs - using in-app screens
 const PRIVACY_POLICY_URL = '/legal/privacy';
 const TERMS_OF_SERVICE_URL = '/legal/terms';
-
-// Theme storage key
-const THEME_STORAGE_KEY = '@north/theme';
 
 // Theme options
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -116,22 +113,18 @@ function ThemeModal({
  * Settings Row Component
  */
 function SettingsRow({ 
-  icon, 
-  iconName,
   label, 
   value, 
   onPress,
-  destructive = false,
   isLoading = false,
 }: { 
-  icon?: string; 
-  iconName?: string;
   label: string; 
   value?: string;
   onPress?: () => void;
-  destructive?: boolean;
   isLoading?: boolean;
 }) {
+  const colors = useThemeColors();
+  
   const handlePress = () => {
     if (onPress) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -145,37 +138,26 @@ function SettingsRow({
       disabled={!onPress || isLoading}
       style={({ pressed }) => [
         styles.settingsRow,
-        pressed && onPress && styles.settingsRowPressed,
+        { borderBottomColor: colors.border },
+        pressed && onPress && { backgroundColor: colors.backgroundSecondary },
       ]}
       accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityLabel={label}
     >
-      {icon ? (
-        <Text style={styles.rowIcon}>{icon}</Text>
-      ) : iconName ? (
-        <View style={styles.rowIconContainer}>
-          <Ionicons name={iconName as any} size={20} color={destructive ? '#EF4444' : '#71717A'} />
-        </View>
-      ) : null}
-      <Text 
-        style={[
-          styles.rowLabel,
-          destructive && styles.rowLabelDestructive,
-        ]}
-      >
+      <Text style={[styles.rowLabel, { color: colors.text }]}>
         {label}
       </Text>
       {isLoading ? (
-        <ActivityIndicator size="small" color="#71717A" />
+        <ActivityIndicator size="small" color={colors.textTertiary} />
       ) : (
-        <>
+        <View style={styles.rowRight}>
           {value && (
-            <Text style={styles.rowValue}>{value}</Text>
+            <Text style={[styles.rowValue, { color: colors.textTertiary }]}>{value}</Text>
           )}
           {onPress && (
-            <Ionicons name="chevron-forward" size={18} color="#D4D4D8" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
           )}
-        </>
+        </View>
       )}
     </Pressable>
   );
@@ -183,7 +165,8 @@ function SettingsRow({
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const systemColorScheme = useColorScheme();
+  const colors = useThemeColors();
+  const { themeMode, setTheme: setThemeMode } = useThemeContext();
   const { user, logout } = useAuthStore();
   const { 
     isProUser, 
@@ -195,44 +178,13 @@ export default function SettingsScreen() {
     hidePaywall,
   } = useBillingStore();
 
-  // Theme state
-  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
+  // Theme modal state
   const [isThemeModalVisible, setIsThemeModalVisible] = useState(false);
 
-  // Load theme preference on mount
-  useEffect(() => {
-    loadThemePreference();
-  }, []);
-
-  const loadThemePreference = async () => {
-    try {
-      const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-      if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
-        setThemeMode(savedTheme as ThemeMode);
-      }
-    } catch (error) {
-      console.error('Error loading theme preference:', error);
-    }
-  };
-
   const handleThemeChange = async (theme: ThemeMode) => {
-    try {
-      await AsyncStorage.setItem(THEME_STORAGE_KEY, theme);
-      setThemeMode(theme);
-      setIsThemeModalVisible(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      // Note: In a production app, you would apply the theme here
-      // For now, we're just persisting the preference
-      Alert.alert(
-        'Theme Updated',
-        `Theme set to ${theme}. Restart the app to see changes.`,
-        [{ text: 'OK' }]
-      );
-    } catch (error) {
-      console.error('Error saving theme preference:', error);
-      Alert.alert('Error', 'Failed to save theme preference');
-    }
+    await setThemeMode(theme);
+    setIsThemeModalVisible(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handleLogout = () => {
@@ -322,7 +274,7 @@ export default function SettingsScreen() {
   const currentThemeLabel = THEME_OPTIONS.find(opt => opt.value === themeMode)?.label || 'System';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <OfflineIndicator />
       <ScrollView
         style={styles.scrollView}
@@ -332,84 +284,37 @@ export default function SettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text 
-            style={styles.headerTitle}
+            style={[styles.headerTitle, { color: colors.text }]}
             accessibilityRole="header"
           >
             Settings
           </Text>
         </View>
 
-        {/* Tier Status Badge */}
-        <View style={[
-          styles.tierBadgeContainer,
-          isProUser ? styles.tierBadgeContainerPro : styles.tierBadgeContainerFree
-        ]}>
-          <View style={styles.tierBadge}>
-            <Ionicons 
-              name={isProUser ? "diamond" : "star-outline"} 
-              size={20} 
-              color={isProUser ? "#FFFFFF" : "#71717A"} 
-            />
-            <Text style={[
-              styles.tierBadgeText,
-              isProUser ? styles.tierBadgeTextPro : styles.tierBadgeTextFree
-            ]}>
-              {isProUser ? 'North Pro' : 'North Free'}
-            </Text>
-          </View>
-          {isProUser && formattedExpiration && (
-            <Text style={styles.tierExpiration}>
-              Renews on {formattedExpiration}
-            </Text>
-          )}
-          {!isProUser && (
-            <Text style={styles.tierDescription}>
-              Upgrade to unlock unlimited context and custom coaches
-            </Text>
-          )}
-        </View>
-
         {/* Account Section */}
-        <Text 
-          style={styles.sectionTitle}
-          accessibilityRole="header"
-        >
-          Account
-        </Text>
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <SettingsRow 
-            iconName="person-outline"
             label="Name" 
             value={user?.name || 'Not set'} 
           />
           <SettingsRow 
-            iconName="mail-outline"
             label="Email" 
             value={user?.email || 'Not set'} 
           />
         </View>
 
         {/* Subscription Section */}
-        <Text 
-          style={styles.sectionTitle}
-          accessibilityRole="header"
-        >
-          Subscription
-        </Text>
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <SettingsRow 
-            iconName="star-outline"
             label="Current Plan" 
             value={subscriptionStatus}
             isLoading={billingLoading}
           />
           <SettingsRow 
-            iconName={isProUser ? "settings-outline" : "diamond-outline"}
             label={isProUser ? "Manage Subscription" : "Upgrade to Pro"}
             onPress={handleManageSubscription}
           />
           <SettingsRow 
-            iconName="refresh-outline"
             label="Restore Purchases" 
             onPress={handleRestore}
             isLoading={billingLoading}
@@ -417,55 +322,38 @@ export default function SettingsScreen() {
         </View>
 
         {/* Notifications Section */}
-        <Text 
-          style={styles.sectionTitle}
-          accessibilityRole="header"
-        >
-          Notifications
-        </Text>
         <NotificationSettings />
 
         {/* App Section */}
-        <Text 
-          style={styles.sectionTitle}
-          accessibilityRole="header"
-        >
-          App
-        </Text>
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <SettingsRow 
-            iconName="color-palette-outline"
             label="Theme" 
             value={currentThemeLabel}
             onPress={() => setIsThemeModalVisible(true)}
           />
           <SettingsRow 
-            iconName="shield-checkmark-outline"
             label="Privacy Policy" 
             onPress={() => handleOpenUrl(PRIVACY_POLICY_URL)}
           />
           <SettingsRow 
-            iconName="document-text-outline"
             label="Terms of Service" 
             onPress={() => handleOpenUrl(TERMS_OF_SERVICE_URL)}
+          />
+          <SettingsRow 
+            label="Version" 
+            value={`${appVersion} (${buildNumber})`}
           />
         </View>
 
         {/* Sign Out */}
-        <View style={styles.sectionDestructive}>
-          <SettingsRow 
-            iconName="log-out-outline"
-            label="Sign Out" 
-            onPress={handleLogout}
-            destructive
-          />
-        </View>
-
-        {/* App Version */}
-        <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>North v{appVersion} ({buildNumber})</Text>
-          <Text style={styles.versionSubtext}>Made with ❤️ for creators</Text>
-        </View>
+        <Pressable
+          onPress={handleLogout}
+          style={[styles.signOutButton, { backgroundColor: colors.card }]}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+        >
+          <Text style={[styles.signOutText, { color: colors.error }]}>Sign Out</Text>
+        </Pressable>
       </ScrollView>
 
       {/* Theme Selection Modal */}
@@ -489,175 +377,75 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 0,
+    paddingTop: 0,
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   headerTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#09090B',
     letterSpacing: -0.5,
   },
-  proBadgeContainer: {
-    backgroundColor: '#09090B',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  proBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  proBadgeText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginLeft: 8,
-  },
-  proExpiration: {
-    fontSize: 14,
-    color: '#A1A1AA',
-  },
-  tierBadgeContainer: {
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 28,
-    alignItems: 'center',
-  },
-  tierBadgeContainerPro: {
-    backgroundColor: '#09090B',
-  },
-  tierBadgeContainerFree: {
-    backgroundColor: '#F4F4F5',
-    borderWidth: 1,
-    borderColor: '#E4E4E7',
-  },
-  tierBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  tierBadgeText: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginLeft: 10,
-  },
-  tierBadgeTextPro: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginLeft: 10,
-  },
-  tierBadgeTextFree: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#09090B',
-    marginLeft: 10,
-  },
-  tierExpiration: {
-    fontSize: 14,
-    color: '#A1A1AA',
-    marginTop: 4,
-  },
-  tierDescription: {
-    fontSize: 14,
-    color: '#71717A',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#71717A',
-    marginBottom: 12,
-    marginLeft: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
   section: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    marginBottom: 28,
+    marginBottom: 32,
+    borderRadius: 0,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#F4F4F5',
-  },
-  sectionDestructive: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    marginBottom: 28,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#FECACA',
   },
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     minHeight: 56,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
-  },
-  settingsRowPressed: {
-    backgroundColor: '#F9FAFB',
-  },
-  rowIcon: {
-    fontSize: 22,
-    marginRight: 14,
-  },
-  rowIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F4F4F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   rowLabel: {
-    flex: 1,
     fontSize: 16,
-    color: '#09090B',
-    fontWeight: '500',
+    fontWeight: '400',
   },
-  rowLabelDestructive: {
-    color: '#DC2626',
-    fontWeight: '600',
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   rowValue: {
-    fontSize: 15,
-    color: '#71717A',
-    marginRight: 8,
+    fontSize: 16,
+    fontWeight: '400',
   },
-  versionContainer: {
-    marginTop: 24,
+  signOutButton: {
+    marginHorizontal: 0,
+    marginTop: 16,
+    paddingVertical: 18,
     alignItems: 'center',
-    paddingVertical: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  versionText: {
-    fontSize: 14,
-    color: '#A1A1AA',
-    fontWeight: '500',
+  signOutText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
-  versionSubtext: {
-    fontSize: 13,
-    color: '#D4D4D8',
-    marginTop: 6,
+  signOutButton: {
+    marginHorizontal: 0,
+    marginTop: 16,
+    paddingVertical: 18,
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  signOutText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   // Theme Modal styles
   modalOverlay: {

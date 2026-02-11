@@ -14,6 +14,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useDeepLinking } from '@/hooks/useDeepLinking';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { SplashScreen as CustomSplashScreen } from '@/components/SplashScreen';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { 
   markPerformance, 
   measureColdStart, 
@@ -58,6 +60,8 @@ export default function RootLayout() {
   const { initialize: initializeNetwork, cleanup: cleanupNetwork } = useNetworkStore();
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
+  const [showCustomSplash, setShowCustomSplash] = useState(true);
+  const [splashVisible, setSplashVisible] = useState(true);
   
   // Setup performance observer in development
   useEffect(() => {
@@ -101,7 +105,15 @@ export default function RootLayout() {
       } finally {
         setIsAuthInitialized(true);
         // Mark app as ready after a small delay to ensure smooth transition
-        setTimeout(() => setIsAppReady(true), 100);
+        setTimeout(() => {
+          setIsAppReady(true);
+          // Start fade-out animation by setting visible to false
+          setSplashVisible(false);
+          // Wait for animation to complete (300ms) before unmounting
+          setTimeout(() => {
+            setShowCustomSplash(false);
+          }, 300);
+        }, 100);
       }
     };
 
@@ -248,23 +260,47 @@ export default function RootLayout() {
   // Show loading while initializing auth - render Slot to mount navigation
   if (!isAuthInitialized || isLoading) {
     return (
-      <ErrorBoundary>
-        <SafeAreaProvider>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-            <ActivityIndicator size="large" color="#3B82F6" />
-          </View>
-        </SafeAreaProvider>
-      </ErrorBoundary>
+      <ThemeProvider>
+        <ErrorBoundary>
+          <SafeAreaProvider>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+            </View>
+          </SafeAreaProvider>
+        </ErrorBoundary>
+      </ThemeProvider>
     );
   }
 
+  // Handler for when custom splash screen is ready
+  const handleSplashReady = async () => {
+    try {
+      // Hide the native splash screen
+      await SplashScreen.hideAsync();
+    } catch (error) {
+      console.error('Error hiding native splash screen:', error);
+    }
+  };
+
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <RootLayoutNav />
-        <GlobalPaywall />
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <ThemeProvider>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          {showCustomSplash && (
+            <CustomSplashScreen 
+              visible={splashVisible}
+              onReady={handleSplashReady}
+            />
+          )}
+          {!showCustomSplash && (
+            <>
+              <RootLayoutNav />
+              <GlobalPaywall />
+            </>
+          )}
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
 
@@ -298,8 +334,6 @@ function RootLayoutNav() {
 
   // Hide splash screen once we're ready
   useEffect(() => {
-    SplashScreen.hideAsync();
-    
     // Mark first render
     markPerformance(PERFORMANCE_MARKS.FIRST_RENDER);
   }, []);

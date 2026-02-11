@@ -11,10 +11,11 @@
  */
 
 import { useState, useCallback } from 'react';
-import { View, TextInput, Pressable, Platform, useColorScheme, StyleSheet, NativeSyntheticEvent, TextInputKeyPressEventData, Keyboard } from 'react-native';
+import { View, TextInput, Pressable, Platform, StyleSheet, NativeSyntheticEvent, TextInputKeyPressEventData, Keyboard } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsOnline } from '@/stores/networkStore';
+import { useIsDark, useThemeColors } from '@/contexts/ThemeContext';
 
 // Debounce delay for input validation (ms) - reserved for future optimization
 // const INPUT_DEBOUNCE_MS = 100;
@@ -57,10 +58,8 @@ export function ChatInput({
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const isOnline = useIsOnline();
-  const colorScheme = useColorScheme();
-  
-  // Focus indicator color
-  const focusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB';
+  const isDark = useIsDark();
+  const colors = useThemeColors();
 
   // Memoized send handler for performance
   const handleSend = useCallback(() => {
@@ -93,16 +92,17 @@ export function ChatInput({
   }, [handleSend]);
 
   const canSend = message.trim().length > 0 && !disabled && isOnline;
+  const focusColor = isDark ? '#60A5FA' : '#3B82F6';
 
   return (
     <View style={[
       styles.container,
-      colorScheme === 'dark' && styles.containerDark
+      isDark && styles.containerDark
     ]}>
       <View style={styles.inputRow}>
         <View style={[
           styles.inputContainer,
-          colorScheme === 'dark' && styles.inputContainerDark
+          isDark && styles.inputContainerDark
         ]}>
           <TextInput
             value={message}
@@ -118,7 +118,7 @@ export function ChatInput({
             blurOnSubmit={false}
             style={[
               styles.input,
-              colorScheme === 'dark' && styles.inputDark
+              isDark && styles.inputDark
             ]}
             accessible
             accessibilityLabel="Message input"
@@ -132,8 +132,8 @@ export function ChatInput({
           style={({ pressed, focused }) => [
             styles.sendButton,
             canSend ? styles.sendButtonActive : styles.sendButtonDisabled,
-            colorScheme === 'dark' && canSend && styles.sendButtonActiveDark,
-            colorScheme === 'dark' && !canSend && styles.sendButtonDisabledDark,
+            isDark && canSend && styles.sendButtonActiveDark,
+            isDark && !canSend && styles.sendButtonDisabledDark,
             pressed && canSend && styles.sendButtonPressed,
             focused && canSend && { 
               borderWidth: 2, 
