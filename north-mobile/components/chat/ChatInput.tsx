@@ -3,6 +3,7 @@
  * 
  * Input bar with send button, haptic feedback, disabled state, and focus indicators.
  * Handles message composition and submission with proper validation.
+ * Supports Enter key to send message.
  * 
  * Performance: Debounced input handling for smooth typing.
  * 
@@ -10,7 +11,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { View, TextInput, Pressable, Platform, useColorScheme, StyleSheet } from 'react-native';
+import { View, TextInput, Pressable, Platform, useColorScheme, StyleSheet, NativeSyntheticEvent, TextInputKeyPressEventData, Keyboard } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsOnline } from '@/stores/networkStore';
@@ -34,6 +35,7 @@ export interface ChatInputProps {
  * - Haptic feedback on send
  * - Keyboard-aware layout
  * - Focus indicators for keyboard navigation
+ * - Enter key sends message (Shift+Enter for new line)
  * 
  * @param onSend - Callback when user sends a message
  * @param disabled - Whether input is disabled (e.g., during sending)
@@ -69,12 +71,15 @@ export function ChatInput({
     }
 
     // Haptic feedback on send
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     onSend(trimmedMessage);
     setMessage('');
+    
+    // Dismiss keyboard on mobile
+    if (Platform.OS !== 'web') {
+      Keyboard.dismiss();
+    }
   }, [message, disabled, isOnline, onSend]);
 
   // Memoized text change handler with debouncing
@@ -82,14 +87,23 @@ export function ChatInput({
     setMessage(text);
   }, []);
 
+  // Handle submit editing (Enter key on iOS/Android)
+  const handleSubmitEditing = useCallback(() => {
+    handleSend();
+  }, [handleSend]);
+
   const canSend = message.trim().length > 0 && !disabled && isOnline;
 
   return (
-    <View
-      className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-3"
-    >
-      <View className="flex-row items-end gap-2">
-        <View className="flex-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl px-4 py-2">
+    <View style={[
+      styles.container,
+      colorScheme === 'dark' && styles.containerDark
+    ]}>
+      <View style={styles.inputRow}>
+        <View style={[
+          styles.inputContainer,
+          colorScheme === 'dark' && styles.inputContainerDark
+        ]}>
           <TextInput
             value={message}
             onChangeText={handleTextChange}
@@ -98,25 +112,29 @@ export function ChatInput({
             multiline
             maxLength={10000}
             editable={!disabled}
-            onSubmitEditing={handleSend}
+            onSubmitEditing={handleSubmitEditing}
+            returnKeyType="send"
+            enablesReturnKeyAutomatically={true}
             blurOnSubmit={false}
-            className="text-base text-zinc-900 dark:text-white min-h-[40px] max-h-[120px]"
+            style={[
+              styles.input,
+              colorScheme === 'dark' && styles.inputDark
+            ]}
             accessible
             accessibilityLabel="Message input"
-            accessibilityHint="Type your message here"
+            accessibilityHint="Type your message here. Press Enter or the send button to send."
           />
         </View>
 
         <Pressable
           onPress={handleSend}
           disabled={!canSend}
-          style={({ focused }) => [
+          style={({ pressed, focused }) => [
             styles.sendButton,
-            {
-              backgroundColor: canSend
-                ? (colorScheme === 'dark' ? '#FAFAFA' : '#09090B')
-                : (colorScheme === 'dark' ? '#27272A' : '#E4E4E7'),
-            },
+            canSend ? styles.sendButtonActive : styles.sendButtonDisabled,
+            colorScheme === 'dark' && canSend && styles.sendButtonActiveDark,
+            colorScheme === 'dark' && !canSend && styles.sendButtonDisabledDark,
+            pressed && canSend && styles.sendButtonPressed,
             focused && canSend && { 
               borderWidth: 2, 
               borderColor: focusColor,
@@ -126,11 +144,13 @@ export function ChatInput({
           accessibilityRole="button"
           accessibilityLabel="Send message"
           accessibilityState={{ disabled: !canSend }}
+          accessibilityHint="Sends your message to the coach"
         >
           <Ionicons
-            name="arrow-up"
-            size={20}
+            name="send"
+            size={18}
             color={canSend ? '#FFFFFF' : '#A1A1AA'}
+            style={styles.sendIcon}
           />
         </Pressable>
       </View>
@@ -139,11 +159,69 @@ export function ChatInput({
 }
 
 const styles = StyleSheet.create({
+  container: {
+    borderTopWidth: 1,
+    borderTopColor: '#E4E4E7',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+  },
+  containerDark: {
+    borderTopColor: '#27272A',
+    backgroundColor: '#09090B',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  inputContainer: {
+    flex: 1,
+    backgroundColor: '#F4F4F5',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  inputContainerDark: {
+    backgroundColor: '#18181B',
+  },
+  input: {
+    fontSize: 16,
+    color: '#09090B',
+    minHeight: 28,
+    maxHeight: 120,
+    lineHeight: 22,
+  },
+  inputDark: {
+    color: '#FAFAFA',
+  },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sendButtonActive: {
+    backgroundColor: '#09090B',
+  },
+  sendButtonActiveDark: {
+    backgroundColor: '#FAFAFA',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#E4E4E7',
+  },
+  sendButtonDisabledDark: {
+    backgroundColor: '#27272A',
+  },
+  sendButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.95 }],
+  },
+  sendIcon: {
+    marginLeft: 2, // Slight offset to center the send icon visually
   },
 });
