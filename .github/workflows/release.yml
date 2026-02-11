@@ -114,10 +114,10 @@ jobs:
         name: 🔐 Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          create_credentials_file: true
-          token_format: 'access_token'
           workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.SERVICE_ACCOUNT_EMAIL }}
+          create_credentials_file: true
+          export_environment_variables: true
 
       - name: 🚀 Submit to Play Store
         run: eas submit --platform android --latest --non-interactive
@@ -126,7 +126,6 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
 
       - name: 📢 Notify Success
         if: success()

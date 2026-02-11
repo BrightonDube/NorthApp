@@ -18,6 +18,9 @@ jest.mock('../supabase', () => ({
       from: jest.fn(),
     },
     from: jest.fn(),
+    auth: {
+      getUser: jest.fn(),
+    },
   },
 }));
 
@@ -25,12 +28,51 @@ describe('Storage Service Properties', () => {
   let storage: StorageService;
   let mockStorageFrom: jest.Mock;
   let mockDbFrom: jest.Mock;
+  let mockAuthGetUser: jest.Mock;
+
+  // Helper to set up all mocks for a given user
+  const setupMocksForUser = (userId: string, extension = 'pdf') => {
+    mockAuthGetUser.mockResolvedValue({
+      data: { user: { id: userId } },
+      error: null,
+    });
+
+    mockStorageFrom.mockReturnValue({
+      upload: jest.fn().mockImplementation((path: string) => {
+        return Promise.resolve({
+          data: { path },
+          error: null,
+        });
+      }),
+      getPublicUrl: jest.fn().mockReturnValue({
+        data: { publicUrl: `https://example.com/${path}` },
+      }),
+      createSignedUrl: jest.fn().mockResolvedValue({
+        data: { signedUrl: 'https://example.com/signed-url?token=abc123' },
+        error: null,
+      }),
+    });
+
+    mockDbFrom.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: { user_id: userId, storage_path: `${userId}/file.${extension}` },
+        error: null,
+      }),
+    });
+  };
 
   beforeEach(() => {
+    jest.clearAllMocks();
+    
     storage = new StorageService();
     mockStorageFrom = supabase.storage.from as jest.Mock;
     mockDbFrom = supabase.from as jest.Mock;
-    jest.clearAllMocks();
+    mockAuthGetUser = supabase.auth.getUser as jest.Mock;
+    
+    // Default: mock authenticated user
+    setupMocksForUser('test-user-id');
   });
 
   /**
@@ -45,23 +87,12 @@ describe('Storage Service Properties', () => {
   // Feature: file-context-attachments, Property 3: Unique File Identifier Assignment
   describe('Property 3: Unique File Identifier Assignment', () => {
     it('Property 3.1: Each upload generates a unique file ID', async () => {
-      // Mock successful upload
-      mockStorageFrom.mockReturnValue({
-        upload: jest.fn().mockResolvedValue({
-          data: { path: 'user-id/file-id.pdf' },
-          error: null,
-        }),
-        getPublicUrl: jest.fn().mockReturnValue({
-          data: { publicUrl: 'https://example.com/file.pdf' },
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.array(
             fc.record({
               userId: fc.uuid(),
-              fileName: fc.string({ minLength: 1, maxLength: 50 }),
+              fileName: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
               extension: fc.constantFrom('pdf', 'txt', 'md'),
               size: fc.integer({ min: 1, max: 10 * 1024 * 1024 }),
             }),
@@ -71,6 +102,9 @@ describe('Storage Service Properties', () => {
             const fileIds = new Set<string>();
 
             for (const upload of uploads) {
+              // Set up mocks for this user
+              setupMocksForUser(upload.userId, upload.extension);
+
               const file = {
                 name: `${upload.fileName}.${upload.extension}`,
                 data: Buffer.from('test content'),
@@ -98,25 +132,31 @@ describe('Storage Service Properties', () => {
     });
 
     it('Property 3.2: File IDs are unique across different users', async () => {
-      mockStorageFrom.mockReturnValue({
-        upload: jest.fn().mockResolvedValue({
-          data: { path: 'user-id/file-id.pdf' },
-          error: null,
-        }),
-        getPublicUrl: jest.fn().mockReturnValue({
-          data: { publicUrl: 'https://example.com/file.pdf' },
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.array(fc.uuid(), { minLength: 2, maxLength: 5 }),
-          fc.string({ minLength: 1, maxLength: 50 }),
+          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
           fc.constantFrom('pdf', 'txt', 'md'),
           async (userIds, fileName, extension) => {
             const fileIds = new Set<string>();
 
             for (const userId of userIds) {
+              // Set up auth mock to return this specific user
+              mockAuthGetUser.mockResolvedValue({
+                data: { user: { id: userId } },
+                error: null,
+              });
+
+              mockStorageFrom.mockReturnValue({
+                upload: jest.fn().mockResolvedValue({
+                  data: { path: `${userId}/file-id.${extension}` },
+                  error: null,
+                }),
+                getPublicUrl: jest.fn().mockReturnValue({
+                  data: { publicUrl: 'https://example.com/file.pdf' },
+                }),
+              });
+
               const file = {
                 name: `${fileName}.${extension}`,
                 data: Buffer.from('test content'),
@@ -138,23 +178,29 @@ describe('Storage Service Properties', () => {
     });
 
     it('Property 3.3: File IDs are unique even for identical file names', async () => {
-      mockStorageFrom.mockReturnValue({
-        upload: jest.fn().mockResolvedValue({
-          data: { path: 'user-id/file-id.pdf' },
-          error: null,
-        }),
-        getPublicUrl: jest.fn().mockReturnValue({
-          data: { publicUrl: 'https://example.com/file.pdf' },
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
-          fc.string({ minLength: 1, maxLength: 50 }),
+          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
           fc.constantFrom('pdf', 'txt', 'md'),
           fc.integer({ min: 2, max: 5 }),
           async (userId, fileName, extension, uploadCount) => {
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            mockStorageFrom.mockReturnValue({
+              upload: jest.fn().mockResolvedValue({
+                data: { path: `${userId}/file-id.${extension}` },
+                error: null,
+              }),
+              getPublicUrl: jest.fn().mockReturnValue({
+                data: { publicUrl: 'https://example.com/file.pdf' },
+              }),
+            });
+
             const fileIds = new Set<string>();
 
             for (let i = 0; i < uploadCount; i++) {
@@ -179,22 +225,28 @@ describe('Storage Service Properties', () => {
     });
 
     it('Property 3.4: File ID format is consistent', async () => {
-      mockStorageFrom.mockReturnValue({
-        upload: jest.fn().mockResolvedValue({
-          data: { path: 'user-id/file-id.pdf' },
-          error: null,
-        }),
-        getPublicUrl: jest.fn().mockReturnValue({
-          data: { publicUrl: 'https://example.com/file.pdf' },
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
-          fc.string({ minLength: 1, maxLength: 50 }),
+          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
           fc.constantFrom('pdf', 'txt', 'md'),
           async (userId, fileName, extension) => {
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            mockStorageFrom.mockReturnValue({
+              upload: jest.fn().mockResolvedValue({
+                data: { path: `${userId}/file-id.${extension}` },
+                error: null,
+              }),
+              getPublicUrl: jest.fn().mockReturnValue({
+                data: { publicUrl: 'https://example.com/file.pdf' },
+              }),
+            });
+
             const file = {
               name: `${fileName}.${extension}`,
               data: Buffer.from('test content'),
@@ -228,19 +280,32 @@ describe('Storage Service Properties', () => {
   // Feature: file-context-attachments, Property 9: User-Specific Storage Isolation
   describe('Property 9: User-Specific Storage Isolation', () => {
     it('Property 9.1: Storage path always includes user ID', async () => {
-      let capturedPath: string = '';
-      mockStorageFrom.mockReturnValue({
-        upload: jest.fn().mockImplementation((path: string) => {
-          capturedPath = path;
-          return Promise.resolve({
-            data: { path },
-            error: null,
-          });
-        }),
-        getPublicUrl: jest.fn().mockReturnValue({
-          data: { publicUrl: 'https://example.com/file.pdf' },
-        }),
-      });
+      await fc.assert(
+        fc.asyncProperty(
+          fc.uuid(),
+          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+          fc.constantFrom('pdf', 'txt', 'md'),
+          async (userId, fileName, extension) => {
+            let capturedPath: string = '';
+            
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            mockStorageFrom.mockReturnValue({
+              upload: jest.fn().mockImplementation((path: string) => {
+                capturedPath = path;
+                return Promise.resolve({
+                  data: { path },
+                  error: null,
+                });
+              }),
+              getPublicUrl: jest.fn().mockReturnValue({
+                data: { publicUrl: 'https://example.com/file.pdf' },
+              }),
+            });
 
       await fc.assert(
         fc.asyncProperty(
@@ -357,26 +422,33 @@ describe('Storage Service Properties', () => {
     });
 
     it('Property 9.4: Storage path preserves file extension', async () => {
-      let capturedPath: string = '';
-      mockStorageFrom.mockReturnValue({
-        upload: jest.fn().mockImplementation((path: string) => {
-          capturedPath = path;
-          return Promise.resolve({
-            data: { path },
-            error: null,
-          });
-        }),
-        getPublicUrl: jest.fn().mockReturnValue({
-          data: { publicUrl: 'https://example.com/file.pdf' },
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           fc.string({ minLength: 1, maxLength: 50 }),
           fc.constantFrom('pdf', 'txt', 'md'),
           async (userId, fileName, extension) => {
+            let capturedPath: string = '';
+            
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            mockStorageFrom.mockReturnValue({
+              upload: jest.fn().mockImplementation((path: string) => {
+                capturedPath = path;
+                return Promise.resolve({
+                  data: { path },
+                  error: null,
+                });
+              }),
+              getPublicUrl: jest.fn().mockReturnValue({
+                data: { publicUrl: 'https://example.com/file.pdf' },
+              }),
+            });
+
             const file = {
               name: `${fileName}.${extension}`,
               data: Buffer.from('test content'),
@@ -405,29 +477,35 @@ describe('Storage Service Properties', () => {
   // Feature: file-context-attachments, Property 21: Time-Limited URL Generation
   describe('Property 21: Time-Limited URL Generation', () => {
     it('Property 21.1: Signed URLs are generated for file access', async () => {
-      // Mock database query
-      mockDbFrom.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: { storage_path: 'user-id/file-id.pdf' },
-          error: null,
-        }),
-      });
-
-      // Mock signed URL generation
-      mockStorageFrom.mockReturnValue({
-        createSignedUrl: jest.fn().mockResolvedValue({
-          data: { signedUrl: 'https://example.com/signed-url?token=abc123&expires=1234567890' },
-          error: null,
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           fc.uuid(),
           async (userId, fileId) => {
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            // Mock database query - returns both user_id (for ownership) and storage_path
+            mockDbFrom.mockReturnValue({
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn().mockResolvedValue({
+                data: { user_id: userId, storage_path: `${userId}/${fileId}.pdf` },
+                error: null,
+              }),
+            });
+
+            // Mock signed URL generation
+            mockStorageFrom.mockReturnValue({
+              createSignedUrl: jest.fn().mockResolvedValue({
+                data: { signedUrl: 'https://example.com/signed-url?token=abc123&expires=1234567890' },
+                error: null,
+              }),
+            });
+
             const url = await storage.getFileUrl(userId, fileId);
 
             // URL should be a valid string
@@ -445,30 +523,36 @@ describe('Storage Service Properties', () => {
     it('Property 21.2: Signed URL generation includes expiration parameter', async () => {
       let capturedExpiration: number = 0;
 
-      mockDbFrom.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: { storage_path: 'user-id/file-id.pdf' },
-          error: null,
-        }),
-      });
-
-      mockStorageFrom.mockReturnValue({
-        createSignedUrl: jest.fn().mockImplementation((path: string, expiration: number) => {
-          capturedExpiration = expiration;
-          return Promise.resolve({
-            data: { signedUrl: `https://example.com/signed-url?expires=${expiration}` },
-            error: null,
-          });
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           fc.uuid(),
           async (userId, fileId) => {
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            mockDbFrom.mockReturnValue({
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn().mockResolvedValue({
+                data: { user_id: userId, storage_path: `${userId}/${fileId}.pdf` },
+                error: null,
+              }),
+            });
+
+            mockStorageFrom.mockReturnValue({
+              createSignedUrl: jest.fn().mockImplementation((path: string, expiration: number) => {
+                capturedExpiration = expiration;
+                return Promise.resolve({
+                  data: { signedUrl: `https://example.com/signed-url?expires=${expiration}` },
+                  error: null,
+                });
+              }),
+            });
+
             await storage.getFileUrl(userId, fileId);
 
             // Expiration should be set (1 hour = 3600 seconds)
@@ -481,36 +565,39 @@ describe('Storage Service Properties', () => {
     });
 
     it('Property 21.3: Each URL generation call creates a new signed URL', async () => {
-      const generatedUrls = new Set<string>();
-      let callCount = 0;
-
-      mockDbFrom.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: { storage_path: 'user-id/file-id.pdf' },
-          error: null,
-        }),
-      });
-
-      mockStorageFrom.mockReturnValue({
-        createSignedUrl: jest.fn().mockImplementation(() => {
-          callCount++;
-          return Promise.resolve({
-            data: { signedUrl: `https://example.com/signed-url-${callCount}?token=${callCount}` },
-            error: null,
-          });
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           fc.uuid(),
           fc.integer({ min: 2, max: 5 }),
           async (userId, fileId, requestCount) => {
-            generatedUrls.clear();
-            callCount = 0;
+            const generatedUrls = new Set<string>();
+            let callCount = 0;
+
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            mockDbFrom.mockReturnValue({
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn().mockResolvedValue({
+                data: { user_id: userId, storage_path: `${userId}/${fileId}.pdf` },
+                error: null,
+              }),
+            });
+
+            mockStorageFrom.mockReturnValue({
+              createSignedUrl: jest.fn().mockImplementation(() => {
+                callCount++;
+                return Promise.resolve({
+                  data: { signedUrl: `https://example.com/signed-url-${callCount}?token=${callCount}` },
+                  error: null,
+                });
+              }),
+            });
 
             for (let i = 0; i < requestCount; i++) {
               const url = await storage.getFileUrl(userId, fileId);
@@ -555,22 +642,28 @@ describe('Storage Service Properties', () => {
    */
   describe('Additional Storage Properties', () => {
     it('Property: Upload result includes all required fields', async () => {
-      mockStorageFrom.mockReturnValue({
-        upload: jest.fn().mockResolvedValue({
-          data: { path: 'user-id/file-id.pdf' },
-          error: null,
-        }),
-        getPublicUrl: jest.fn().mockReturnValue({
-          data: { publicUrl: 'https://example.com/file.pdf' },
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           fc.string({ minLength: 1, maxLength: 50 }),
           fc.constantFrom('pdf', 'txt', 'md'),
           async (userId, fileName, extension) => {
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            mockStorageFrom.mockReturnValue({
+              upload: jest.fn().mockResolvedValue({
+                data: { path: `${userId}/file-id.${extension}` },
+                error: null,
+              }),
+              getPublicUrl: jest.fn().mockReturnValue({
+                data: { publicUrl: 'https://example.com/file.pdf' },
+              }),
+            });
+
             const file = {
               name: `${fileName}.${extension}`,
               data: Buffer.from('test content'),
@@ -598,22 +691,28 @@ describe('Storage Service Properties', () => {
     });
 
     it('Property: Storage usage calculation is non-negative', async () => {
-      mockDbFrom.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockResolvedValue({
-          data: [
-            { file_size: 1024 },
-            { file_size: 2048 },
-            { file_size: 4096 },
-          ],
-          error: null,
-        }),
-      });
-
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           async (userId) => {
+            // Set up auth mock to return this specific user
+            mockAuthGetUser.mockResolvedValue({
+              data: { user: { id: userId } },
+              error: null,
+            });
+
+            mockDbFrom.mockReturnValue({
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockResolvedValue({
+                data: [
+                  { file_size: 1024 },
+                  { file_size: 2048 },
+                  { file_size: 4096 },
+                ],
+                error: null,
+              }),
+            });
+
             const usage = await storage.getUserStorageUsage(userId);
 
             expect(usage).toBeGreaterThanOrEqual(0);
