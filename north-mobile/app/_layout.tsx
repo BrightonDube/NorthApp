@@ -1,7 +1,7 @@
 import '../global.css';
 import { useEffect, useState, Suspense, lazy } from 'react';
 import { Stack, useRouter, useSegments, SplashScreen } from 'expo-router';
-import { View, ActivityIndicator, AppState, AppStateStatus, AccessibilityInfo } from 'react-native';
+import { View, ActivityIndicator, AppState, AppStateStatus, AccessibilityInfo, LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore, setupAuthListener } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
@@ -22,6 +22,14 @@ import {
   PERFORMANCE_MARKS,
   setupPerformanceObserver 
 } from '@/lib/performance';
+
+// Suppress non-critical warnings
+// These warnings don't impact functionality and only add noise to the console
+LogBox.ignoreLogs([
+  'SafeAreaView has been deprecated',        // Using SafeAreaProvider instead
+  'Error registering for push notifications', // Expected in development/simulator
+  'Error fetching offerings',                 // Expected when RevenueCat is not configured
+]);
 
 // Lazy load non-critical screens to improve startup performance
 // These screens are only loaded when the user navigates to them

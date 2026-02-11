@@ -13,6 +13,7 @@
 
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -43,6 +44,7 @@ function TabIcon({ icon, label, focused }: { icon: string; label: string; focuse
 export default function TabsLayout() {
   const prefersReducedMotion = useReducedMotion();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
   
   // Check if user is admin
   const isAdmin = user?.email === ADMIN_EMAIL || user?.isAdmin === true;
@@ -56,8 +58,8 @@ export default function TabsLayout() {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E5E7EB',
-          height: 80,
-          paddingBottom: 20,
+          height: 80 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 20,
         },
         tabBarActiveTintColor: '#3B82F6',
         tabBarInactiveTintColor: '#9CA3AF',
