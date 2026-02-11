@@ -88,6 +88,15 @@ export function getDefaultCategory(): CoachCategory {
 }
 
 /**
+ * Normalize coach category to ensure it defaults to General if null or undefined
+ * 
+ * Validates: Requirements 5.5
+ */
+export function normalizeCategory(category: CoachCategory | null | undefined): CoachCategory {
+  return category ?? CoachCategory.GENERAL;
+}
+
+/**
  * Create an InstalledCoach from a PublicCoach
  * Used when a user installs a coach from the marketplace
  * 

@@ -78,8 +78,11 @@ export class CoachSearchEngine implements SearchEngine {
       return text;
     }
     
+    // Trim the query before processing
+    const trimmedQuery = query.trim();
+    
     // Escape special regex characters in the query
-    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedQuery = trimmedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     
     // Create regex with case-insensitive flag and global flag
     const regex = new RegExp(`(${escapedQuery})`, 'gi');

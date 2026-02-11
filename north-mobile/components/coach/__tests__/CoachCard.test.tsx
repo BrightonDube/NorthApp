@@ -97,7 +97,7 @@ describe('CoachCard', () => {
         <CoachCard coach={mockCoach} onPress={() => {}} />
       );
 
-      expect(getByLabelText('Chat with Strategy Coach')).toBeTruthy();
+      expect(getByLabelText('Chat with Strategy Coach. You are a strategic thinking coach')).toBeTruthy();
     });
 
     it('does not show share button in default mode', () => {
@@ -207,7 +207,7 @@ describe('CoachCard', () => {
         />
       );
 
-      expect(getByLabelText('Preview Public Strategy Coach')).toBeTruthy();
+      expect(getByLabelText('Preview Public Strategy Coach. You are a strategic thinking coach')).toBeTruthy();
     });
 
     it('truncates long descriptions to 2 lines', () => {
