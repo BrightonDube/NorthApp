@@ -60,8 +60,8 @@ const publicCoachArb = fc.record({
   category: coachCategoryArb,
   is_featured: fc.boolean(),
   source_coach_id: fc.constant(null),
-  created_at: fc.date({ min: new Date('2020-01-01'), max: new Date() }).map(d => d.toISOString()),
-  updated_at: fc.date({ min: new Date('2020-01-01'), max: new Date() }).map(d => d.toISOString()),
+  created_at: fc.date({ min: new Date('2020-01-01'), max: new Date() }).map(d => d?.toISOString?.() || new Date().toISOString()),
+  updated_at: fc.date({ min: new Date('2020-01-01'), max: new Date() }).map(d => d?.toISOString?.() || new Date().toISOString()),
 });
 
 describe('Coach Preview Property-Based Tests', () => {

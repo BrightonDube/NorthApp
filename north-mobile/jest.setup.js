@@ -307,6 +307,15 @@ jest.mock('@react-native-community/netinfo', () => ({
   })),
 }));
 
+// Mock NativeWind
+jest.mock('nativewind', () => ({
+  useColorScheme: jest.fn(() => ({
+    colorScheme: 'light',
+    setColorScheme: jest.fn(),
+    toggleColorScheme: jest.fn(),
+  })),
+}));
+
 // Silence console warnings in tests
 global.console = {
   ...console,

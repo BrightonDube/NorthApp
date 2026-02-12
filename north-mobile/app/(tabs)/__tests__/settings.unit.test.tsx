@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import SettingsScreen from '../settings';
 import { useAuthStore } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 // Mock navigation
 const mockReplace = jest.fn();
@@ -70,6 +71,11 @@ jest.mock('@/components/billing/PaywallModal', () => ({
   PaywallModal: () => null,
 }));
 
+// Helper to render with ThemeProvider
+const renderWithTheme = (component: React.ReactElement) => {
+  return render(<ThemeProvider>{component}</ThemeProvider>);
+};
+
 describe('Settings Screen - Theme Toggle', () => {
   const mockUser = {
     id: 'user-123',
@@ -101,9 +107,9 @@ describe('Settings Screen - Theme Toggle', () => {
   describe('Theme Toggle Behavior', () => {
     it('should display current theme preference', async () => {
       // Set initial theme
-      await AsyncStorage.setItem('@north/theme', 'dark');
+      await AsyncStorage.setItem('@north/theme_preference', 'dark');
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
       // Wait for theme to load
       await waitFor(() => {
@@ -111,16 +117,16 @@ describe('Settings Screen - Theme Toggle', () => {
       });
     });
 
-    it('should default to System theme when no preference is saved', async () => {
-      const { getByText } = render(<SettingsScreen />);
+    it('should default to Light theme when no preference is saved', async () => {
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
       await waitFor(() => {
-        expect(getByText('System')).toBeTruthy();
+        expect(getByText('Light')).toBeTruthy();
       });
     });
 
     it('should open theme modal when theme row is pressed', async () => {
-      const { getByText, getByLabelText } = render(<SettingsScreen />);
+      const { getByText, getByLabelText } = renderWithTheme(<SettingsScreen />);
 
       // Find and press the theme row
       const themeRow = getByText('Theme').parent?.parent;
@@ -135,7 +141,7 @@ describe('Settings Screen - Theme Toggle', () => {
     });
 
     it('should display all theme options in modal', async () => {
-      const { getByText, getAllByText } = render(<SettingsScreen />);
+      const { getByText, getAllByText } = renderWithTheme(<SettingsScreen />);
 
       // Open theme modal
       const themeRow = getByText('Theme').parent?.parent;
@@ -151,9 +157,9 @@ describe('Settings Screen - Theme Toggle', () => {
     });
 
     it('should show checkmark on current theme option', async () => {
-      await AsyncStorage.setItem('@north/theme', 'light');
+      await AsyncStorage.setItem('@north/theme_preference', 'light');
 
-      const { getByText, UNSAFE_getByProps } = render(<SettingsScreen />);
+      const { getByText, UNSAFE_getByProps } = renderWithTheme(<SettingsScreen />);
 
       // Open theme modal
       const themeRow = getByText('Theme').parent?.parent;
@@ -167,7 +173,7 @@ describe('Settings Screen - Theme Toggle', () => {
     });
 
     it('should save theme preference when option is selected', async () => {
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
       // Open theme modal
       const themeRow = getByText('Theme').parent?.parent;
@@ -181,13 +187,13 @@ describe('Settings Screen - Theme Toggle', () => {
 
       // Verify saved to AsyncStorage
       await waitFor(async () => {
-        const savedTheme = await AsyncStorage.getItem('@north/theme');
+        const savedTheme = await AsyncStorage.getItem('@north/theme_preference');
         expect(savedTheme).toBe('dark');
       });
     });
 
     it('should close modal after theme selection', async () => {
-      const { getByText, queryByText } = render(<SettingsScreen />);
+      const { getByText, queryByText } = renderWithTheme(<SettingsScreen />);
 
       // Open theme modal
       const themeRow = getByText('Theme').parent?.parent;
@@ -197,18 +203,23 @@ describe('Settings Screen - Theme Toggle', () => {
         expect(getByText('Choose Theme')).toBeTruthy();
       });
 
-      // Select a theme
-      const lightOption = getByText('Light');
-      fireEvent.press(lightOption);
+      // Select a different theme (Dark instead of Light)
+      await waitFor(() => {
+        const darkOption = getByText('Dark');
+        fireEvent.press(darkOption);
+      });
 
-      // Modal should close - wait a bit longer for the state update
+      // Wait a moment for state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Modal should close
       await waitFor(() => {
         expect(queryByText('Choose Theme')).toBeNull();
-      }, { timeout: 3000 });
+      }, { timeout: 2000 });
     });
 
-    it('should show alert after theme change', async () => {
-      const { getByText } = render(<SettingsScreen />);
+    it('should update theme mode when theme is selected', async () => {
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
       // Open theme modal
       const themeRow = getByText('Theme').parent?.parent;
@@ -220,44 +231,40 @@ describe('Settings Screen - Theme Toggle', () => {
         fireEvent.press(darkOption);
       });
 
-      // Verify alert was shown
+      // Verify theme value updates (no alert needed with instant theme switching)
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Theme Updated',
-          'Theme set to dark. Restart the app to see changes.',
-          [{ text: 'OK' }]
-        );
+        expect(getByText('Dark')).toBeTruthy();
       });
     });
 
     it('should update displayed theme value after selection', async () => {
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
-      // Initial theme should be System
+      // Initial theme should be Light (default)
       await waitFor(() => {
-        expect(getByText('System')).toBeTruthy();
+        expect(getByText('Light')).toBeTruthy();
       });
 
       // Open theme modal
       const themeRow = getByText('Theme').parent?.parent;
       fireEvent.press(themeRow!);
 
-      // Select light theme
+      // Select dark theme
       await waitFor(() => {
-        const lightOption = getByText('Light');
-        fireEvent.press(lightOption);
+        const darkOption = getByText('Dark');
+        fireEvent.press(darkOption);
       });
 
       // Wait for modal to close and value to update
       await waitFor(() => {
-        // The theme value should now show "Light"
-        const themeValues = screen.getAllByText('Light');
+        // The theme value should now show "Dark"
+        const themeValues = screen.getAllByText('Dark');
         expect(themeValues.length).toBeGreaterThan(0);
       });
     });
 
     it('should handle theme toggle sequence correctly', async () => {
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
       const themes = ['light', 'dark', 'system'];
       const themeLabels = ['Light', 'Dark', 'System'];
@@ -275,14 +282,14 @@ describe('Settings Screen - Theme Toggle', () => {
 
         // Verify saved
         await waitFor(async () => {
-          const savedTheme = await AsyncStorage.getItem('@north/theme');
+          const savedTheme = await AsyncStorage.getItem('@north/theme_preference');
           expect(savedTheme).toBe(themes[i]);
         });
       }
     });
 
     it('should close modal when overlay is pressed', async () => {
-      const { getByText, queryByText, getByTestId } = render(<SettingsScreen />);
+      const { getByText, queryByText, getByTestId } = renderWithTheme(<SettingsScreen />);
 
       // Open theme modal
       const themeRow = getByText('Theme').parent?.parent;
@@ -304,7 +311,7 @@ describe('Settings Screen - Theme Toggle', () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
       jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('Storage error'));
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
       // Open theme modal
       const themeRow = getByText('Theme').parent?.parent;
@@ -316,18 +323,21 @@ describe('Settings Screen - Theme Toggle', () => {
         fireEvent.press(darkOption);
       });
 
-      // Should show error alert
+      // Should log error to console (no alert shown)
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith('Error', 'Failed to save theme preference');
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[Theme] Error saving preference'),
+          expect.anything()
+        );
       });
 
       consoleErrorSpy.mockRestore();
     });
 
     it('should load theme preference on mount', async () => {
-      await AsyncStorage.setItem('@north/theme', 'dark');
+      await AsyncStorage.setItem('@north/theme_preference', 'dark');
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
       // Should display the saved theme
       await waitFor(() => {
@@ -337,14 +347,15 @@ describe('Settings Screen - Theme Toggle', () => {
 
     it('should handle invalid theme values gracefully', async () => {
       // Set an invalid theme value
-      await AsyncStorage.setItem('@north/theme', 'invalid-theme');
+      await AsyncStorage.setItem('@north/theme_preference', 'invalid-theme');
 
-      const { getByText } = render(<SettingsScreen />);
+      const { getByText } = renderWithTheme(<SettingsScreen />);
 
-      // Should default to System
+      // Should default to Light (the default theme)
       await waitFor(() => {
-        expect(getByText('System')).toBeTruthy();
+        expect(getByText('Light')).toBeTruthy();
       });
     });
   });
 });
+

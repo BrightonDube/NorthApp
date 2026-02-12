@@ -321,6 +321,9 @@ describe('Data Model Validation - Property-Based Tests', () => {
               systemPrompt,
               creatorId,
               isPublic,
+              category: 'general' as const,
+              isFeatured: false,
+              sourceCoachId: null,
               createdAt,
               updatedAt,
             };

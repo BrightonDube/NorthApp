@@ -280,14 +280,14 @@ describe('Storage Service Properties', () => {
   // Feature: file-context-attachments, Property 9: User-Specific Storage Isolation
   describe('Property 9: User-Specific Storage Isolation', () => {
     it('Property 9.1: Storage path always includes user ID', async () => {
+      let capturedPath: string = '';
+
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
           fc.constantFrom('pdf', 'txt', 'md'),
           async (userId, fileName, extension) => {
-            let capturedPath: string = '';
-            
             // Set up auth mock to return this specific user
             mockAuthGetUser.mockResolvedValue({
               data: { user: { id: userId } },
@@ -307,12 +307,6 @@ describe('Storage Service Properties', () => {
               }),
             });
 
-      await fc.assert(
-        fc.asyncProperty(
-          fc.uuid(),
-          fc.string({ minLength: 1, maxLength: 50 }),
-          fc.constantFrom('pdf', 'txt', 'md'),
-          async (userId, fileName, extension) => {
             const file = {
               name: `${fileName}.${extension}`,
               data: Buffer.from('test content'),

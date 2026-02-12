@@ -107,6 +107,9 @@ describe('Type Definitions', () => {
         systemPrompt: 'You are a strategic thinking coach.',
         creatorId: null,
         isPublic: false,
+        category: 'general',
+        isFeatured: false,
+        sourceCoachId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -124,6 +127,9 @@ describe('Type Definitions', () => {
         systemPrompt: 'Custom prompt',
         creatorId: 'user-1',
         isPublic: false,
+        category: 'general',
+        isFeatured: false,
+        sourceCoachId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -354,6 +360,9 @@ describe('Type Definitions', () => {
         systemPrompt: 'Test prompt',
         creatorId: null,
         isPublic: false,
+        category: 'general',
+        isFeatured: false,
+        sourceCoachId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -486,6 +495,9 @@ describe('Type Definitions', () => {
         systemPrompt: 'You are a strategic thinking coach.',
         creatorId: null,
         isPublic: false,
+        category: 'general',
+        isFeatured: false,
+        sourceCoachId: null,
       };
 
       expect(seed.name).toBe('Strategy Coach');
