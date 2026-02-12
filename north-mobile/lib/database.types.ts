@@ -100,6 +100,10 @@ export interface Database {
           source_coach_id: string | null
           created_at: string
           updated_at: string
+          theme_color: string | null
+          about: string | null
+          expectations: string[] | null
+          tags: string[] | null
         }
         Insert: {
           id?: string
@@ -113,6 +117,10 @@ export interface Database {
           source_coach_id?: string | null
           created_at?: string
           updated_at?: string
+          theme_color?: string | null
+          about?: string | null
+          expectations?: string[] | null
+          tags?: string[] | null
         }
         Update: {
           id?: string
@@ -126,6 +134,10 @@ export interface Database {
           source_coach_id?: string | null
           created_at?: string
           updated_at?: string
+          theme_color?: string | null
+          about?: string | null
+          expectations?: string[] | null
+          tags?: string[] | null
         }
         Relationships: [
           {

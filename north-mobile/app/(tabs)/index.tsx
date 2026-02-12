@@ -36,6 +36,7 @@ import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { CoachGridSkeleton } from '@/components/SkeletonLoader';
 import { Logo } from '@/components/Logo';
+import { useTheme } from '@/lib/theme';
 import type { Coach } from '@/types';
 
 /**
@@ -65,24 +66,26 @@ function ProBadge() {
  * Pro Features Banner
  */
 function ProFeaturesBanner() {
+  const { colors } = useTheme();
+  
   return (
     <View style={styles.proFeaturesBanner}>
       <View style={styles.proFeaturesHeader}>
-        <Ionicons name="diamond" size={20} color="#09090B" />
-        <Text style={styles.proFeaturesTitle}>Pro Features Unlocked</Text>
+        <Ionicons name="diamond" size={20} color={colors.text} />
+        <Text style={[styles.proFeaturesTitle, { color: colors.text }]}>Pro Features Unlocked</Text>
       </View>
       <View style={styles.proFeaturesList}>
         <View style={styles.proFeatureItem}>
           <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-          <Text style={styles.proFeatureText}>Unlimited context items</Text>
+          <Text style={[styles.proFeatureText, { color: colors.textSecondary }]}>Unlimited context items</Text>
         </View>
         <View style={styles.proFeatureItem}>
           <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-          <Text style={styles.proFeatureText}>Create custom coaches</Text>
+          <Text style={[styles.proFeatureText, { color: colors.textSecondary }]}>Create custom coaches</Text>
         </View>
         <View style={styles.proFeatureItem}>
           <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-          <Text style={styles.proFeatureText}>Priority AI responses</Text>
+          <Text style={[styles.proFeatureText, { color: colors.textSecondary }]}>Priority AI responses</Text>
         </View>
       </View>
     </View>
@@ -94,16 +97,18 @@ function ProFeaturesBanner() {
  * With subtitle for clarity
  */
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const { colors } = useTheme();
+  
   return (
     <View style={styles.sectionHeader}>
       <Text 
-        style={styles.sectionTitle}
+        style={[styles.sectionTitle, { color: colors.text }]}
         accessibilityRole="header"
       >
         {title}
       </Text>
       {subtitle && (
-        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>{subtitle}</Text>
       )}
     </View>
   );
@@ -114,6 +119,8 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
  * Simplified: solid background, no dashed border, cleaner design
  */
 function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProUser: boolean }) {
+  const { colors } = useTheme();
+  
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress();
@@ -124,24 +131,25 @@ function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProU
       onPress={handlePress}
       style={({ pressed }) => [
         styles.createButton,
+        { backgroundColor: colors.backgroundTertiary },
         pressed && styles.createButtonPressed,
       ]}
       accessibilityRole="button"
       accessibilityLabel="Create custom coach"
       accessibilityHint="Opens coach creation modal (Pro feature)"
     >
-      <View style={styles.createIconContainer}>
-        <Ionicons name="add" size={28} color="#09090B" />
+      <View style={[styles.createIconContainer, { backgroundColor: colors.card }]}>
+        <Ionicons name="add" size={28} color={colors.text} />
       </View>
       <View style={styles.createContent}>
-        <Text style={styles.createTitle}>Create Custom Coach</Text>
-        <Text style={styles.createSubtitle}>
+        <Text style={[styles.createTitle, { color: colors.text }]}>Create Custom Coach</Text>
+        <Text style={[styles.createSubtitle, { color: colors.textTertiary }]}>
           {isProUser ? 'Design your own AI advisor' : 'Upgrade to Pro to unlock'}
         </Text>
       </View>
       {!isProUser && (
-        <View style={styles.createLockBadge}>
-          <Ionicons name="lock-closed" size={14} color="#71717A" />
+        <View style={[styles.createLockBadge, { backgroundColor: colors.backgroundTertiary }]}>
+          <Ionicons name="lock-closed" size={14} color={colors.textTertiary} />
         </View>
       )}
     </Pressable>
@@ -152,6 +160,8 @@ function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProU
  * Empty State Component
  */
 function EmptyState() {
+  const { colors } = useTheme();
+  
   return (
     <View 
       style={styles.emptyState}
@@ -161,12 +171,12 @@ function EmptyState() {
     >
       <Text style={styles.emptyIcon}>🎯</Text>
       <Text 
-        style={styles.emptyTitle}
+        style={[styles.emptyTitle, { color: colors.text }]}
         accessibilityRole="header"
       >
         No coaches available
       </Text>
-      <Text style={styles.emptySubtitle}>Pull to refresh or check your connection</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>Pull to refresh or check your connection</Text>
     </View>
   );
 }
@@ -175,6 +185,8 @@ function EmptyState() {
  * Error State Component
  */
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const { colors } = useTheme();
+  
   return (
     <View 
       style={styles.emptyState}
@@ -184,15 +196,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
     >
       <Text style={styles.emptyIcon}>⚠️</Text>
       <Text 
-        style={styles.emptyTitle}
+        style={[styles.emptyTitle, { color: colors.text }]}
         accessibilityRole="header"
       >
         Something went wrong
       </Text>
-      <Text style={styles.emptySubtitle}>{message}</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>{message}</Text>
       <Pressable 
         onPress={onRetry} 
-        style={styles.retryButton}
+        style={[styles.retryButton, { backgroundColor: colors.text }]}
         accessibilityRole="button"
         accessibilityLabel="Retry loading coaches"
       >
@@ -204,6 +216,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const { user } = useAuthStore();
   const { 
     coaches, 
@@ -288,38 +301,34 @@ export default function HomeScreen() {
   // Show loading state on initial load
   if (isLoading && coaches.length === 0 && !refreshing) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { borderBottomColor: colors.borderSecondary }]}>
           <AppLogo />
           {isProUser && <ProBadge />}
         </View>
-        <View style={styles.welcomeSection}>
-          <Text style={styles.greeting}>Welcome back,</Text>
-          <Text style={styles.userName}>{user?.name || 'Friend'}</Text>
+        <View style={styles.headerSection}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>AI Coaches</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>
+            Choose a coach to start your session
+          </Text>
         </View>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.section}>
-            <SectionHeader 
-              title="Your Board of Directors" 
-              subtitle="Tap a coach to start chatting"
-            />
-            <CoachGridSkeleton count={4} />
-          </View>
+          <CoachGridSkeleton count={4} />
         </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <OfflineIndicator />
       
       {/* Fixed Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.borderSecondary }]}>
         <AppLogo />
         {isProUser && <ProBadge />}
       </View>
@@ -331,19 +340,21 @@ export default function HomeScreen() {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            tintColor="#09090B"
+            tintColor={colors.text}
           />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.greeting}>Welcome back,</Text>
+        {/* Header Section */}
+        <View style={styles.headerSection}>
           <Text 
-            style={styles.userName}
+            style={[styles.headerTitle, { color: colors.text }]}
             accessibilityRole="header"
           >
-            {user?.name || 'Friend'}
+            AI Coaches
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>
+            Choose a coach to start your session
           </Text>
         </View>
 
@@ -358,10 +369,6 @@ export default function HomeScreen() {
             {/* Default Coaches Section */}
             {defaultCoaches.length > 0 && (
               <View style={styles.section}>
-                <SectionHeader 
-                  title="Your Board of Directors" 
-                  subtitle="Tap a coach to start chatting"
-                />
                 <CoachGrid
                   coaches={defaultCoaches}
                   onCoachPress={handleCoachPress}
@@ -431,7 +438,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -440,7 +446,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -468,20 +473,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 32,
   },
-  welcomeSection: {
-    marginTop: 24,
-    marginBottom: 24,
+  headerSection: {
+    marginTop: 32,
+    marginBottom: 32,
   },
-  greeting: {
-    fontSize: 15,
-    color: '#71717A',
-    marginBottom: 4,
-  },
-  userName: {
+  headerTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#09090B',
     letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    lineHeight: 24,
   },
   proFeaturesBanner: {
     backgroundColor: '#F0FDF4',
@@ -499,7 +503,6 @@ const styles = StyleSheet.create({
   proFeaturesTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#09090B',
     marginLeft: 8,
   },
   proFeaturesList: {
@@ -511,7 +514,6 @@ const styles = StyleSheet.create({
   },
   proFeatureText: {
     fontSize: 14,
-    color: '#374151',
     marginLeft: 8,
   },
   section: {
@@ -523,28 +525,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#09090B',
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#71717A',
   },
   createButton: {
-    backgroundColor: '#F4F4F5',
     borderRadius: 20,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
   },
   createButtonPressed: {
-    backgroundColor: '#E4E4E7',
+    opacity: 0.8,
   },
   createIconContainer: {
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -555,18 +553,15 @@ const styles = StyleSheet.create({
   createTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#09090B',
     marginBottom: 4,
   },
   createSubtitle: {
     fontSize: 14,
-    color: '#71717A',
   },
   createLockBadge: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#E4E4E7',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -581,17 +576,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#09090B',
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: '#71717A',
     textAlign: 'center',
   },
   retryButton: {
     marginTop: 24,
-    backgroundColor: '#09090B',
     paddingHorizontal: 32,
     paddingVertical: 16,
     minHeight: 48,

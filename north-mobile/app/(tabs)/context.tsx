@@ -37,6 +37,7 @@ import { useBillingStore } from '@/stores/billingStore';
 import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ContextSectionSkeleton } from '@/components/SkeletonLoader';
+import { useTheme } from '@/lib/theme';
 import type { UserContext, ContextCategory } from '@/types';
 
 // Category information with icons and colors
@@ -82,6 +83,7 @@ function ContextItemCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { colors } = useTheme();
   const info = CATEGORY_INFO[item.category];
   
   return (
@@ -103,7 +105,7 @@ function ContextItemCard({
       accessibilityLabel={`${info.label}: ${item.content}`}
       accessibilityHint="Tap to edit, long press to delete"
     >
-      <Text style={styles.itemContent} numberOfLines={3}>
+      <Text style={[styles.itemContent, { color: colors.text }]} numberOfLines={3}>
         {item.content}
       </Text>
     </Pressable>
@@ -127,6 +129,7 @@ function ContextSection({
   onEditItem: (item: UserContext) => void;
   onDeleteItem: (item: UserContext) => void;
 }) {
+  const { colors } = useTheme();
   const info = CATEGORY_INFO[category];
   
   return (
@@ -134,7 +137,7 @@ function ContextSection({
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionIcon}>{info.icon}</Text>
         <Text 
-          style={styles.sectionTitle}
+          style={[styles.sectionTitle, { color: colors.text }]}
           accessibilityRole="header"
         >
           {info.label}
@@ -149,12 +152,13 @@ function ContextSection({
           }}
           style={({ pressed }) => [
             styles.emptyCard,
-            pressed && styles.emptyCardPressed,
+            { backgroundColor: colors.backgroundTertiary },
+            pressed && { backgroundColor: colors.backgroundSecondary },
           ]}
           accessibilityRole="button"
           accessibilityLabel={`Add ${info.label.toLowerCase()}`}
         >
-          <Text style={styles.emptyCardText}>
+          <Text style={[styles.emptyCardText, { color: colors.textTertiary }]}>
             + Add {info.label.toLowerCase().slice(0, -1)}
           </Text>
         </Pressable>
@@ -180,7 +184,7 @@ function ContextSection({
             accessibilityRole="button"
             accessibilityLabel={`Add another ${info.label.toLowerCase().slice(0, -1)}`}
           >
-            <Text style={styles.addMoreText}>+ Add more</Text>
+            <Text style={[styles.addMoreText, { color: colors.textTertiary }]}>+ Add more</Text>
           </Pressable>
         </>
       )}
@@ -444,6 +448,7 @@ function DeleteModal({
 }
 
 export default function ContextScreen() {
+  const { colors } = useTheme();
   const {
     items,
     isLoading,
@@ -527,10 +532,10 @@ export default function ContextScreen() {
   // Loading state
   if (isLoading && items.length === 0 && !refreshing) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.header}>
-          <Text style={styles.title}>Your Operating System</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.text }]}>Your Operating System</Text>
+          <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
             Define your context once. Your coaches will use it automatically.
           </Text>
         </View>
@@ -548,7 +553,7 @@ export default function ContextScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <OfflineIndicator />
       <ScrollView
         style={styles.scrollView}
@@ -557,7 +562,7 @@ export default function ContextScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#09090B"
+            tintColor={colors.text}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -565,12 +570,12 @@ export default function ContextScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text 
-            style={styles.title}
+            style={[styles.title, { color: colors.text }]}
             accessibilityRole="header"
           >
             Your Operating System
           </Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
             Define your context once. Your coaches will use it automatically.
           </Text>
         </View>
@@ -601,7 +606,7 @@ export default function ContextScreen() {
 
         {/* Total Count */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { color: colors.textMuted }]}>
             {items.length} context item{items.length !== 1 ? 's' : ''} defined
           </Text>
         </View>
@@ -636,7 +641,6 @@ export default function ContextScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -653,12 +657,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#09090B',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: '#71717A',
     marginTop: 8,
     lineHeight: 22,
   },
@@ -677,7 +679,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#09090B',
   },
   itemCard: {
     borderRadius: 16,
@@ -689,21 +690,18 @@ const styles = StyleSheet.create({
   },
   itemContent: {
     fontSize: 16,
-    color: '#09090B',
     lineHeight: 24,
   },
   emptyCard: {
-    backgroundColor: '#F4F4F5',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
   },
   emptyCardPressed: {
-    backgroundColor: '#E4E4E7',
+    opacity: 0.8,
   },
   emptyCardText: {
     fontSize: 15,
-    color: '#71717A',
     fontWeight: '500',
   },
   addMoreButton: {
@@ -715,7 +713,6 @@ const styles = StyleSheet.create({
   },
   addMoreText: {
     fontSize: 14,
-    color: '#71717A',
     fontWeight: '500',
   },
   footer: {
@@ -724,7 +721,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: '#A1A1AA',
   },
   errorBanner: {
     backgroundColor: '#FEE2E2',

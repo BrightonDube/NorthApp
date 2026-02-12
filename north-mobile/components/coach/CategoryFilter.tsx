@@ -15,10 +15,11 @@
  * Validates: Requirements 5.2, 5.4
  */
 
-import { View, Text, Pressable, ScrollView, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { CoachCategory } from '@/types';
 import { getCategoryColor } from '@/lib/marketplace.types';
+import { useTheme } from '@/lib/theme';
 
 interface CategoryFilterProps {
   /** Currently selected category (null means "All") */
@@ -46,8 +47,7 @@ export function CategoryFilter({
   onSelectCategory,
   testID = 'category-filter',
 }: CategoryFilterProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors, isDark } = useTheme();
 
   // All categories plus "All" option
   const categories: (CoachCategory | null)[] = [
@@ -85,7 +85,7 @@ export function CategoryFilter({
       >
         {categories.map((category) => {
           const selected = isSelected(category);
-          const categoryColor = category ? getCategoryColor(category) : (isDark ? '#60A5FA' : '#2563EB');
+          const categoryColor = category ? getCategoryColor(category) : colors.primary;
           
           return (
             <Pressable
@@ -99,11 +99,11 @@ export function CategoryFilter({
               style={({ pressed, focused }) => [
                 styles.pill,
                 selected && [styles.pillSelected, { backgroundColor: categoryColor }],
-                !selected && (isDark ? styles.pillInactiveDark : styles.pillInactive),
+                !selected && { backgroundColor: colors.backgroundTertiary },
                 pressed && styles.pillPressed,
                 focused && {
                   borderWidth: 2,
-                  borderColor: isDark ? '#60A5FA' : '#2563EB',
+                  borderColor: colors.primary,
                 },
               ]}
             >
@@ -111,7 +111,7 @@ export function CategoryFilter({
                 style={[
                   styles.pillText,
                   selected && styles.pillTextSelected,
-                  !selected && (isDark ? styles.pillTextInactiveDark : styles.pillTextInactive),
+                  !selected && { color: colors.textSecondary },
                 ]}
               >
                 {getCategoryLabel(category)}
@@ -141,12 +141,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pillInactive: {
-    backgroundColor: '#F4F4F5', // Light mode inactive
-  },
-  pillInactiveDark: {
-    backgroundColor: '#27272A', // Dark mode inactive
-  },
   pillSelected: {
     // backgroundColor set dynamically based on category color
   },
@@ -157,12 +151,6 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  pillTextInactive: {
-    color: '#71717A', // Light mode inactive text
-  },
-  pillTextInactiveDark: {
-    color: '#A1A1AA', // Dark mode inactive text
   },
   pillTextSelected: {
     color: '#FFFFFF', // Selected text always white

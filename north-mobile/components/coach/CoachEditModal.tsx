@@ -19,15 +19,17 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { Coach } from '@/types';
+import { useBillingStore } from '@/stores/billingStore';
 
 interface CoachEditModalProps {
   visible: boolean;
   coach: Coach | null;
-  onSave: (id: string, updates: { name?: string; icon?: string; systemPrompt?: string }) => Promise<void>;
+  onSave: (id: string, updates: { name?: string; icon?: string; systemPrompt?: string; isPublic?: boolean }) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
   onClose: () => void;
 }
@@ -78,8 +80,11 @@ export function CoachEditModal({
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('🎯');
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const isProUser = useBillingStore((state) => state.isProUser);
 
   // Update form when coach changes
   useEffect(() => {
@@ -87,6 +92,7 @@ export function CoachEditModal({
       setName(coach.name);
       setIcon(coach.icon);
       setSystemPrompt(coach.systemPrompt);
+      setIsPublic(coach.isPublic);
       setError(null);
     }
   }, [coach]);
@@ -146,10 +152,11 @@ export function CoachEditModal({
 
     try {
       // Only send changed fields
-      const updates: { name?: string; icon?: string; systemPrompt?: string } = {};
+      const updates: { name?: string; icon?: string; systemPrompt?: string; isPublic?: boolean } = {};
       if (trimmedName !== coach.name) updates.name = trimmedName;
       if (icon !== coach.icon) updates.icon = icon;
       if (trimmedPrompt !== coach.systemPrompt) updates.systemPrompt = trimmedPrompt;
+      if (isPublic !== coach.isPublic) updates.isPublic = isPublic;
 
       await onSave(coach.id, updates);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -211,7 +218,8 @@ export function CoachEditModal({
       const hasChanges =
         name.trim() !== coach.name ||
         icon !== coach.icon ||
-        systemPrompt.trim() !== coach.systemPrompt;
+        systemPrompt.trim() !== coach.systemPrompt ||
+        isPublic !== coach.isPublic;
 
       if (hasChanges) {
         Alert.alert(
@@ -388,6 +396,54 @@ export function CoachEditModal({
                 <Text className="text-xs text-zinc-400 dark:text-zinc-600 mt-2 text-right">
                   {systemPrompt.length} / 2000 (minimum 20)
                 </Text>
+              </View>
+
+              {/* Make Public Toggle */}
+              <View className="mb-6">
+                <View className="flex-row items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  <View className="flex-1 mr-4">
+                    <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Make Public
+                    </Text>
+                    <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {isProUser 
+                        ? 'Share this coach in the marketplace for others to discover and install'
+                        : 'Upgrade to Pro to share your coaches publicly'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (!isProUser) {
+                        Alert.alert(
+                          'Pro Feature',
+                          'Making coaches public is a Pro feature. Upgrade to share your coaches with others.',
+                          [{ text: 'OK' }]
+                        );
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                      }
+                    }}
+                    disabled={isLoading}
+                    accessible
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: isPublic, disabled: !isProUser }}
+                    accessibilityLabel="Make coach public"
+                  >
+                    <Switch
+                      value={isPublic}
+                      onValueChange={(value) => {
+                        if (isProUser) {
+                          setIsPublic(value);
+                          setError(null);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                      }}
+                      disabled={!isProUser || isLoading}
+                      trackColor={{ false: '#d4d4d8', true: '#3b82f6' }}
+                      thumbColor={isPublic ? '#ffffff' : '#f4f4f5'}
+                      ios_backgroundColor="#d4d4d8"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Delete Button */}

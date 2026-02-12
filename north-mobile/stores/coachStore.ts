@@ -60,7 +60,7 @@ interface CoachState {
 interface CoachActions {
   fetchCoaches: (force?: boolean) => Promise<void>;
   createCoach: (name: string, icon: string, systemPrompt: string, optimisticId?: string, isProUser?: boolean) => Promise<Coach>;
-  updateCoach: (id: string, updates: Partial<Omit<Coach, 'id' | 'creatorId' | 'isPublic' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
+  updateCoach: (id: string, updates: Partial<Omit<Coach, 'id' | 'creatorId' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
   deleteCoach: (id: string) => Promise<void>;
   canCreateCoach: (isProUser: boolean) => boolean;
   getDefaultCoaches: () => Coach[];
@@ -352,7 +352,7 @@ export const useCoachStore = create<CoachStore>()(
         }
 
         // Validate and trim inputs
-        const trimmedUpdates: Partial<Omit<Coach, 'id' | 'creatorId' | 'isPublic' | 'createdAt' | 'updatedAt'>> = {};
+        const trimmedUpdates: Partial<Omit<Coach, 'id' | 'creatorId' | 'createdAt' | 'updatedAt'>> = {};
         
         if (updates.name !== undefined) {
           const trimmedName = updates.name.trim();
@@ -376,6 +376,10 @@ export const useCoachStore = create<CoachStore>()(
             throw error;
           }
           trimmedUpdates.systemPrompt = trimmedPrompt;
+        }
+
+        if (updates.isPublic !== undefined) {
+          trimmedUpdates.isPublic = updates.isPublic;
         }
 
         // Check network status
@@ -404,6 +408,7 @@ export const useCoachStore = create<CoachStore>()(
           if (trimmedUpdates.name !== undefined) dbUpdates.name = trimmedUpdates.name;
           if (trimmedUpdates.icon !== undefined) dbUpdates.icon = trimmedUpdates.icon;
           if (trimmedUpdates.systemPrompt !== undefined) dbUpdates.system_prompt = trimmedUpdates.systemPrompt;
+          if (trimmedUpdates.isPublic !== undefined) dbUpdates.is_public = trimmedUpdates.isPublic;
 
           const { error } = await supabase
             .from('coaches')

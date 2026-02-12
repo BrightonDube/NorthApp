@@ -75,7 +75,7 @@ export enum CoachCategory {
 
 /**
  * AI coach with specialized role and system prompt
- * Validates: Requirements 6.1, 6.2, 6.6
+ * Validates: Requirements 6.1, 6.2, 6.6, 7.1, 7.2, 7.3, 7.4
  */
 export interface Coach {
   id: string;
@@ -89,6 +89,12 @@ export interface Coach {
   sourceCoachId: string | null; // reference to original coach if this is an installed copy
   createdAt: string;
   updatedAt: string;
+  
+  // Profile screen fields (optional)
+  themeColor?: string; // Hex color code (e.g., "#3B82F6")
+  about?: string; // Description of coach's purpose and approach
+  expectations?: string[]; // List of what to expect from coaching
+  tags?: string[]; // Keywords related to expertise
 }
 
 /**

@@ -18,10 +18,11 @@
  * Validates: Requirements 1.2, 2.5, 9.2, 13.1, 13.2, 13.6, 19.7, 23.7
  */
 
-import { View, Text, Pressable, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useTheme } from '@/lib/theme';
 import type { Coach, PublicCoach } from '@/types';
 import { getCategoryColor } from '@/lib/marketplace.types';
 
@@ -96,7 +97,7 @@ export function CoachCard({
   index = 0 
 }: CoachCardProps) {
   const prefersReducedMotion = useReducedMotion();
-  const colorScheme = useColorScheme();
+  const { colors, isDark } = useTheme();
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -122,7 +123,7 @@ export function CoachCard({
   };
 
   // Focus indicator color
-  const focusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB';
+  const focusColor = colors.primary;
   
   // Category badge color
   const categoryColor = getCategoryColor(coach.category);
@@ -148,7 +149,7 @@ export function CoachCard({
         testID={testID}
         style={({ pressed, focused }) => [
           styles.card,
-          colorScheme === 'dark' && styles.cardDark,
+          { backgroundColor: colors.card },
           isMarketplaceMode && styles.marketplaceCard,
           pressed && styles.pressed,
           focused && { 
@@ -181,7 +182,7 @@ export function CoachCard({
         <View style={{ flex: 1 }}>
           {/* Coach name */}
           <Text 
-            style={[styles.coachName, colorScheme === 'dark' && styles.coachNameDark]}
+            style={[styles.coachName, { color: colors.text }]}
             numberOfLines={1}
           >
             {coach.name}
@@ -190,7 +191,7 @@ export function CoachCard({
           {/* Coach description/role label - always show for clarity */}
           {!isMarketplaceMode && (
             <Text 
-              style={[styles.coachDescription, colorScheme === 'dark' && styles.coachDescriptionDark]}
+              style={[styles.coachDescription, { color: colors.textSecondary }]}
               numberOfLines={2}
             >
               {coachDescription}
@@ -202,7 +203,7 @@ export function CoachCard({
             <>
               {/* Description */}
               <Text 
-                style={[styles.marketplaceDescription, colorScheme === 'dark' && styles.marketplaceDescriptionDark]}
+                style={[styles.marketplaceDescription, { color: colors.textSecondary }]}
                 numberOfLines={2}
               >
                 {publicCoach.systemPrompt}
@@ -210,7 +211,7 @@ export function CoachCard({
 
               {/* Creator name */}
               <Text 
-                style={styles.creatorName}
+                style={[styles.creatorName, { color: colors.textTertiary }]}
                 numberOfLines={1}
               >
                 by {publicCoach.creatorName}
@@ -230,7 +231,6 @@ export function CoachCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F4F4F5', // Light mode
     borderRadius: 20,
     padding: 20,
     width: '100%',
@@ -244,10 +244,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 2,
-  },
-  cardDark: {
-    backgroundColor: '#18181B', // Dark mode
-    shadowOpacity: 0.3,
   },
   marketplaceCard: {
     minHeight: 220,
@@ -295,34 +291,21 @@ const styles = StyleSheet.create({
   coachName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#09090B',
     marginBottom: 4,
     flex: 1,
   },
-  coachNameDark: {
-    color: '#FFFFFF',
-  },
   coachDescription: {
     fontSize: 13,
-    color: '#71717A',
     lineHeight: 18,
     flex: 1,
   },
-  coachDescriptionDark: {
-    color: '#A1A1AA',
-  },
   marketplaceDescription: {
     fontSize: 14,
-    color: '#52525B',
     lineHeight: 20,
     marginBottom: 12,
   },
-  marketplaceDescriptionDark: {
-    color: '#A1A1AA',
-  },
   creatorName: {
     fontSize: 12,
-    color: '#71717A',
     marginBottom: 8,
   },
   categoryBadge: {

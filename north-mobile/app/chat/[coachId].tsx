@@ -34,6 +34,7 @@ import { ChatHeader, MessageList, ChatInput } from '@/components/chat';
 import { SessionFileSelector } from '@/components/chat/SessionFileSelector';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ChatLoadingSkeleton } from '@/components/SkeletonLoader';
+import { useTheme } from '@/lib/theme';
 import type { Coach } from '@/types';
 
 
@@ -41,6 +42,8 @@ import type { Coach } from '@/types';
  * Empty Chat State
  */
 function EmptyChat({ coach }: { coach: Coach | undefined }) {
+  const { colors } = useTheme();
+  
   return (
     <View 
       className="flex-1 items-center justify-center px-8"
@@ -49,12 +52,13 @@ function EmptyChat({ coach }: { coach: Coach | undefined }) {
     >
       <Text className="text-6xl mb-4">{coach?.icon || '🤖'}</Text>
       <Text 
-        className="text-xl font-semibold text-zinc-900 dark:text-white mb-2"
+        style={{ color: colors.text }}
+        className="text-xl font-semibold mb-2"
         accessibilityRole="header"
       >
         Start a conversation
       </Text>
-      <Text className="text-base text-zinc-500 dark:text-zinc-400 text-center leading-6">
+      <Text style={{ color: colors.textTertiary }} className="text-base text-center leading-6">
         {coach?.name || 'Your coach'} is ready to help. Type a message below to begin.
       </Text>
     </View>
@@ -86,6 +90,7 @@ function ErrorBanner({ error, onDismiss }: { error: string; onDismiss: () => voi
 export default function ChatScreen() {
   const { coachId } = useLocalSearchParams<{ coachId: string }>();
   const router = useRouter();
+  const { colors } = useTheme();
   
   // Get coach info
   const coach = useCoachById(coachId || '');
@@ -215,7 +220,7 @@ export default function ChatScreen() {
   if (isInitializing) {
     return (
       <SafeAreaView 
-        className="flex-1 bg-white dark:bg-zinc-950" 
+        style={{ flex: 1, backgroundColor: colors.background }}
         edges={['top']}
       >
         {coach && <ChatHeader coach={coach} onBack={handleBack} />}
@@ -228,7 +233,7 @@ export default function ChatScreen() {
   if (!coach) {
     return (
       <SafeAreaView 
-        className="flex-1 bg-white dark:bg-zinc-950" 
+        style={{ flex: 1, backgroundColor: colors.background }}
         edges={['top']}
       >
         <View 
@@ -238,21 +243,23 @@ export default function ChatScreen() {
         >
           <Text className="text-6xl mb-4">🤔</Text>
           <Text 
-            className="text-xl font-semibold text-zinc-900 dark:text-white mb-2"
+            style={{ color: colors.text }}
+            className="text-xl font-semibold mb-2"
             accessibilityRole="header"
           >
             Coach not found
           </Text>
-          <Text className="text-base text-zinc-500 dark:text-zinc-400 text-center">
+          <Text style={{ color: colors.textTertiary }} className="text-base text-center">
             This coach doesn't exist or you don't have access to it.
           </Text>
           <Pressable
             onPress={handleBack}
-            className="mt-6 bg-zinc-900 dark:bg-zinc-100 px-6 py-3 rounded-xl"
+            style={{ backgroundColor: colors.text }}
+            className="mt-6 px-6 py-3 rounded-xl"
             accessibilityRole="button"
             accessibilityLabel="Go back to coach list"
           >
-            <Text className="text-white dark:text-zinc-900 font-semibold">
+            <Text style={{ color: colors.background }} className="font-semibold">
               Go Back
             </Text>
           </Pressable>
@@ -263,7 +270,7 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView 
-      className="flex-1 bg-white dark:bg-zinc-950" 
+      style={{ flex: 1, backgroundColor: colors.background }}
       edges={['top', 'bottom']}
     >
       <OfflineIndicator />

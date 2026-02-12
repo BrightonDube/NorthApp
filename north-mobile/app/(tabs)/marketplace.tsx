@@ -17,7 +17,7 @@
  * Validates: Requirements 1.1, 1.2, 5.2, 6.1, 7.1, 9.1
  */
 
-import { View, Text, ScrollView, TextInput, RefreshControl, StyleSheet, useColorScheme, Pressable } from 'react-native';
+import { View, Text, ScrollView, TextInput, RefreshControl, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,16 +33,18 @@ import { supabase } from '@/lib/supabase';
 import { searchEngine } from '@/lib/searchEngine';
 import { coachDeepLinkGenerator } from '@/lib/coachDeepLinkGenerator';
 import { dbCoachToCoach, filterByCategory } from '@/lib/marketplace.types';
+import { useTheme } from '@/lib/theme';
 import type { PublicCoach, CoachCategory } from '@/types';
 
 /**
  * App Logo Component
  */
 function AppLogo() {
+  const { colors } = useTheme();
   return (
     <View style={styles.logoContainer}>
       <Logo size={40} />
-      <Text style={styles.logoText}>Marketplace</Text>
+      <Text style={[styles.logoText, { color: colors.text }]}>Marketplace</Text>
     </View>
   );
 }
@@ -59,21 +61,20 @@ function SearchBar({
   onChangeText: (text: string) => void; 
   onClear: () => void;
 }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors } = useTheme();
 
   return (
-    <View style={[styles.searchContainer, isDark && styles.searchContainerDark]}>
+    <View style={[styles.searchContainer, { backgroundColor: colors.input }]}>
       <Ionicons 
         name="search" 
         size={20} 
-        color={isDark ? '#A1A1AA' : '#71717A'} 
+        color={colors.textTertiary} 
         style={styles.searchIcon} 
       />
       <TextInput
-        style={[styles.searchInput, isDark && styles.searchInputDark]}
+        style={[styles.searchInput, { color: colors.inputText }]}
         placeholder="Search coaches..."
-        placeholderTextColor={isDark ? '#71717A' : '#A1A1AA'}
+        placeholderTextColor={colors.inputPlaceholder}
         value={value}
         onChangeText={onChangeText}
         autoCapitalize="none"
@@ -94,7 +95,7 @@ function SearchBar({
           <Ionicons 
             name="close-circle" 
             size={20} 
-            color={isDark ? '#A1A1AA' : '#71717A'} 
+            color={colors.textTertiary} 
           />
         </Pressable>
       )}
@@ -114,8 +115,7 @@ function FeaturedSection({
   onCoachPress: (coach: PublicCoach) => void;
   onShare: (coachId: string) => void;
 }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors } = useTheme();
 
   if (coaches.length === 0) {
     return null;
@@ -124,7 +124,7 @@ function FeaturedSection({
   return (
     <View style={styles.featuredSection}>
       <Text 
-        style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}
+        style={[styles.sectionTitle, { color: colors.text }]}
         accessibilityRole="header"
       >
         Featured Coaches
@@ -163,8 +163,7 @@ function EmptyState({
   searchQuery: string; 
   selectedCategory: CoachCategory | null;
 }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors } = useTheme();
 
   const message = searchQuery 
     ? `No coaches found for "${searchQuery}"`
@@ -181,12 +180,12 @@ function EmptyState({
     >
       <Text style={styles.emptyIcon}>🔍</Text>
       <Text 
-        style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}
+        style={[styles.emptyTitle, { color: colors.text }]}
         accessibilityRole="header"
       >
         {message}
       </Text>
-      <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
+      <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
         {searchQuery ? 'Try a different search term' : 'Check back later for new coaches'}
       </Text>
     </View>
@@ -203,8 +202,7 @@ function ErrorState({
   message: string; 
   onRetry: () => void;
 }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors } = useTheme();
 
   return (
     <View 
@@ -215,21 +213,21 @@ function ErrorState({
     >
       <Text style={styles.emptyIcon}>⚠️</Text>
       <Text 
-        style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}
+        style={[styles.emptyTitle, { color: colors.text }]}
         accessibilityRole="header"
       >
         Something went wrong
       </Text>
-      <Text style={[styles.emptySubtitle, isDark && styles.emptySubtitleDark]}>
+      <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
         {message}
       </Text>
       <Pressable 
         onPress={onRetry} 
-        style={[styles.retryButton, isDark && styles.retryButtonDark]}
+        style={[styles.retryButton, { backgroundColor: colors.primary }]}
         accessibilityRole="button"
         accessibilityLabel="Retry loading coaches"
       >
-        <Text style={styles.retryText}>Try Again</Text>
+        <Text style={[styles.retryText, { color: colors.primaryText }]}>Try Again</Text>
       </Pressable>
     </View>
   );
@@ -237,8 +235,7 @@ function ErrorState({
 
 export default function MarketplaceScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors, isDark } = useTheme();
   const { user } = useAuthStore();
   
   // State
@@ -361,10 +358,10 @@ export default function MarketplaceScreen() {
   if (isLoading && coaches.length === 0 && !refreshing) {
     return (
       <SafeAreaView 
-        style={[styles.container, isDark && styles.containerDark]} 
+        style={[styles.container, { backgroundColor: colors.background }]} 
         edges={['top']}
       >
-        <View style={[styles.header, isDark && styles.headerDark]}>
+        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
           <AppLogo />
         </View>
         <View style={styles.content}>
@@ -383,13 +380,13 @@ export default function MarketplaceScreen() {
 
   return (
     <SafeAreaView 
-      style={[styles.container, isDark && styles.containerDark]} 
+      style={[styles.container, { backgroundColor: colors.background }]} 
       edges={['top']}
     >
       <OfflineIndicator />
       
       {/* Fixed Header */}
-      <View style={[styles.header, isDark && styles.headerDark]}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <AppLogo />
       </View>
 
@@ -400,7 +397,7 @@ export default function MarketplaceScreen() {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh}
-            tintColor={isDark ? '#FFFFFF' : '#09090B'}
+            tintColor={colors.text}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -441,7 +438,7 @@ export default function MarketplaceScreen() {
             {filteredCoaches.length > 0 ? (
               <View style={styles.gridSection}>
                 <Text 
-                  style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}
+                  style={[styles.sectionTitle, { color: colors.text }]}
                   accessibilityRole="header"
                 >
                   {searchQuery || selectedCategory ? 'Results' : 'All Coaches'}
@@ -478,10 +475,6 @@ export default function MarketplaceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  containerDark: {
-    backgroundColor: '#09090B',
   },
   header: {
     flexDirection: 'row',
@@ -490,10 +483,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F4F4F5',
-  },
-  headerDark: {
-    borderBottomColor: '#27272A',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -502,7 +491,6 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#09090B',
     marginLeft: 12,
   },
   scrollView: {
@@ -523,13 +511,9 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F4F4F5',
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 48,
-  },
-  searchContainerDark: {
-    backgroundColor: '#18181B',
   },
   searchIcon: {
     marginRight: 8,
@@ -537,10 +521,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#09090B',
-  },
-  searchInputDark: {
-    color: '#FFFFFF',
   },
   clearButton: {
     padding: 4,
@@ -555,11 +535,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#09090B',
     marginBottom: 16,
-  },
-  sectionTitleDark: {
-    color: '#FFFFFF',
   },
   featuredScroll: {
     paddingRight: 24,
@@ -591,35 +567,22 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#09090B',
     marginBottom: 8,
     textAlign: 'center',
   },
-  emptyTitleDark: {
-    color: '#FFFFFF',
-  },
   emptySubtitle: {
     fontSize: 15,
-    color: '#71717A',
     textAlign: 'center',
-  },
-  emptySubtitleDark: {
-    color: '#A1A1AA',
   },
   retryButton: {
     marginTop: 24,
-    backgroundColor: '#09090B',
     paddingHorizontal: 32,
     paddingVertical: 16,
     minHeight: 48,
     borderRadius: 12,
   },
-  retryButtonDark: {
-    backgroundColor: '#FFFFFF',
-  },
   retryText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

@@ -138,27 +138,50 @@ function SettingsRow({
       disabled={!onPress || isLoading}
       style={({ pressed }) => [
         styles.settingsRow,
-        { borderBottomColor: colors.border },
+        { 
+          borderBottomColor: colors.border,
+          backgroundColor: colors.background,
+        },
         pressed && onPress && { backgroundColor: colors.backgroundSecondary },
       ]}
       accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityLabel={label}
     >
-      <Text style={[styles.rowLabel, { color: colors.text }]}>
-        {label}
-      </Text>
-      {isLoading ? (
-        <ActivityIndicator size="small" color={colors.textTertiary} />
-      ) : (
-        <View style={styles.rowRight}>
-          {value && (
-            <Text style={[styles.rowValue, { color: colors.textTertiary }]}>{value}</Text>
-          )}
-          {onPress && (
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          )}
-        </View>
-      )}
+      {/* Label Section - Left Aligned */}
+      <View style={styles.rowLabelSection}>
+        <Text 
+          style={[styles.rowLabel, { color: colors.text }]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </View>
+
+      {/* Value Section - Right Aligned */}
+      <View style={styles.rowValueSection}>
+        {isLoading ? (
+          <ActivityIndicator size="small" color={colors.textTertiary} />
+        ) : (
+          <>
+            {value && (
+              <Text 
+                style={[styles.rowValue, { color: colors.textTertiary }]}
+                numberOfLines={1}
+              >
+                {value}
+              </Text>
+            )}
+            {onPress && (
+              <Ionicons 
+                name="chevron-forward" 
+                size={18} 
+                color={colors.textTertiary} 
+                style={{ marginLeft: 8 }} 
+              />
+            )}
+          </>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -404,24 +427,27 @@ const styles = StyleSheet.create({
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    minHeight: 56,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    minHeight: 64,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowLabelSection: {
+    flex: 1,
+    paddingRight: 12,
   },
   rowLabel: {
     fontSize: 16,
-    fontWeight: '400',
+    fontWeight: '500',
   },
-  rowRight: {
+  rowValueSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    maxWidth: '50%',
   },
   rowValue: {
-    fontSize: 16,
-    fontWeight: '400',
+    fontSize: 15,
+    textAlign: 'right',
   },
   signOutButton: {
     marginHorizontal: 0,
