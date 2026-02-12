@@ -120,12 +120,41 @@ The application follows a client-server architecture:
 
 - 🔐 User authentication (email/password, Apple Sign In)
 - 🎯 Context Engine for personalized AI interactions
-- 🤖 Pre-built AI coaches with specialized roles
+- 🤖 Pre-built AI coaches with specialized roles (6 coaches):
+  - **Strategic Thinking** (🎯) - Business strategy and competitive analysis
+  - **Systems Thinking** (🔄) - Complex systems and root cause analysis
+  - **High-Stakes Writing** (✍️) - Persuasive and clear communication
+  - **Decision-Making** (⚖️) - Structured decision frameworks and inversion thinking
+  - **Leadership & EQ** (🧭) - Emotional intelligence and difficult conversations
+  - **Fitness & Wellness** (💪) - Sustainable health habits and behavior change
 - 💬 Real-time chat with streaming AI responses
 - 📝 Personal context management (values, goals, projects, constraints)
 - 💎 Pro subscription with feature gating
-- 🌙 Light/dark mode support
+- 🌙 **Instant theme switching** - Light, Dark, and System modes without app reload
 - 📱 Offline-first architecture
+
+## Theme Customization
+
+The app supports three theme modes with instant switching (no reload required):
+
+- **Light Mode**: Clean, bright interface for daytime use
+- **Dark Mode**: Easy on the eyes for low-light environments  
+- **System Mode**: Automatically matches your device's system theme
+
+**How to change theme:**
+1. Navigate to Settings tab
+2. Tap "Theme" row
+3. Select your preferred mode (Light, Dark, or System)
+4. Theme changes instantly throughout the app
+
+**For developers:** The theme system uses React Context (`ThemeContext.tsx`) for instant switching without AsyncStorage reload delays. Use `useIsDark()` and `useThemeColors()` hooks instead of React Native's `useColorScheme()`.
+
+## AI Coaches
+
+All coaches use the **Socratic Method** - they ask probing questions rather than giving direct answers, helping you develop your own thinking skills. Each coach has specialized frameworks and built-in guardrails to decline inappropriate requests (medical advice, legal counsel, etc.).
+
+**Free Tier**: Access to all 6 default coaches  
+**Pro Tier**: Create unlimited custom coaches with your own system prompts
 
 ## License
 
