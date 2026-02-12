@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 // Admin email - only this account has admin access
 const ADMIN_EMAIL = 'max@north.app';
@@ -40,30 +41,32 @@ interface ManagedUser {
 function UserRow({ 
   user, 
   onTogglePro, 
-  isUpdating 
+  isUpdating,
+  colors 
 }: { 
   user: ManagedUser; 
   onTogglePro: (userId: string, currentStatus: boolean) => void;
   isUpdating: boolean;
+  colors: ReturnType<typeof useThemeColors>;
 }) {
   const formattedDate = new Date(user.created_at).toLocaleDateString();
   
   return (
-    <View style={styles.userRow}>
+    <View style={[styles.userRow, { backgroundColor: colors.card }]}>
       <View style={styles.userInfo}>
-        <View style={styles.userAvatar}>
-          <Text style={styles.avatarText}>
+        <View style={[styles.userAvatar, { backgroundColor: colors.text }]}>
+          <Text style={[styles.avatarText, { color: colors.background }]}>
             {(user.name || user.email)?.[0]?.toUpperCase() || '?'}
           </Text>
         </View>
         <View style={styles.userDetails}>
-          <Text style={styles.userName} numberOfLines={1}>
+          <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
             {user.name || 'No name'}
           </Text>
-          <Text style={styles.userEmail} numberOfLines={1}>
+          <Text style={[styles.userEmail, { color: colors.textSecondary }]} numberOfLines={1}>
             {user.email}
           </Text>
-          <Text style={styles.userJoined}>
+          <Text style={[styles.userJoined, { color: colors.textTertiary }]}>
             Joined {formattedDate}
           </Text>
         </View>
@@ -72,11 +75,11 @@ function UserRow({
       <View style={styles.userActions}>
         <View style={[
           styles.statusBadge,
-          user.is_pro ? styles.statusBadgePro : styles.statusBadgeFree
+          user.is_pro ? { backgroundColor: colors.text } : { backgroundColor: colors.border }
         ]}>
           <Text style={[
             styles.statusText,
-            user.is_pro ? styles.statusTextPro : styles.statusTextFree
+            user.is_pro ? { color: colors.background } : { color: colors.textSecondary }
           ]}>
             {user.is_pro ? 'PRO' : 'FREE'}
           </Text>
@@ -111,12 +114,17 @@ function UserRow({
 /**
  * Statistics Card Component
  */
-function StatCard({ label, value, icon }: { label: string; value: string | number; icon: string }) {
+function StatCard({ label, value, icon, colors }: { 
+  label: string; 
+  value: string | number; 
+  icon: string;
+  colors: ReturnType<typeof useThemeColors>;
+}) {
   return (
-    <View style={styles.statCard}>
-      <Ionicons name={icon as any} size={24} color="#09090B" />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+      <Ionicons name={icon as any} size={24} color={colors.text} />
+      <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
     </View>
   );
 }
@@ -124,6 +132,7 @@ function StatCard({ label, value, icon }: { label: string; value: string | numbe
 export default function AdminScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const colors = useThemeColors();
   
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -348,11 +357,11 @@ export default function AdminScreen() {
   // Non-admin view
   if (!isAdmin) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.accessDenied}>
-          <Ionicons name="lock-closed" size={64} color="#D4D4D8" />
-          <Text style={styles.accessDeniedTitle}>Access Denied</Text>
-          <Text style={styles.accessDeniedText}>
+          <Ionicons name="lock-closed" size={64} color={colors.border} />
+          <Text style={[styles.accessDeniedTitle, { color: colors.text }]}>Access Denied</Text>
+          <Text style={[styles.accessDeniedText, { color: colors.textSecondary }]}>
             You do not have permission to access this screen.
           </Text>
         </View>
@@ -361,7 +370,7 @@ export default function AdminScreen() {
   }
   
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -369,7 +378,7 @@ export default function AdminScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#09090B"
+            tintColor={colors.text}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -377,8 +386,8 @@ export default function AdminScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerTitle}>Admin Dashboard</Text>
-            <Text style={styles.headerSubtitle}>Manage users and subscriptions</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Admin Dashboard</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Manage users and subscriptions</Text>
           </View>
           <View style={styles.adminBadge}>
             <Ionicons name="shield-checkmark" size={16} color="#FFFFFF" />
@@ -391,27 +400,30 @@ export default function AdminScreen() {
           <StatCard 
             label="Total Users" 
             value={stats.totalUsers} 
-            icon="people-outline" 
+            icon="people-outline"
+            colors={colors}
           />
           <StatCard 
             label="Pro Users" 
             value={stats.proUsers} 
-            icon="diamond-outline" 
+            icon="diamond-outline"
+            colors={colors}
           />
           <StatCard 
             label="Free Users" 
             value={stats.freeUsers} 
-            icon="person-outline" 
+            icon="person-outline"
+            colors={colors}
           />
         </View>
         
         {/* Search */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#71717A" />
+        <View style={[styles.searchContainer, { backgroundColor: colors.card }]}>
+          <Ionicons name="search" size={20} color={colors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search users by name or email..."
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor={colors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
@@ -419,25 +431,25 @@ export default function AdminScreen() {
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#71717A" />
+              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
             </Pressable>
           )}
         </View>
         
         {/* Users List */}
-        <Text style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Users ({filteredUsers.length})
         </Text>
         
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#09090B" />
-            <Text style={styles.loadingText}>Loading users...</Text>
+            <ActivityIndicator size="large" color={colors.text} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading users...</Text>
           </View>
         ) : filteredUsers.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={48} color="#D4D4D8" />
-            <Text style={styles.emptyText}>
+            <Ionicons name="people-outline" size={48} color={colors.border} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               {searchQuery ? 'No users match your search' : 'No users found'}
             </Text>
           </View>
@@ -449,6 +461,7 @@ export default function AdminScreen() {
                 user={user}
                 onTogglePro={handleTogglePro}
                 isUpdating={updatingUserId === user.id}
+                colors={colors}
               />
             ))}
           </View>
@@ -461,7 +474,6 @@ export default function AdminScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -480,11 +492,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#09090B',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#71717A',
     marginTop: 4,
   },
   adminBadge: {
@@ -509,7 +519,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#F4F4F5',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -517,18 +526,15 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#09090B',
     marginTop: 8,
   },
   statLabel: {
     fontSize: 12,
-    color: '#71717A',
     marginTop: 4,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F4F4F5',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -538,12 +544,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#09090B',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#09090B',
     marginBottom: 16,
   },
   loadingContainer: {
@@ -552,7 +556,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#71717A',
     marginTop: 12,
   },
   emptyContainer: {
@@ -561,14 +564,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#71717A',
     marginTop: 12,
   },
   usersList: {
     gap: 12,
   },
   userRow: {
-    backgroundColor: '#F4F4F5',
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -584,7 +585,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#09090B',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -592,7 +592,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
   userDetails: {
     flex: 1,
@@ -600,16 +599,13 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#09090B',
   },
   userEmail: {
     fontSize: 13,
-    color: '#71717A',
     marginTop: 2,
   },
   userJoined: {
     fontSize: 11,
-    color: '#A1A1AA',
     marginTop: 2,
   },
   userActions: {
@@ -621,22 +617,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  statusBadgePro: {
-    backgroundColor: '#09090B',
-  },
-  statusBadgeFree: {
-    backgroundColor: '#E4E4E7',
-  },
   statusText: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
-  },
-  statusTextPro: {
-    color: '#FFFFFF',
-  },
-  statusTextFree: {
-    color: '#71717A',
   },
   toggleButton: {
     paddingHorizontal: 16,
@@ -671,12 +655,10 @@ const styles = StyleSheet.create({
   accessDeniedTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#09090B',
     marginTop: 16,
   },
   accessDeniedText: {
     fontSize: 15,
-    color: '#71717A',
     textAlign: 'center',
     marginTop: 8,
   },

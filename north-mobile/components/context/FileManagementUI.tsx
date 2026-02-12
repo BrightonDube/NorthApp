@@ -20,7 +20,6 @@ import {
   Pressable,
   TextInput,
   StyleSheet,
-  useColorScheme,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -29,6 +28,7 @@ import * as Haptics from 'expo-haptics';
 import { useContextStore } from '@/stores/contextStore';
 import { StorageService } from '@/lib/storageService';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import type { FileAttachment } from '@/types';
 import { Modal } from '@/components/ui/Modal';
 import { logError, getUserFriendlyMessage, type ErrorContext } from '@/lib/errorLogger';
@@ -67,8 +67,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
   } | null>(null);
   
   const prefersReducedMotion = useReducedMotion();
-  const colorScheme = useColorScheme();
-  const focusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB';
+  const colors = useThemeColors();
   
   const {
     getFileAttachments,
@@ -409,7 +408,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                     onPress={() => handleFileSelect(file)}
                     style={({ focused }) => [
                       styles.fileCard,
-                      focused && { borderWidth: 2, borderColor: focusColor },
+                      focused && { borderWidth: 2, borderColor: colors.focus },
                     ]}
                     className="p-4"
                     accessible
@@ -436,7 +435,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                               onPress={() => handleSaveRename(file.id)}
                               style={({ focused }) => [
                                 styles.iconButton,
-                                focused && { borderWidth: 2, borderColor: focusColor },
+                                focused && { borderWidth: 2, borderColor: colors.focus },
                               ]}
                               className="bg-blue-500 rounded-lg p-2"
                               accessible
@@ -449,7 +448,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                               onPress={handleCancelRename}
                               style={({ focused }) => [
                                 styles.iconButton,
-                                focused && { borderWidth: 2, borderColor: focusColor },
+                                focused && { borderWidth: 2, borderColor: colors.focus },
                               ]}
                               className="bg-zinc-300 dark:bg-zinc-700 rounded-lg p-2"
                               accessible
@@ -488,7 +487,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                         onPress={() => handleStartRename(file)}
                         style={({ focused }) => [
                           styles.actionButton,
-                          focused && { borderWidth: 2, borderColor: focusColor },
+                          focused && { borderWidth: 2, borderColor: colors.focus },
                         ]}
                         className="flex-1 py-3 items-center border-r border-zinc-200 dark:border-zinc-700"
                         accessible
@@ -504,7 +503,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                         onPress={() => handleDeleteFile(file)}
                         style={({ focused }) => [
                           styles.actionButton,
-                          focused && { borderWidth: 2, borderColor: focusColor },
+                          focused && { borderWidth: 2, borderColor: colors.focus },
                         ]}
                         className="flex-1 py-3 items-center"
                         accessible
@@ -596,7 +595,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
               }}
               style={({ focused }) => [
                 styles.closeButton,
-                focused && { borderWidth: 2, borderColor: focusColor },
+                focused && { borderWidth: 2, borderColor: colors.focus },
               ]}
               className="bg-blue-500 rounded-xl py-4 items-center"
               accessible

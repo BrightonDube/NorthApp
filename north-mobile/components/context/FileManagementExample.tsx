@@ -6,9 +6,10 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { FileManagementUI } from './FileManagementUI';
 import { FileUploadComponent } from './FileUploadComponent';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 /**
  * Example screen showing file management with upload capability
@@ -16,8 +17,7 @@ import { FileUploadComponent } from './FileUploadComponent';
 export function FileManagementScreen() {
   const [showUpload, setShowUpload] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const colorScheme = useColorScheme();
-  const focusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB';
+  const colors = useThemeColors();
   
   // In a real app, get this from auth context
   const userId = 'current-user-id';
@@ -56,7 +56,7 @@ export function FileManagementScreen() {
             onPress={() => setShowUpload(true)}
             style={({ focused }) => [
               styles.uploadButton,
-              focused && { borderWidth: 2, borderColor: focusColor },
+              focused && { borderWidth: 2, borderColor: colors.focus },
             ]}
             className="bg-blue-500 rounded-xl px-4 py-2"
             accessible
@@ -83,8 +83,7 @@ export function FileManagementScreen() {
  */
 export function FileManagementWithTabs() {
   const [activeTab, setActiveTab] = useState<'manage' | 'upload'>('manage');
-  const colorScheme = useColorScheme();
-  const focusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB';
+  const colors = useThemeColors();
   
   const userId = 'current-user-id';
 
@@ -102,7 +101,7 @@ export function FileManagementWithTabs() {
             onPress={() => setActiveTab('manage')}
             style={({ focused }) => [
               styles.tab,
-              focused && { borderWidth: 2, borderColor: focusColor },
+              focused && { borderWidth: 2, borderColor: colors.focus },
             ]}
             className={`flex-1 py-4 items-center border-b-2 ${
               activeTab === 'manage'
@@ -129,7 +128,7 @@ export function FileManagementWithTabs() {
             onPress={() => setActiveTab('upload')}
             style={({ focused }) => [
               styles.tab,
-              focused && { borderWidth: 2, borderColor: focusColor },
+              focused && { borderWidth: 2, borderColor: colors.focus },
             ]}
             className={`flex-1 py-4 items-center border-b-2 ${
               activeTab === 'upload'

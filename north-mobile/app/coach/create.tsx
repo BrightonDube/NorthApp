@@ -32,6 +32,7 @@ import * as Haptics from 'expo-haptics';
 import { useCoachStore } from '@/stores/coachStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useBillingStore } from '@/stores/billingStore';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 // Available avatars (emoji-based for simplicity)
 const AVATARS = ['🧠', '💡', '🎯', '🚀', '💪', '🌟', '📚', '🎨', '⚡', '🔥', '💎', '🌈'];
@@ -64,6 +65,7 @@ export default function CreateCoachScreen() {
   const { user } = useAuthStore();
   const { createCoach, isLoading } = useCoachStore();
   const { isProUser } = useBillingStore();
+  const colors = useThemeColors();
 
   // Form state
   const [name, setName] = useState('');
@@ -122,22 +124,22 @@ export default function CreateCoachScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Pressable 
             onPress={handleClose} 
-            style={styles.closeButton}
+            style={[styles.closeButton, { backgroundColor: colors.secondaryBackground }]}
             accessibilityRole="button"
             accessibilityLabel="Close coach creation"
           >
-            <Ionicons name="close" size={24} color="#71717A" />
+            <Ionicons name="close" size={24} color={colors.textSecondary} />
           </Pressable>
-          <Text style={styles.headerTitle}>Create Coach</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Create Coach</Text>
           <View style={styles.headerRight} />
         </View>
 
@@ -149,7 +151,7 @@ export default function CreateCoachScreen() {
         >
           {/* Avatar Selection */}
           <View style={styles.section}>
-            <Text style={styles.label}>Choose Avatar</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Choose Avatar</Text>
             <View style={styles.avatarGrid}>
               {AVATARS.map((emoji) => (
                 <Pressable
@@ -160,7 +162,8 @@ export default function CreateCoachScreen() {
                   }}
                   style={[
                     styles.avatarOption,
-                    avatar === emoji && styles.avatarOptionSelected,
+                    { backgroundColor: colors.secondaryBackground, borderColor: 'transparent' },
+                    avatar === emoji && { borderColor: colors.text, backgroundColor: colors.border },
                   ]}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: avatar === emoji }}
@@ -174,11 +177,11 @@ export default function CreateCoachScreen() {
 
           {/* Name Input */}
           <View style={styles.section}>
-            <Text style={styles.label}>Coach Name</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Coach Name</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.secondaryBackground, color: colors.text }]}
               placeholder="e.g., Alex the Strategist"
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={colors.textTertiary}
               value={name}
               onChangeText={setName}
               maxLength={50}
@@ -190,7 +193,7 @@ export default function CreateCoachScreen() {
 
           {/* Expertise Selection */}
           <View style={styles.section}>
-            <Text style={styles.label}>Expertise Area</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Expertise Area</Text>
             <View style={styles.chipGrid}>
               {EXPERTISE_DOMAINS.map((domain) => (
                 <Pressable
@@ -201,7 +204,8 @@ export default function CreateCoachScreen() {
                   }}
                   style={[
                     styles.chip,
-                    expertise === domain && styles.chipSelected,
+                    { backgroundColor: colors.secondaryBackground, borderColor: colors.border },
+                    expertise === domain && { backgroundColor: colors.text, borderColor: colors.text },
                   ]}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: expertise === domain }}
@@ -209,7 +213,8 @@ export default function CreateCoachScreen() {
                 >
                   <Text style={[
                     styles.chipText,
-                    expertise === domain && styles.chipTextSelected,
+                    { color: colors.text },
+                    expertise === domain && { color: colors.background },
                   ]}>
                     {domain}
                   </Text>
@@ -218,9 +223,9 @@ export default function CreateCoachScreen() {
             </View>
             {expertise === 'Custom' && (
               <TextInput
-                style={[styles.input, { marginTop: 12 }]}
+                style={[styles.input, { marginTop: 12, backgroundColor: colors.secondaryBackground, color: colors.text }]}
                 placeholder="Enter custom expertise..."
-                placeholderTextColor="#A1A1AA"
+                placeholderTextColor={colors.textTertiary}
                 value={customExpertise}
                 onChangeText={setCustomExpertise}
                 maxLength={100}
@@ -232,7 +237,7 @@ export default function CreateCoachScreen() {
 
           {/* Coaching Style */}
           <View style={styles.section}>
-            <Text style={styles.label}>Coaching Style</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Coaching Style</Text>
             <View style={styles.styleList}>
               {COACHING_STYLES.map((s) => (
                 <Pressable
@@ -243,7 +248,8 @@ export default function CreateCoachScreen() {
                   }}
                   style={[
                     styles.styleOption,
-                    style === s.id && styles.styleOptionSelected,
+                    { backgroundColor: colors.secondaryBackground, borderColor: 'transparent' },
+                    style === s.id && { borderColor: colors.text, backgroundColor: colors.background },
                   ]}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: style === s.id }}
@@ -252,18 +258,19 @@ export default function CreateCoachScreen() {
                   <View style={styles.styleHeader}>
                     <View style={[
                       styles.radio,
-                      style === s.id && styles.radioSelected,
+                      { borderColor: colors.border },
+                      style === s.id && { borderColor: colors.text },
                     ]}>
-                      {style === s.id && <View style={styles.radioInner} />}
+                      {style === s.id && <View style={[styles.radioInner, { backgroundColor: colors.text }]} />}
                     </View>
                     <Text style={[
                       styles.styleLabel,
-                      style === s.id && styles.styleLabelSelected,
+                      { color: colors.text },
                     ]}>
                       {s.label}
                     </Text>
                   </View>
-                  <Text style={styles.styleDescription}>{s.description}</Text>
+                  <Text style={[styles.styleDescription, { color: colors.textSecondary }]}>{s.description}</Text>
                 </Pressable>
               ))}
             </View>
@@ -271,11 +278,11 @@ export default function CreateCoachScreen() {
 
           {/* Description (Optional) */}
           <View style={styles.section}>
-            <Text style={styles.label}>Description <Text style={styles.optional}>(Optional)</Text></Text>
+            <Text style={[styles.label, { color: colors.text }]}>Description <Text style={[styles.optional, { color: colors.textSecondary }]}>(Optional)</Text></Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.secondaryBackground, color: colors.text }]}
               placeholder="Add a short bio for your coach..."
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={colors.textTertiary}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -289,16 +296,16 @@ export default function CreateCoachScreen() {
 
           {/* Advanced: System Prompt (Optional) */}
           <View style={styles.section}>
-            <Text style={styles.label}>
-              System Prompt <Text style={styles.optional}>(Advanced)</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              System Prompt <Text style={[styles.optional, { color: colors.textSecondary }]}>(Advanced)</Text>
             </Text>
-            <Text style={styles.hint}>
+            <Text style={[styles.hint, { color: colors.textSecondary }]}>
               Customize how your coach behaves. Leave empty for auto-generated prompt.
             </Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.secondaryBackground, color: colors.text }]}
               placeholder="You are a coach who..."
-              placeholderTextColor="#A1A1AA"
+              placeholderTextColor={colors.textTertiary}
               value={systemPrompt}
               onChangeText={setSystemPrompt}
               multiline
@@ -311,13 +318,13 @@ export default function CreateCoachScreen() {
           </View>
 
           {/* Preview */}
-          <View style={styles.preview}>
-            <View style={styles.previewAvatar}>
+          <View style={[styles.preview, { backgroundColor: colors.secondaryBackground }]}>
+            <View style={[styles.previewAvatar, { backgroundColor: colors.background }]}>
               <Text style={styles.previewAvatarText}>{avatar}</Text>
             </View>
             <View style={styles.previewContent}>
-              <Text style={styles.previewName}>{name || 'Your Coach'}</Text>
-              <Text style={styles.previewExpertise}>
+              <Text style={[styles.previewName, { color: colors.text }]}>{name || 'Your Coach'}</Text>
+              <Text style={[styles.previewExpertise, { color: colors.textSecondary }]}>
                 {expertise === 'Custom' ? customExpertise : expertise || 'Select expertise'}
               </Text>
             </View>
@@ -329,16 +336,17 @@ export default function CreateCoachScreen() {
             disabled={!isValid || isLoading}
             style={[
               styles.createButton,
-              (!isValid || isLoading) && styles.createButtonDisabled,
+              { backgroundColor: colors.text },
+              (!isValid || isLoading) && { backgroundColor: colors.border },
             ]}
             accessibilityRole="button"
             accessibilityLabel="Create coach"
             accessibilityState={{ disabled: !isValid || isLoading }}
           >
             {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.background} />
             ) : (
-              <Text style={styles.createButtonText}>Create Coach</Text>
+              <Text style={[styles.createButtonText, { color: colors.background }]}>Create Coach</Text>
             )}
           </Pressable>
         </ScrollView>
@@ -350,7 +358,6 @@ export default function CreateCoachScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   keyboardView: {
     flex: 1,
@@ -362,7 +369,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E4E4E7',
   },
   closeButton: {
     width: 40,
@@ -370,12 +376,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20,
-    backgroundColor: '#F4F4F5',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#09090B',
   },
   headerRight: {
     width: 40,
@@ -394,25 +398,20 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#09090B',
     marginBottom: 10,
   },
   optional: {
     fontWeight: '400',
-    color: '#71717A',
   },
   hint: {
     fontSize: 13,
-    color: '#71717A',
     marginBottom: 10,
   },
   input: {
-    backgroundColor: '#F4F4F5',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#09090B',
   },
   textArea: {
     minHeight: 80,
@@ -427,15 +426,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#F4F4F5',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  avatarOptionSelected: {
-    borderColor: '#09090B',
-    backgroundColor: '#E4E4E7',
   },
   avatarEmoji: {
     fontSize: 28,
@@ -449,20 +442,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F4F4F5',
     borderWidth: 1,
-    borderColor: '#E4E4E7',
-  },
-  chipSelected: {
-    backgroundColor: '#09090B',
-    borderColor: '#09090B',
   },
   chipText: {
     fontSize: 14,
-    color: '#09090B',
-  },
-  chipTextSelected: {
-    color: '#FFFFFF',
   },
   styleList: {
     gap: 10,
@@ -470,13 +453,7 @@ const styles = StyleSheet.create({
   styleOption: {
     padding: 14,
     borderRadius: 12,
-    backgroundColor: '#F4F4F5',
     borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  styleOptionSelected: {
-    borderColor: '#09090B',
-    backgroundColor: '#FFFFFF',
   },
   styleHeader: {
     flexDirection: 'row',
@@ -488,38 +465,27 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#D4D4D8',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-  },
-  radioSelected: {
-    borderColor: '#09090B',
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#09090B',
   },
   styleLabel: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#09090B',
-  },
-  styleLabelSelected: {
-    fontWeight: '600',
   },
   styleDescription: {
     fontSize: 13,
-    color: '#71717A',
     marginLeft: 30,
   },
   preview: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#F4F4F5',
     borderRadius: 16,
     marginBottom: 24,
   },
@@ -527,7 +493,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -546,26 +511,19 @@ const styles = StyleSheet.create({
   previewName: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#09090B',
     marginBottom: 2,
   },
   previewExpertise: {
     fontSize: 14,
-    color: '#71717A',
   },
   createButton: {
-    backgroundColor: '#09090B',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  createButtonDisabled: {
-    backgroundColor: '#D4D4D8',
-  },
   createButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

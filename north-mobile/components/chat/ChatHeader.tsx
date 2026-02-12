@@ -11,6 +11,7 @@ import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import type { Coach } from '@/types';
 
 export interface ChatHeaderProps {
@@ -43,6 +44,8 @@ export interface ChatHeaderProps {
  * ```
  */
 export function ChatHeader({ coach, onBack, onOpenFileSelector }: ChatHeaderProps) {
+  const colors = useThemeColors();
+  
   const handleBack = () => {
     if (Platform.OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -60,7 +63,7 @@ export function ChatHeader({ coach, onBack, onOpenFileSelector }: ChatHeaderProp
   return (
     <SafeAreaView
       edges={['top']}
-      className="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800"
+      style={{ backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border }}
     >
       <View className="flex-row items-center px-4 py-3">
         <TouchableOpacity
@@ -75,8 +78,7 @@ export function ChatHeader({ coach, onBack, onOpenFileSelector }: ChatHeaderProp
           <Ionicons
             name="chevron-back"
             size={24}
-            color={Platform.OS === 'ios' ? '#09090B' : '#09090B'}
-            className="dark:text-white"
+            color={colors.text}
           />
         </TouchableOpacity>
 
@@ -90,7 +92,8 @@ export function ChatHeader({ coach, onBack, onOpenFileSelector }: ChatHeaderProp
           </Text>
           <View className="flex-1">
             <Text
-              className="text-lg font-semibold text-zinc-900 dark:text-white"
+              style={{ color: colors.text }}
+              className="text-lg font-semibold"
               numberOfLines={1}
               accessible
               accessibilityRole="header"
@@ -115,8 +118,7 @@ export function ChatHeader({ coach, onBack, onOpenFileSelector }: ChatHeaderProp
             <Ionicons
               name="document-text-outline"
               size={24}
-              color={Platform.OS === 'ios' ? '#09090B' : '#09090B'}
-              className="dark:text-white"
+              color={colors.text}
             />
           </TouchableOpacity>
         )}

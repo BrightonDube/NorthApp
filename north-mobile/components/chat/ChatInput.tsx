@@ -162,23 +162,23 @@ const styles = StyleSheet.create({
   container: {
     borderTopWidth: 1,
     borderTopColor: '#E4E4E7',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAF9',
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingBottom: Platform.OS === 'ios' ? 24 : 12,
   },
   containerDark: {
-    borderTopColor: '#27272A',
-    backgroundColor: '#09090B',
+    borderTopColor: '#332F2B',
+    backgroundColor: '#1A1816',
   },
   inputRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-end', // Changed from 'center' to 'flex-end' to align with multiline input
     gap: 12,
   },
   inputContainer: {
     flex: 1,
-    backgroundColor: '#F4F4F5',
+    backgroundColor: '#F5F5F4',
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -186,36 +186,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   inputContainerDark: {
-    backgroundColor: '#18181B',
+    backgroundColor: '#252220',
   },
   input: {
     fontSize: 16,
-    color: '#09090B',
+    color: '#1C1917',
     minHeight: 28,
     maxHeight: 120,
     lineHeight: 22,
   },
   inputDark: {
-    color: '#FAFAFA',
+    color: '#FAFAF9',
   },
   sendButton: {
     width: 48,
-    height: 48,
+    height: 48, // This matches the initial minHeight of inputContainer
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0, // Prevent button from shrinking
   },
   sendButtonActive: {
-    backgroundColor: '#09090B',
+    backgroundColor: '#292524',
   },
   sendButtonActiveDark: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FAFAF9',
   },
   sendButtonDisabled: {
-    backgroundColor: '#E4E4E7',
+    backgroundColor: '#E7E5E4',
   },
   sendButtonDisabledDark: {
-    backgroundColor: '#27272A',
+    backgroundColor: '#292524',
   },
   sendButtonPressed: {
     opacity: 0.8,

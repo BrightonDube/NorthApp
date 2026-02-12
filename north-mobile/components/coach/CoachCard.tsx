@@ -22,7 +22,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useTheme } from '@/lib/theme';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import type { Coach, PublicCoach } from '@/types';
 import { getCategoryColor } from '@/lib/marketplace.types';
 
@@ -97,7 +97,7 @@ export function CoachCard({
   index = 0 
 }: CoachCardProps) {
   const prefersReducedMotion = useReducedMotion();
-  const { colors, isDark } = useTheme();
+  const colors = useThemeColors();
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -127,6 +127,11 @@ export function CoachCard({
   
   // Category badge color
   const categoryColor = getCategoryColor(coach.category);
+  
+  // Choose a colored border (not white/black/grey) - deterministic based on coach id
+  const cardBorderColors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
+  const colorIndex = coach.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % cardBorderColors.length;
+  const borderColor = cardBorderColors[colorIndex];
 
   // Determine if we should show marketplace details
   const isMarketplaceMode = variant === 'marketplace';
@@ -149,11 +154,14 @@ export function CoachCard({
         testID={testID}
         style={({ pressed, focused }) => [
           styles.card,
-          { backgroundColor: colors.card },
+          { 
+            backgroundColor: colors.card,
+            borderColor: borderColor,
+          },
           isMarketplaceMode && styles.marketplaceCard,
           pressed && styles.pressed,
           focused && { 
-            borderWidth: 2, 
+            borderWidth: 3, 
             borderColor: focusColor,
           },
         ]}
@@ -238,6 +246,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 2,
     // Shadow for depth
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

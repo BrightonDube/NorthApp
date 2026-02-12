@@ -25,6 +25,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { Coach } from '@/types';
 import { useBillingStore } from '@/stores/billingStore';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 interface CoachEditModalProps {
   visible: boolean;
@@ -77,6 +78,7 @@ export function CoachEditModal({
   onDelete,
   onClose,
 }: CoachEditModalProps) {
+  const colors = useThemeColors();
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('🎯');
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -264,9 +266,9 @@ export function CoachEditModal({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-          <View className="flex-1 bg-white dark:bg-zinc-950">
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
             {/* Header */}
-            <View className="flex-row items-center justify-between px-6 border-b border-zinc-200 dark:border-zinc-800" style={{ paddingVertical: 16, minHeight: 56 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 16, minHeight: 56, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <TouchableOpacity
                 onPress={handleCancel}
                 disabled={isLoading}
@@ -275,12 +277,12 @@ export function CoachEditModal({
                 accessibilityRole="button"
                 accessibilityLabel="Cancel"
               >
-                <Text className="text-base text-zinc-600 dark:text-zinc-400">
+                <Text style={{ fontSize: 16, color: colors.textSecondary }}>
                   Cancel
                 </Text>
               </TouchableOpacity>
 
-              <Text className="text-lg font-semibold text-zinc-900 dark:text-white">
+              <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
                 Edit Coach
               </Text>
 
@@ -296,11 +298,11 @@ export function CoachEditModal({
                   <ActivityIndicator size="small" />
                 ) : (
                   <Text
-                    className={`text-base font-semibold ${
-                      isFormValid
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-zinc-300 dark:text-zinc-700'
-                    }`}
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: isFormValid ? colors.primary : colors.textTertiary
+                    }}
                   >
                     Save
                   </Text>
@@ -308,104 +310,108 @@ export function CoachEditModal({
               </TouchableOpacity>
             </View>
 
-            <ScrollView className="flex-1 px-6">
+            <ScrollView style={{ flex: 1, paddingHorizontal: 24 }}>
               {/* Error Display */}
               {error && (
-                <View className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <Text className="text-sm text-red-600 dark:text-red-400">
+                <View style={{ marginTop: 16, padding: 12, backgroundColor: colors.error + '20', borderRadius: 12, borderWidth: 1, borderColor: colors.error }}>
+                  <Text style={{ fontSize: 14, color: colors.error }}>
                     {error}
                   </Text>
                 </View>
               )}
 
               {/* Name Input */}
-              <View className="mt-6">
-                <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              <View style={{ marginTop: 24 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, marginBottom: 8 }}>
                   Coach Name
                 </Text>
                 <TextInput
                   value={name}
                   onChangeText={setName}
                   placeholder="e.g., Strategy Coach"
-                  placeholderTextColor="#9ca3af"
-                  className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-base text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-800"
+                  placeholderTextColor={colors.textTertiary}
+                  style={{ padding: 16, backgroundColor: colors.input, borderRadius: 12, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border }}
                   maxLength={50}
                   editable={!isLoading}
                   accessible
                   accessibilityLabel="Coach name input"
                   accessibilityHint="Enter a name for your coach"
                 />
-                <Text className="text-xs text-zinc-400 dark:text-zinc-600 mt-1 text-right">
+                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 4, textAlign: 'right' }}>
                   {name.length} / 50
                 </Text>
               </View>
 
               {/* Icon Picker */}
-              <View className="mt-6">
-                <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+              <View style={{ marginTop: 24 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, marginBottom: 12 }}>
                   Icon
                 </Text>
-                <View className="flex-row flex-wrap gap-2">
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {suggestedIcons.map((suggestedIcon) => (
                     <TouchableOpacity
                       key={suggestedIcon}
                       onPress={() => handleIconSelect(suggestedIcon)}
-                      className={`rounded-xl items-center justify-center ${
-                        icon === suggestedIcon
-                          ? 'bg-blue-100 dark:bg-blue-900/50 border-2 border-blue-500 dark:border-blue-400'
-                          : 'bg-zinc-100 dark:bg-zinc-800 border-2 border-transparent'
-                      }`}
-                      style={{ width: 48, height: 48 }}
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 12,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: icon === suggestedIcon ? colors.primary + '20' : colors.surface,
+                        borderWidth: 2,
+                        borderColor: icon === suggestedIcon ? colors.primary : 'transparent'
+                      }}
                       accessible
                       accessibilityRole="radio"
                       accessibilityState={{ checked: icon === suggestedIcon }}
                       accessibilityLabel={`Icon ${suggestedIcon}`}
                     >
-                      <Text className="text-2xl">{suggestedIcon}</Text>
+                      <Text style={{ fontSize: 24 }}>{suggestedIcon}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-                <Text className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 8 }}>
                   Selected: {icon}
                 </Text>
               </View>
 
               {/* System Prompt Input */}
-              <View className="mt-6 mb-6">
-                <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              <View style={{ marginTop: 24, marginBottom: 24 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, marginBottom: 8 }}>
                   System Prompt
                 </Text>
-                <Text className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 8 }}>
                   Define your coach's role, expertise, and personality. This guides how the AI responds.
                 </Text>
                 <TextInput
                   value={systemPrompt}
                   onChangeText={setSystemPrompt}
                   placeholder="You are a strategic thinking coach who helps founders make better decisions..."
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textTertiary}
                   multiline
                   numberOfLines={8}
                   textAlignVertical="top"
-                  className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-base text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-800 min-h-[200px]"
+                  style={{ padding: 16, backgroundColor: colors.input, borderRadius: 12, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, minHeight: 200 }}
                   maxLength={2000}
                   editable={!isLoading}
                   accessible
                   accessibilityLabel="System prompt input"
                   accessibilityHint="Enter the system prompt that defines your coach's behavior"
                 />
-                <Text className="text-xs text-zinc-400 dark:text-zinc-600 mt-2 text-right">
+                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8, textAlign: 'right' }}>
                   {systemPrompt.length} / 2000 (minimum 20)
                 </Text>
               </View>
 
               {/* Make Public Toggle */}
-              <View className="mb-6">
-                <View className="flex-row items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                  <View className="flex-1 mr-4">
-                    <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              <View style={{ marginBottom: 24 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
+                  <View style={{ flex: 1, marginRight: 16 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, marginBottom: 4 }}>
                       Make Public
                     </Text>
-                    <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                       {isProUser 
                         ? 'Share this coach in the marketplace for others to discover and install'
                         : 'Upgrade to Pro to share your coaches publicly'}
@@ -438,9 +444,9 @@ export function CoachEditModal({
                         }
                       }}
                       disabled={!isProUser || isLoading}
-                      trackColor={{ false: '#d4d4d8', true: '#3b82f6' }}
-                      thumbColor={isPublic ? '#ffffff' : '#f4f4f5'}
-                      ios_backgroundColor="#d4d4d8"
+                      trackColor={{ false: colors.border, true: colors.primary }}
+                      thumbColor={isPublic ? colors.background : colors.surface}
+                      ios_backgroundColor={colors.border}
                     />
                   </TouchableOpacity>
                 </View>
@@ -448,16 +454,16 @@ export function CoachEditModal({
 
               {/* Delete Button */}
               {onDelete && (
-                <View className="mb-6">
+                <View style={{ marginBottom: 24 }}>
                   <TouchableOpacity
                     onPress={handleDelete}
                     disabled={isLoading}
-                    className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800"
+                    style={{ padding: 16, backgroundColor: colors.error + '20', borderRadius: 12, borderWidth: 1, borderColor: colors.error }}
                     accessible
                     accessibilityRole="button"
                     accessibilityLabel="Delete coach"
                   >
-                    <Text className="text-center text-base font-semibold text-red-600 dark:text-red-400">
+                    <Text style={{ textAlign: 'center', fontSize: 16, fontWeight: '600', color: colors.error }}>
                       Delete Coach
                     </Text>
                   </TouchableOpacity>

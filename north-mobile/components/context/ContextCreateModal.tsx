@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import type { ContextCategory } from '@/types';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 interface ContextCreateModalProps {
   visible: boolean;
@@ -91,6 +92,7 @@ export function ContextCreateModal({
   onCreate,
   onClose,
 }: ContextCreateModalProps) {
+  const colors = useThemeColors();
   const [selectedCategory, setSelectedCategory] = useState<ContextCategory>('values');
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -169,9 +171,9 @@ export function ContextCreateModal({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-          <View className="flex-1 bg-white dark:bg-zinc-950">
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
             {/* Header */}
-            <View className="flex-row items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+            <View style={{ borderBottomColor: colors.border }} className="flex-row items-center justify-between px-6 py-4 border-b">
               <TouchableOpacity
                 onPress={handleCancel}
                 disabled={isLoading}
@@ -179,12 +181,12 @@ export function ContextCreateModal({
                 accessibilityRole="button"
                 accessibilityLabel="Cancel"
               >
-                <Text className="text-base text-zinc-600 dark:text-zinc-400">
+                <Text style={{ color: colors.textSecondary }} className="text-base">
                   Cancel
                 </Text>
               </TouchableOpacity>
 
-              <Text className="text-lg font-semibold text-zinc-900 dark:text-white">
+              <Text style={{ color: colors.text }} className="text-lg font-semibold">
                 Add Context
               </Text>
 
@@ -196,14 +198,11 @@ export function ContextCreateModal({
                 accessibilityLabel="Create context item"
               >
                 {isLoading ? (
-                  <ActivityIndicator size="small" />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
                   <Text
-                    className={`text-base font-semibold ${
-                      content.trim()
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-zinc-300 dark:text-zinc-700'
-                    }`}
+                    style={{ color: content.trim() ? colors.primary : colors.textTertiary }}
+                    className="text-base font-semibold"
                   >
                     Create
                   </Text>
@@ -214,8 +213,8 @@ export function ContextCreateModal({
             <ScrollView className="flex-1 px-6">
               {/* Error Display */}
               {error && (
-                <View className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <Text className="text-sm text-red-600 dark:text-red-400">
+                <View style={{ backgroundColor: colors.backgroundTertiary, borderColor: colors.error }} className="mt-4 p-3 rounded-lg border">
+                  <Text style={{ color: colors.error }} className="text-sm">
                     {error}
                   </Text>
                 </View>
@@ -223,7 +222,7 @@ export function ContextCreateModal({
 
               {/* Category Picker */}
               <View className="mt-6">
-                <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                <Text style={{ color: colors.text }} className="text-sm font-medium mb-3">
                   Category
                 </Text>
                 <View className="gap-3">
@@ -243,15 +242,15 @@ export function ContextCreateModal({
                     >
                       <View className="flex-row items-center justify-between">
                         <View className="flex-1">
-                          <Text className="text-base font-semibold text-zinc-900 dark:text-white mb-1">
+                          <Text style={{ color: colors.text }} className="text-base font-semibold mb-1">
                             {category.label}
                           </Text>
-                          <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+                          <Text style={{ color: colors.textSecondary }} className="text-sm">
                             {category.description}
                           </Text>
                         </View>
                         {selectedCategory === category.value && (
-                          <View className="w-6 h-6 rounded-full bg-blue-600 dark:bg-blue-400 items-center justify-center">
+                          <View style={{ backgroundColor: colors.primary }} className="w-6 h-6 rounded-full items-center justify-center">
                             <Text className="text-white text-xs">✓</Text>
                           </View>
                         )}
@@ -263,25 +262,30 @@ export function ContextCreateModal({
 
               {/* Content Input */}
               <View className="mt-6 mb-6">
-                <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                <Text style={{ color: colors.text }} className="text-sm font-medium mb-2">
                   Content
                 </Text>
                 <TextInput
                   value={content}
                   onChangeText={setContent}
                   placeholder={`Enter your ${selectedCategory.slice(0, -1)}...`}
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textTertiary}
                   multiline
                   numberOfLines={6}
                   textAlignVertical="top"
-                  className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-base text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-800 min-h-[150px]"
+                  style={{ 
+                    backgroundColor: colors.input,
+                    color: colors.text,
+                    borderColor: colors.border,
+                  }}
+                  className="p-4 rounded-xl text-base border min-h-[150px]"
                   maxLength={1000}
                   editable={!isLoading}
                   accessible
                   accessibilityLabel="Content input"
                   accessibilityHint="Enter the content for your context item"
                 />
-                <Text className="text-xs text-zinc-400 dark:text-zinc-600 mt-2 text-right">
+                <Text style={{ color: colors.textTertiary }} className="text-xs mt-2 text-right">
                   {content.length} / 1000
                 </Text>
               </View>

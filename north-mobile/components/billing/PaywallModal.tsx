@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import { useBillingStore } from '@/stores/billingStore';
 import type { PurchasesPackage } from 'react-native-purchases';
 
@@ -68,6 +69,7 @@ interface PaywallModalProps {
 }
 
 export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
+  const colors = useThemeColors();
   const {
     offerings,
     isLoading,
@@ -111,22 +113,23 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-        <View className="flex-1 bg-background">
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+        <View className="flex-1">
           {/* Header */}
           <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
             <View className="w-10" />
-            <Text className="text-lg font-semibold text-text-primary">
+            <Text style={{ color: colors.text }} className="text-lg font-semibold">
               North Pro
             </Text>
             <Pressable
               onPress={handleClose}
-              className="items-center justify-center rounded-full bg-surface"
-              style={{ width: 44, height: 44 }}
+              style={{ backgroundColor: colors.surface }}
+              className="items-center justify-center rounded-full"
+              style={{ width: 44, height: 44, backgroundColor: colors.surface }}
               accessibilityLabel="Close paywall"
               accessibilityRole="button"
             >
-              <Ionicons name="close" size={24} color="#71717A" />
+              <Ionicons name="close" size={24} color={colors.textSecondary} />
             </Pressable>
           </View>
 
@@ -137,26 +140,27 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
           >
           {/* Hero Section */}
           <View className="items-center py-12">
-            <View className="w-20 h-20 rounded-full bg-brand-primary items-center justify-center mb-6">
+            <View style={{ backgroundColor: colors.primary }} className="w-20 h-20 rounded-full items-center justify-center mb-6">
               <Ionicons name="diamond" size={40} color="#FFFFFF" />
             </View>
-            <Text className="text-3xl font-bold text-text-primary text-center mb-3">
+            <Text style={{ color: colors.text }} className="text-3xl font-bold text-center mb-3">
               {featureInfo.title}
             </Text>
-            <Text className="text-base text-text-secondary text-center px-8 leading-6">
+            <Text style={{ color: colors.textSecondary }} className="text-base text-center px-8 leading-6">
               {featureInfo.description}
             </Text>
           </View>
 
           {/* Benefits List */}
-          <View className="bg-surface rounded-2xl p-6 mb-8">
+          <View style={{ backgroundColor: colors.surface }} className="rounded-2xl p-6 mb-8">
             {PRO_BENEFITS.map((benefit, index) => (
               <View
                 key={index}
-                className="flex-row items-center py-4 border-b border-border-subtle last:border-b-0"
+                style={{ borderBottomWidth: index < PRO_BENEFITS.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                className="flex-row items-center py-4"
               >
                 <Ionicons name="checkmark-circle" size={24} color="#22C55E" />
-                <Text className="flex-1 text-base text-text-primary ml-4">
+                <Text style={{ color: colors.text }} className="flex-1 text-base ml-4">
                   {benefit}
                 </Text>
               </View>
@@ -166,7 +170,7 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
           {/* Pricing Packages */}
           {isLoading ? (
             <View className="py-12 items-center">
-              <ActivityIndicator size="large" color="#09090B" />
+              <ActivityIndicator size="large" color={colors.text} />
             </View>
           ) : offerings?.availablePackages && offerings.availablePackages.length > 0 ? (
             <View className="gap-3 mb-8">
@@ -176,13 +180,14 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
                   pkg={pkg}
                   onPurchase={() => handlePurchase(pkg)}
                   isLoading={isLoading}
+                  colors={colors}
                 />
               ))}
             </View>
           ) : (
-            <View className="bg-surface rounded-2xl p-8 mb-8 items-center">
-              <Ionicons name="alert-circle-outline" size={32} color="#71717A" />
-              <Text className="text-text-secondary text-center mt-3">
+            <View style={{ backgroundColor: colors.surface }} className="rounded-2xl p-8 mb-8 items-center">
+              <Ionicons name="alert-circle-outline" size={32} color={colors.textSecondary} />
+              <Text style={{ color: colors.textSecondary }} className="text-center mt-3">
                 Subscription plans are not available at the moment.
               </Text>
             </View>
@@ -196,7 +201,7 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
             accessibilityLabel="Restore purchases"
             accessibilityRole="button"
           >
-            <Text className="text-base text-text-secondary">
+            <Text style={{ color: colors.textSecondary }} className="text-base">
               Restore Purchases
             </Text>
           </Pressable>
@@ -214,9 +219,10 @@ interface PackageCardProps {
   pkg: PurchasesPackage;
   onPurchase: () => void;
   isLoading: boolean;
+  colors: any;
 }
 
-function PackageCard({ pkg, onPurchase, isLoading }: PackageCardProps) {
+function PackageCard({ pkg, onPurchase, isLoading, colors }: PackageCardProps) {
   const product = pkg.product;
   const isAnnual = pkg.packageType === 'ANNUAL';
   
@@ -229,18 +235,19 @@ function PackageCard({ pkg, onPurchase, isLoading }: PackageCardProps) {
     <Pressable
       onPress={onPurchase}
       disabled={isLoading}
-      className={`
-        border-2 rounded-2xl p-5
-        ${isAnnual ? 'border-brand-primary bg-surface' : 'border-border-subtle bg-background'}
-        active:opacity-80
-      `}
+      style={{
+        borderWidth: 2,
+        borderColor: isAnnual ? colors.primary : colors.border,
+        backgroundColor: isAnnual ? colors.surface : colors.background,
+      }}
+      className="rounded-2xl p-5 active:opacity-80"
       accessibilityLabel={`Subscribe to ${product.title} for ${product.priceString}`}
       accessibilityRole="button"
     >
       {/* Best Value Badge */}
       {isAnnual && (
-        <View className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-primary px-3 py-1 rounded-full">
-          <Text className="text-xs font-semibold text-brand-inverse">
+        <View style={{ backgroundColor: colors.primary }} className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full">
+          <Text style={{ color: '#FFFFFF' }} className="text-xs font-semibold">
             BEST VALUE
           </Text>
         </View>
@@ -248,19 +255,19 @@ function PackageCard({ pkg, onPurchase, isLoading }: PackageCardProps) {
 
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
-          <Text className="text-lg font-semibold text-text-primary">
+          <Text style={{ color: colors.text }} className="text-lg font-semibold">
             {product.title.replace(' (North)', '')}
           </Text>
-          <Text className="text-sm text-text-secondary mt-1">
+          <Text style={{ color: colors.textSecondary }} className="text-sm mt-1">
             {product.description}
           </Text>
         </View>
 
         <View className="items-end">
-          <Text className="text-xl font-bold text-text-primary">
+          <Text style={{ color: colors.text }} className="text-xl font-bold">
             {product.priceString}
           </Text>
-          <Text className="text-xs text-text-secondary">
+          <Text style={{ color: colors.textSecondary }} className="text-xs">
             {isAnnual ? '/year' : '/month'}
           </Text>
           {monthlySavings && (
@@ -272,11 +279,11 @@ function PackageCard({ pkg, onPurchase, isLoading }: PackageCardProps) {
       </View>
 
       {/* Subscribe Button */}
-      <View className="mt-4 bg-brand-primary rounded-xl py-3 items-center">
+      <View style={{ backgroundColor: colors.primary }} className="mt-4 rounded-xl py-3 items-center">
         {isLoading ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Text className="text-base font-semibold text-brand-inverse">
+          <Text style={{ color: '#FFFFFF' }} className="text-base font-semibold">
             Subscribe
           </Text>
         )}

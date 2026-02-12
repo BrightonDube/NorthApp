@@ -22,7 +22,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { HapticService, HapticType } from '@/lib/haptics';
-import { useColorScheme } from 'react-native';
+import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
 export interface ListItemProps {
   /**
@@ -137,7 +137,8 @@ export function ListItem({
   accessibilityLabel,
   accessibilityHint,
 }: ListItemProps) {
-  const colorScheme = useColorScheme();
+  const colors = useThemeColors();
+  const isDark = useIsDark();
   
   const handlePress = async () => {
     if (disabled || !onPress) return;
@@ -185,7 +186,7 @@ export function ListItem({
               <Text 
                 style={[
                   styles.title,
-                  colorScheme === 'dark' && styles.titleDark,
+                  { color: colors.text },
                   disabled && styles.titleDisabled,
                 ]}
                 numberOfLines={1}
@@ -197,7 +198,7 @@ export function ListItem({
               <Text 
                 style={[
                   styles.subtitle,
-                  colorScheme === 'dark' && styles.subtitleDark,
+                  { color: colors.textSecondary },
                   disabled && styles.subtitleDisabled,
                 ]}
                 numberOfLines={2}
@@ -221,7 +222,7 @@ export function ListItem({
         <View 
           style={[
             styles.separator,
-            colorScheme === 'dark' && styles.separatorDark,
+            { backgroundColor: colors.border },
           ]} 
         />
       )}
@@ -309,10 +310,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 26,
     fontWeight: '400',
-    color: '#1C1917', // Calm design: warm black
-  },
-  titleDark: {
-    color: '#FAFAF9', // Calm design: warm white
   },
   titleDisabled: {
     opacity: 0.5,
@@ -321,11 +318,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontWeight: '400',
-    color: '#78716C', // Calm design: muted stone
     marginTop: 2,
-  },
-  subtitleDark: {
-    color: '#A8A29E', // Calm design: soft stone
   },
   subtitleDisabled: {
     opacity: 0.5,
@@ -336,10 +329,6 @@ const styles = StyleSheet.create({
     left: 16,
     right: 0,
     height: 1,
-    backgroundColor: '#E7E5E4', // Calm design: warm gray
-  },
-  separatorDark: {
-    backgroundColor: '#292524', // Calm design: warm charcoal
   },
 });
 

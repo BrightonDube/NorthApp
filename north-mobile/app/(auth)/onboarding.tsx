@@ -16,17 +16,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 type OnboardingStep = 'name' | 'goal';
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { user, restoreSession } = useAuthStore();
+  const colors = useThemeColors();
   const [step, setStep] = useState<OnboardingStep>('name');
   const [name, setName] = useState('');
   const [goal, setGoal] = useState('');
@@ -113,49 +116,45 @@ export default function OnboardingScreen() {
   const renderNameStep = () => (
     <>
       {/* Header */}
-      <View style={{ marginBottom: 32 }}>
+      <View style={styles.headerContainer}>
         <Text 
-          style={{ fontSize: 32, fontWeight: '700', color: '#111827', marginBottom: 8 }}
+          style={[styles.title, { color: colors.text }]}
           accessibilityRole="header"
         >
           What's your name?
         </Text>
-        <Text style={{ fontSize: 16, color: '#6B7280' }}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           This helps your coaches personalize their guidance.
         </Text>
       </View>
 
       {/* Error Display */}
       {error && (
-        <View style={{ 
-          marginBottom: 16, 
-          padding: 16, 
-          backgroundColor: '#FEF2F2', 
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: '#FECACA',
-        }}
-        accessible
-        accessibilityRole="alert"
-        accessibilityLiveRegion="assertive"
+        <View 
+          style={[styles.errorContainer, { 
+            backgroundColor: colors.error + '10',
+            borderColor: colors.error + '40',
+          }]}
+          accessible
+          accessibilityRole="alert"
+          accessibilityLiveRegion="assertive"
         >
-          <Text style={{ color: '#DC2626', fontSize: 14 }}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
         </View>
       )}
 
       {/* Name Input */}
       <TextInput
-        style={{
-          borderWidth: 1,
-          borderColor: error ? '#EF4444' : '#D1D5DB',
-          borderRadius: 12,
-          paddingHorizontal: 16,
-          paddingVertical: 16,
-          fontSize: 18,
-          backgroundColor: '#F9FAFB',
-          marginBottom: 24,
-        }}
+        style={[
+          styles.input,
+          {
+            borderColor: error ? colors.error : colors.border,
+            backgroundColor: colors.input,
+            color: colors.text,
+          }
+        ]}
         placeholder="Your name"
+        placeholderTextColor={colors.textTertiary}
         value={name}
         onChangeText={(text) => {
           setName(text);
@@ -171,12 +170,12 @@ export default function OnboardingScreen() {
 
       {/* Continue Button */}
       <TouchableOpacity
-        style={{
-          backgroundColor: isLoading || !name.trim() ? '#9CA3AF' : '#3B82F6',
-          paddingVertical: 16,
-          borderRadius: 12,
-          alignItems: 'center',
-        }}
+        style={[
+          styles.button,
+          {
+            backgroundColor: isLoading || !name.trim() ? colors.textTertiary : colors.primary,
+          }
+        ]}
         onPress={handleNameSubmit}
         disabled={isLoading || !name.trim()}
         accessibilityRole="button"
@@ -184,9 +183,9 @@ export default function OnboardingScreen() {
         accessibilityState={{ disabled: isLoading || !name.trim() }}
       >
         {isLoading ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ActivityIndicator color={colors.background} />
         ) : (
-          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
+          <Text style={[styles.buttonText, { color: colors.background }]}>
             Continue
           </Text>
         )}
@@ -197,51 +196,45 @@ export default function OnboardingScreen() {
   const renderGoalStep = () => (
     <>
       {/* Header */}
-      <View style={{ marginBottom: 32 }}>
+      <View style={styles.headerContainer}>
         <Text 
-          style={{ fontSize: 32, fontWeight: '700', color: '#111827', marginBottom: 8 }}
+          style={[styles.title, { color: colors.text }]}
           accessibilityRole="header"
         >
           What's your main goal?
         </Text>
-        <Text style={{ fontSize: 16, color: '#6B7280' }}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Share what you're working towards. This helps your coaches understand your context.
         </Text>
       </View>
 
       {/* Error Display */}
       {error && (
-        <View style={{ 
-          marginBottom: 16, 
-          padding: 16, 
-          backgroundColor: '#FEF2F2', 
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: '#FECACA',
-        }}
-        accessible
-        accessibilityRole="alert"
-        accessibilityLiveRegion="assertive"
+        <View 
+          style={[styles.errorContainer, { 
+            backgroundColor: colors.error + '10',
+            borderColor: colors.error + '40',
+          }]}
+          accessible
+          accessibilityRole="alert"
+          accessibilityLiveRegion="assertive"
         >
-          <Text style={{ color: '#DC2626', fontSize: 14 }}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
         </View>
       )}
 
       {/* Goal Input */}
       <TextInput
-        style={{
-          borderWidth: 1,
-          borderColor: '#D1D5DB',
-          borderRadius: 12,
-          paddingHorizontal: 16,
-          paddingVertical: 16,
-          fontSize: 16,
-          backgroundColor: '#F9FAFB',
-          marginBottom: 24,
-          minHeight: 100,
-          textAlignVertical: 'top',
-        }}
+        style={[
+          styles.goalInput,
+          {
+            borderColor: colors.border,
+            backgroundColor: colors.input,
+            color: colors.text,
+          }
+        ]}
         placeholder="e.g., Launch my startup by Q2"
+        placeholderTextColor={colors.textTertiary}
         value={goal}
         onChangeText={setGoal}
         autoCapitalize="sentences"
@@ -255,13 +248,13 @@ export default function OnboardingScreen() {
 
       {/* Continue Button */}
       <TouchableOpacity
-        style={{
-          backgroundColor: isLoading ? '#9CA3AF' : '#3B82F6',
-          paddingVertical: 16,
-          borderRadius: 12,
-          alignItems: 'center',
-          marginBottom: 12,
-        }}
+        style={[
+          styles.button,
+          {
+            backgroundColor: isLoading ? colors.textTertiary : colors.primary,
+            marginBottom: 12,
+          }
+        ]}
         onPress={handleGoalSubmit}
         disabled={isLoading}
         accessibilityRole="button"
@@ -269,9 +262,9 @@ export default function OnboardingScreen() {
         accessibilityState={{ disabled: isLoading }}
       >
         {isLoading ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ActivityIndicator color={colors.background} />
         ) : (
-          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
+          <Text style={[styles.buttonText, { color: colors.background }]}>
             {goal.trim() ? 'Complete Setup' : 'Skip for Now'}
           </Text>
         )}
@@ -280,16 +273,13 @@ export default function OnboardingScreen() {
       {/* Skip Button */}
       {goal.trim() && (
         <TouchableOpacity
-          style={{
-            paddingVertical: 12,
-            alignItems: 'center',
-          }}
+          style={styles.skipButton}
           onPress={handleSkip}
           disabled={isLoading}
           accessibilityRole="button"
           accessibilityLabel="Skip this step"
         >
-          <Text style={{ color: '#6B7280', fontSize: 14 }}>
+          <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>
             Skip this step
           </Text>
         </TouchableOpacity>
@@ -298,40 +288,31 @@ export default function OnboardingScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
           {/* Progress Indicator */}
           <View 
-            style={{ flexDirection: 'row', marginBottom: 32 }}
+            style={styles.progressContainer}
             accessible
             accessibilityRole="progressbar"
             accessibilityLabel={`Step ${step === 'name' ? '1' : '2'} of 2`}
             accessibilityValue={{ min: 0, max: 2, now: step === 'name' ? 1 : 2 }}
           >
             <View
-              style={{
-                flex: 1,
-                height: 4,
-                backgroundColor: '#3B82F6',
-                borderRadius: 2,
-                marginRight: 4,
-              }}
+              style={[styles.progressBar, { backgroundColor: colors.primary }]}
             />
             <View
-              style={{
-                flex: 1,
-                height: 4,
-                backgroundColor: step === 'goal' ? '#3B82F6' : '#E5E7EB',
-                borderRadius: 2,
-                marginLeft: 4,
-              }}
+              style={[
+                styles.progressBar,
+                { backgroundColor: step === 'goal' ? colors.primary : colors.border }
+              ]}
             />
           </View>
 
@@ -342,3 +323,81 @@ export default function OnboardingScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    marginBottom: 32,
+  },
+  progressBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    marginHorizontal: 4,
+  },
+  headerContainer: {
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+  },
+  errorContainer: {
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  errorText: {
+    fontSize: 14,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 18,
+    marginBottom: 24,
+  },
+  goalInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 16,
+    marginBottom: 24,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  button: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  skipButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontSize: 14,
+  },
+});

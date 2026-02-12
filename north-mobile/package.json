@@ -5,7 +5,7 @@
   "scripts": {
     "start": "expo start --host lan",
     "dev": "expo start --dev-client --host lan --clear",
-    "dev:tunnel": "expo start --dev-client --tunnel",
+    "dev:tunnel": "expo start --dev-client --tunnel --clear",
     "android": "expo start --android --dev-client",
     "ios": "expo start --ios --dev-client",
     "web": "expo start --web",

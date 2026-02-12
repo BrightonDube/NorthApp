@@ -8,10 +8,11 @@
  */
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { Message } from '@/types';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 export interface MessageBubbleProps {
   message: Message;
@@ -52,39 +53,71 @@ export interface MessageBubbleProps {
 export const MessageBubble = React.memo(function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const prefersReducedMotion = useReducedMotion();
+  const colors = useThemeColors();
 
   return (
     <Animated.View
       entering={prefersReducedMotion ? undefined : FadeIn}
-      className={`mb-4 ${isUser ? 'items-end' : 'items-start'}`}
+      style={[
+        styles.container,
+        isUser ? styles.userContainer : styles.assistantContainer,
+      ]}
       testID={`message-bubble-${message.id}`}
       accessible
       accessibilityRole="text"
       accessibilityLabel={`${isUser ? 'You' : 'Assistant'} said: ${message.content}`}
     >
       <View
-        className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-          isUser
-            ? 'bg-zinc-900 dark:bg-zinc-100'
-            : 'bg-zinc-100 dark:bg-zinc-800'
-        }`}
+        style={[
+          styles.bubble,
+          {
+            backgroundColor: isUser ? colors.messageSent : colors.messageReceived,
+          },
+        ]}
       >
         <Text
-          className={`text-base leading-6 ${
-            isUser
-              ? 'text-white dark:text-zinc-900'
-              : 'text-zinc-900 dark:text-white'
-          }`}
+          style={[
+            styles.text,
+            {
+              color: isUser ? colors.messageTextSent : colors.messageTextReceived,
+            },
+          ]}
           selectable
         >
           {message.content}
           {isStreaming && (
-            <Text className="opacity-50"> ▊</Text>
+            <Text style={styles.cursor}> ▊</Text>
           )}
         </Text>
       </View>
     </Animated.View>
   );
+});
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  userContainer: {
+    alignItems: 'flex-end',
+  },
+  assistantContainer: {
+    alignItems: 'flex-start',
+  },
+  bubble: {
+    maxWidth: '80%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  text: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  cursor: {
+    opacity: 0.5,
+  },
 });
 
 // Memoization comparison function - only re-render if content or streaming state changes

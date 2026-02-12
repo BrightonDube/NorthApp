@@ -34,7 +34,7 @@ import { ChatHeader, MessageList, ChatInput } from '@/components/chat';
 import { SessionFileSelector } from '@/components/chat/SessionFileSelector';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ChatLoadingSkeleton } from '@/components/SkeletonLoader';
-import { useTheme } from '@/lib/theme';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import type { Coach } from '@/types';
 
 
@@ -42,7 +42,7 @@ import type { Coach } from '@/types';
  * Empty Chat State
  */
 function EmptyChat({ coach }: { coach: Coach | undefined }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   
   return (
     <View 
@@ -90,7 +90,7 @@ function ErrorBanner({ error, onDismiss }: { error: string; onDismiss: () => voi
 export default function ChatScreen() {
   const { coachId } = useLocalSearchParams<{ coachId: string }>();
   const router = useRouter();
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   
   // Get coach info
   const coach = useCoachById(coachId || '');

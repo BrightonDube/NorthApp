@@ -16,10 +16,11 @@
  * Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 2.2, 4.3, 5.1, 8.1, 8.2, 8.4
  */
 
-import { View, Pressable, StyleSheet, useColorScheme } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ViewStyle, PressableProps } from 'react-native';
 import type { ReactNode } from 'react';
+import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
 interface CardProps {
   /** Card content */
@@ -80,11 +81,11 @@ export function Card({
   accessibilityLabel,
   accessibilityHint,
 }: CardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const colors = useThemeColors();
+  const isDark = useIsDark();
 
   // Focus indicator color (WCAG AA compliant)
-  const focusColor = isDark ? '#60A5FA' : '#2563EB';
+  const focusColor = colors.primary;
 
   // Determine padding value
   const paddingValue = padding === 'large' ? 24 : 20;
@@ -95,7 +96,7 @@ export function Card({
   // Base card style
   const baseCardStyle = [
     styles.card,
-    { padding: paddingValue },
+    { padding: paddingValue, backgroundColor: colors.card },
     shadowStyle,
     style,
   ];
@@ -122,7 +123,7 @@ export function Card({
       >
         {gradient ? (
           <LinearGradient
-            colors={isDark ? ['#1C1917', '#292524'] : ['#F5F5F4', '#E7E5E4']}
+            colors={isDark ? [colors.background, colors.backgroundSecondary] : [colors.card, colors.backgroundTertiary]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={styles.gradientContainer}
@@ -141,7 +142,7 @@ export function Card({
     return (
       <View style={baseCardStyle} testID={testID}>
         <LinearGradient
-          colors={isDark ? ['#1C1917', '#292524'] : ['#F5F5F4', '#E7E5E4']}
+          colors={isDark ? [colors.background, colors.backgroundSecondary] : [colors.card, colors.backgroundTertiary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={styles.gradientContainer}
@@ -161,7 +162,6 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F5F5F4', // Light mode surface color
     borderRadius: 16, // Calm Design System: lg border radius for cards
     overflow: 'hidden', // Ensure gradient respects border radius
   },

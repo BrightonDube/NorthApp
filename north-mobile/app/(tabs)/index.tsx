@@ -36,7 +36,7 @@ import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { CoachGridSkeleton } from '@/components/SkeletonLoader';
 import { Logo } from '@/components/Logo';
-import { useTheme } from '@/lib/theme';
+import { useTheme, useIsDark, useThemeColors } from '@/contexts/ThemeContext';
 import type { Coach } from '@/types';
 
 /**
@@ -54,24 +54,48 @@ function AppLogo() {
  * Pro Badge Component
  */
 function ProBadge() {
+  const colors = useThemeColors();
+  
   return (
-    <View style={styles.proBadge}>
-      <Ionicons name="diamond" size={12} color="#FFFFFF" />
-      <Text style={styles.proBadgeText}>PRO</Text>
+    <View style={[styles.proBadge, { backgroundColor: colors.text }]}>
+      <Ionicons name="diamond" size={12} color={colors.background} />
+      <Text style={[styles.proBadgeText, { color: colors.background }]}>PRO</Text>
     </View>
   );
 }
 
 /**
  * Pro Features Banner
+ * Shows for 20 minutes after upgrade, then hides permanently
  */
 function ProFeaturesBanner() {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
+  const [isVisible, setIsVisible] = useState(false);
+  const { lastUpgradeTime } = useBillingStore();
+  
+  useEffect(() => {
+    // Check if user upgraded recently (within 20 minutes)
+    if (lastUpgradeTime) {
+      const twentyMinutes = 20 * 60 * 1000;
+      const timeSinceUpgrade = Date.now() - lastUpgradeTime;
+      if (timeSinceUpgrade < twentyMinutes) {
+        setIsVisible(true);
+        // Auto-hide after remaining time
+        const remainingTime = twentyMinutes - timeSinceUpgrade;
+        setTimeout(() => setIsVisible(false), remainingTime);
+      }
+    }
+  }, [lastUpgradeTime]);
+  
+  if (!isVisible) return null;
   
   return (
-    <View style={styles.proFeaturesBanner}>
+    <View style={[styles.proFeaturesBanner, { 
+      backgroundColor: colors.backgroundSecondary, 
+      borderColor: colors.border 
+    }]}>
       <View style={styles.proFeaturesHeader}>
-        <Ionicons name="diamond" size={20} color={colors.text} />
+        <Ionicons name="diamond" size={20} color={colors.primary} />
         <Text style={[styles.proFeaturesTitle, { color: colors.text }]}>Pro Features Unlocked</Text>
       </View>
       <View style={styles.proFeaturesList}>
@@ -97,7 +121,7 @@ function ProFeaturesBanner() {
  * With subtitle for clarity
  */
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   
   return (
     <View style={styles.sectionHeader}>
@@ -119,7 +143,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
  * Simplified: solid background, no dashed border, cleaner design
  */
 function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProUser: boolean }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -160,7 +184,7 @@ function CreateCoachButton({ onPress, isProUser }: { onPress: () => void; isProU
  * Empty State Component
  */
 function EmptyState() {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   
   return (
     <View 
@@ -185,7 +209,7 @@ function EmptyState() {
  * Error State Component
  */
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   
   return (
     <View 
@@ -208,7 +232,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         accessibilityRole="button"
         accessibilityLabel="Retry loading coaches"
       >
-        <Text style={styles.retryText}>Try Again</Text>
+        <Text style={[styles.retryText, { color: colors.background }]}>Try Again</Text>
       </Pressable>
     </View>
   );
@@ -216,7 +240,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   const { user } = useAuthStore();
   const { 
     coaches, 
@@ -454,7 +478,6 @@ const styles = StyleSheet.create({
   proBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#09090B',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
@@ -462,7 +485,6 @@ const styles = StyleSheet.create({
   proBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFFFFF',
     marginLeft: 4,
     letterSpacing: 0.5,
   },
@@ -488,12 +510,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   proFeaturesBanner: {
-    backgroundColor: '#F0FDF4',
     borderRadius: 16,
     padding: 20,
     marginBottom: 32,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
   },
   proFeaturesHeader: {
     flexDirection: 'row',
@@ -592,6 +612,5 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
 });

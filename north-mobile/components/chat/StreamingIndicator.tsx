@@ -17,6 +17,7 @@ import Animated, {
   withTiming,
   withDelay,
 } from 'react-native-reanimated';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 /**
@@ -31,6 +32,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
  * ```
  */
 export function StreamingIndicator() {
+  const colors = useThemeColors();
   const prefersReducedMotion = useReducedMotion();
   const dot1Opacity = useSharedValue(0.3);
   const dot2Opacity = useSharedValue(0.3);
@@ -93,16 +95,16 @@ export function StreamingIndicator() {
       accessibilityRole="text"
       accessibilityLabel="Assistant is typing"
     >
-      <View className="bg-zinc-100 dark:bg-zinc-800 px-4 py-3 rounded-2xl">
+      <View style={{ backgroundColor: colors.surface }} className="px-4 py-3 rounded-2xl">
         <View className="flex-row items-center gap-1">
           <Animated.View style={dot1Style}>
-            <Text className="text-zinc-900 dark:text-white text-lg">•</Text>
+            <Text style={{ color: colors.text }} className="text-lg">•</Text>
           </Animated.View>
           <Animated.View style={dot2Style}>
-            <Text className="text-zinc-900 dark:text-white text-lg">•</Text>
+            <Text style={{ color: colors.text }} className="text-lg">•</Text>
           </Animated.View>
           <Animated.View style={dot3Style}>
-            <Text className="text-zinc-900 dark:text-white text-lg">•</Text>
+            <Text style={{ color: colors.text }} className="text-lg">•</Text>
           </Animated.View>
         </View>
       </View>

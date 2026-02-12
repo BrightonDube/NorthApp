@@ -19,7 +19,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { CoachCategory } from '@/types';
 import { getCategoryColor } from '@/lib/marketplace.types';
-import { useTheme } from '@/lib/theme';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 interface CategoryFilterProps {
   /** Currently selected category (null means "All") */
@@ -47,7 +47,7 @@ export function CategoryFilter({
   onSelectCategory,
   testID = 'category-filter',
 }: CategoryFilterProps) {
-  const { colors, isDark } = useTheme();
+  const colors = useThemeColors();
 
   // All categories plus "All" option
   const categories: (CoachCategory | null)[] = [

@@ -7,12 +7,13 @@
  * Validates: Requirements 14.2, 14.6, 14.7, 23.7
  */
 
-import { View, Text, Pressable, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import type { UserContext } from '@/types';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 interface ContextCardProps {
   context: UserContext;
@@ -64,10 +65,7 @@ const categoryLabels = {
  */
 export function ContextCard({ context, onEdit, onDelete }: ContextCardProps) {
   const prefersReducedMotion = useReducedMotion();
-  const colorScheme = useColorScheme();
-  
-  // Focus indicator color
-  const focusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB';
+  const colors = useThemeColors();
 
   /**
    * Handle swipe gesture open with haptic feedback
@@ -88,8 +86,9 @@ export function ContextCard({ context, onEdit, onDelete }: ContextCardProps) {
         onDelete();
       }}
       style={({ focused }) => [
+        { backgroundColor: colors.error },
         styles.deleteButton,
-        focused && { borderWidth: 2, borderColor: focusColor },
+        focused && { borderWidth: 2, borderColor: colors.primary },
       ]}
       accessible
       accessibilityRole="button"
@@ -115,7 +114,7 @@ export function ContextCard({ context, onEdit, onDelete }: ContextCardProps) {
           }}
           style={({ focused }) => [
             styles.card,
-            focused && { borderWidth: 2, borderColor: focusColor },
+            focused && { borderWidth: 2, borderColor: colors.primary },
           ]}
           className={`p-4 rounded-xl mb-3 ${categoryColors[context.category]}`}
           accessible
@@ -143,7 +142,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   deleteButton: {
-    backgroundColor: '#EF4444',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,

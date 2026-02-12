@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, Switch, Pressable, Alert, Platform, StyleSheet } from 'react-native';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { scheduleDailyReminder, cancelAllNotifications } from '@/lib/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 const DAILY_REMINDER_KEY = '@north_daily_reminder_enabled';
 const DAILY_REMINDER_HOUR_KEY = '@north_daily_reminder_hour';
 
 export function NotificationSettings() {
+  const colors = useThemeColors();
   const { 
     notificationPermission, 
     requestPermissions,
@@ -137,73 +139,141 @@ export function NotificationSettings() {
   };
 
   return (
-    <View className="bg-white dark:bg-zinc-900 rounded-2xl p-4 mb-4">
-      <Text className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">
-        Notifications
-      </Text>
-
+    <View 
+      style={[
+        styles.section, 
+        { 
+          backgroundColor: colors.card,
+          borderRadius: 12,
+          overflow: 'hidden',
+          marginBottom: 16,
+        }
+      ]}
+    >
       {/* Permission Status */}
-      <View className="flex-row justify-between items-center mb-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-        <View>
-          <Text className="text-base text-zinc-900 dark:text-zinc-100 mb-1">
+      <View style={[
+        styles.settingsRow,
+        { borderBottomColor: colors.border }
+      ]}>
+        <View style={styles.rowLabelSection}>
+          <Text style={[styles.rowLabel, { color: colors.text }]}>
             Notification Permission
           </Text>
-          <Text className={`text-sm ${getPermissionStatusColor()}`}>
+          <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
             {getPermissionStatusText()}
           </Text>
         </View>
-        {notificationPermission !== 'granted' && (
-          <TouchableOpacity
-            onPress={handleEnableNotifications}
-            disabled={isLoading || Constants.appOwnership === 'expo'}
-            className={`px-4 py-2 rounded-lg ${
-              Constants.appOwnership === 'expo' 
-                ? 'bg-zinc-200 dark:bg-zinc-800 opacity-50' 
-                : 'bg-zinc-900 dark:bg-zinc-100'
-            }`}
-          >
-            <Text className={`${
-              Constants.appOwnership === 'expo'
-                ? 'text-zinc-500 dark:text-zinc-400'
-                : 'text-white dark:text-zinc-900'
-            } font-semibold`}>
-              Enable
-            </Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.rowValueSection}>
+          {notificationPermission !== 'granted' && (
+            <Pressable
+              onPress={handleEnableNotifications}
+              disabled={isLoading || Constants.appOwnership === 'expo'}
+              style={({ pressed }) => [
+                styles.enableButton,
+                { backgroundColor: colors.text },
+                pressed && { opacity: 0.8 },
+                (isLoading || Constants.appOwnership === 'expo') && { opacity: 0.5 }
+              ]}
+            >
+              <Text style={[styles.enableButtonText, { color: colors.background }]}>
+                Enable
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Daily Reminder Toggle */}
-      <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-4">
-          <Text className="text-base text-zinc-900 dark:text-zinc-100 mb-1">
+      <View style={[
+        styles.settingsRow,
+        { borderBottomWidth: 0 }
+      ]}>
+        <View style={styles.rowLabelSection}>
+          <Text style={[styles.rowLabel, { color: colors.text }]}>
             Daily Check-in
           </Text>
-          <Text className="text-sm text-zinc-600 dark:text-zinc-400">
-            Receive a daily reminder at {reminderHour}:00 {reminderHour >= 12 ? 'PM' : 'AM'}
+          <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+            Reminder at {reminderHour}:00 {reminderHour >= 12 ? 'PM' : 'AM'}
           </Text>
         </View>
-        <Switch
-          value={dailyReminderEnabled}
-          onValueChange={handleToggleDailyReminder}
-          disabled={notificationPermission !== 'granted' || Constants.appOwnership === 'expo'}
-          trackColor={{ false: '#d4d4d8', true: '#09090B' }}
-          thumbColor="#ffffff"
-        />
+        <View style={styles.rowValueSection}>
+          <Switch
+            value={dailyReminderEnabled}
+            onValueChange={handleToggleDailyReminder}
+            disabled={notificationPermission !== 'granted' || Constants.appOwnership === 'expo'}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#ffffff"
+          />
+        </View>
       </View>
 
       {/* Info Text */}
       {Constants.appOwnership === 'expo' ? (
-        <Text className="text-xs text-amber-600 dark:text-amber-400 mt-4">
-          Note: Notifications are disabled in Expo Go. Use a development build to test this feature.
-        </Text>
+        <View style={styles.infoContainer}>
+          <Text style={[styles.infoText, { color: colors.warning }]}>
+            Note: Notifications are disabled in Expo Go. Use a development build to test this feature.
+          </Text>
+        </View>
       ) : (
         notificationPermission === 'granted' && (
-          <Text className="text-xs text-zinc-500 dark:text-zinc-500 mt-4">
-            You can customize notification times and types in future updates.
-          </Text>
+          <View style={styles.infoContainer}>
+            <Text style={[styles.infoText, { color: colors.textTertiary }]}>
+              You can customize notification times and types in future updates.
+            </Text>
+          </View>
         )
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  section: {
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    minHeight: 64,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowLabelSection: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  rowLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  rowValue: {
+    fontSize: 14,
+  },
+  rowValueSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: '50%',
+  },
+  enableButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  enableButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  infoContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  infoText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+});

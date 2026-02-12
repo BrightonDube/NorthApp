@@ -440,6 +440,12 @@ export const useChatStore = create<ChatStore>()(
           });
 
           // Call Edge Function with SSE streaming
+          console.log('[ChatStore] Calling Edge Function:', {
+            url: `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
+            sessionId,
+            coachId,
+          });
+          
           const response = await fetch(
             `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
             {
@@ -456,8 +462,16 @@ export const useChatStore = create<ChatStore>()(
             }
           );
 
+          console.log('[ChatStore] Response status:', response.status, response.statusText);
+
           if (!response.ok) {
-            throw new Error(`Edge Function error: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('[ChatStore] Edge Function error:', {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorText,
+            });
+            throw new Error(`Edge Function error (${response.status}): ${errorText || response.statusText}`);
           }
 
           // Handle SSE stream

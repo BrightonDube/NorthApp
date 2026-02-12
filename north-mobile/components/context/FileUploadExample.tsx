@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
 import { FileUploadComponent } from './FileUploadComponent';
 import { useRouter } from 'expo-router';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 /**
  * Example screen showing file upload integration
@@ -122,6 +123,7 @@ export function FileUploadModal({
  */
 export function FileListScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
   const [files, setFiles] = useState<Array<{ id: string; name: string }>>([]);
 
   const handleUploadPress = () => {

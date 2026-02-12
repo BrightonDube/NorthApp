@@ -6,6 +6,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "internal-testing",
       "ios": {
         "simulator": true
       },
@@ -15,6 +16,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "channel": "external-testing",
       "ios": {
         "simulator": false
       },
@@ -29,6 +31,7 @@
     },
     "production": {
       "distribution": "store",
+      "channel": "production",
       "ios": {
         "simulator": false
       },

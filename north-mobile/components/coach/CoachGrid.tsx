@@ -14,6 +14,7 @@
 import { View } from 'react-native';
 import { CoachCard } from './CoachCard';
 import type { Coach } from '@/types';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 interface CoachGridProps {
   coaches: Coach[];
@@ -42,8 +43,10 @@ export function CoachGrid({
   onCoachLongPress,
   testID 
 }: CoachGridProps) {
+  const colors = useThemeColors();
+  
   return (
-    <View className="gap-3" testID={testID}>
+    <View style={{ gap: 12 }} testID={testID}>
       {coaches.map((coach, index) => (
         <CoachCard
           key={coach.id}

@@ -37,7 +37,7 @@ import { useBillingStore } from '@/stores/billingStore';
 import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ContextSectionSkeleton } from '@/components/SkeletonLoader';
-import { useTheme } from '@/lib/theme';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import type { UserContext, ContextCategory } from '@/types';
 
 // Category information with icons and colors
@@ -83,7 +83,7 @@ function ContextItemCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   const info = CATEGORY_INFO[item.category];
   
   return (
@@ -129,7 +129,7 @@ function ContextSection({
   onEditItem: (item: UserContext) => void;
   onDeleteItem: (item: UserContext) => void;
 }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   const info = CATEGORY_INFO[category];
   
   return (
@@ -448,7 +448,7 @@ function DeleteModal({
 }
 
 export default function ContextScreen() {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   const {
     items,
     isLoading,

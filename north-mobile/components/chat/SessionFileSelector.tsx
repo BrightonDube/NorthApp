@@ -25,6 +25,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import { useContextStore } from '@/stores/contextStore';
 import type { FileAttachment } from '@/lib/database.types';
 
@@ -53,6 +54,7 @@ export interface SessionFileSelectorProps {
  * Validates: Requirements 7.1, 7.2, 7.3, 7.4
  */
 export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorProps) {
+  const colors = useThemeColors();
   const { 
     fileAttachments, 
     fetchFileAttachments, 
@@ -190,9 +192,9 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
 
   if (initializing) {
     return (
-      <View className="flex-1 bg-white dark:bg-zinc-950 items-center justify-center">
-        <ActivityIndicator size="large" />
-        <Text className="text-zinc-500 dark:text-zinc-400 mt-4">
+      <View style={{ backgroundColor: colors.background }} className="flex-1 items-center justify-center">
+        <ActivityIndicator size="large" color={colors.text} />
+        <Text style={{ color: colors.textSecondary }} className="mt-4">
           Loading files...
         </Text>
       </View>
@@ -200,11 +202,11 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
   }
 
   return (
-    <View className="flex-1 bg-white dark:bg-zinc-950">
+    <View style={{ backgroundColor: colors.background }} className="flex-1">
       {/* Header */}
-      <View className="border-b border-zinc-200 dark:border-zinc-800 px-4 py-4">
+      <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border }} className="px-4 py-4">
         <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-xl font-semibold text-zinc-900 dark:text-white">
+          <Text style={{ color: colors.text }} className="text-xl font-semibold">
             Select Files for Session
           </Text>
           <TouchableOpacity
@@ -214,10 +216,10 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
             accessibilityRole="button"
             accessibilityLabel="Close file selector"
           >
-            <Ionicons name="close" size={24} className="text-zinc-900 dark:text-white" />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
-        <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+        <Text style={{ color: colors.textSecondary }} className="text-sm">
           Choose which files to include in this conversation. By default, all files are included.
         </Text>
       </View>
@@ -226,11 +228,12 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
         {/* Use All Files Option */}
         <TouchableOpacity
           onPress={toggleUseAllFiles}
-          className={`flex-row items-center p-4 rounded-xl mb-4 mt-4 ${
-            useAllFiles 
-              ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500' 
-              : 'bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800'
-          }`}
+          style={{
+            backgroundColor: useAllFiles ? colors.primaryHover : colors.surface,
+            borderWidth: useAllFiles ? 2 : 1,
+            borderColor: useAllFiles ? colors.primary : colors.border,
+          }}
+          className="flex-row items-center p-4 rounded-xl mb-4 mt-4"
           accessible
           accessibilityRole="checkbox"
           accessibilityState={{ checked: useAllFiles }}
@@ -240,14 +243,14 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
             <Ionicons
               name={useAllFiles ? 'checkmark-circle' : 'ellipse-outline'}
               size={24}
-              color={useAllFiles ? '#3B82F6' : '#A1A1AA'}
+              color={useAllFiles ? colors.primary : colors.textTertiary}
             />
           </View>
           <View className="flex-1">
-            <Text className="text-base font-semibold text-zinc-900 dark:text-white mb-1">
+            <Text style={{ color: colors.text }} className="text-base font-semibold mb-1">
               Use All Files (Default)
             </Text>
-            <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+            <Text style={{ color: colors.textSecondary }} className="text-sm">
               Include all {fileAttachments.length} file{fileAttachments.length !== 1 ? 's' : ''} in this conversation
             </Text>
           </View>
@@ -255,19 +258,19 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
 
         {/* Divider */}
         <View className="flex-row items-center mb-4">
-          <View className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
-          <Text className="text-xs text-zinc-400 dark:text-zinc-600 mx-3">OR SELECT SPECIFIC FILES</Text>
-          <View className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
+          <View style={{ backgroundColor: colors.border }} className="flex-1 h-px" />
+          <Text style={{ color: colors.textTertiary }} className="text-xs mx-3">OR SELECT SPECIFIC FILES</Text>
+          <View style={{ backgroundColor: colors.border }} className="flex-1 h-px" />
         </View>
 
         {/* File List */}
         {fileAttachments.length === 0 ? (
           <View className="items-center justify-center py-12">
-            <Ionicons name="document-outline" size={48} color="#A1A1AA" />
-            <Text className="text-zinc-500 dark:text-zinc-400 mt-4 text-center">
+            <Ionicons name="document-outline" size={48} color={colors.textTertiary} />
+            <Text style={{ color: colors.textSecondary }} className="mt-4 text-center">
               No files uploaded yet
             </Text>
-            <Text className="text-sm text-zinc-400 dark:text-zinc-600 mt-2 text-center px-8">
+            <Text style={{ color: colors.textTertiary }} className="text-sm mt-2 text-center px-8">
               Upload files in the Context tab to make them available in conversations
             </Text>
           </View>
@@ -282,14 +285,16 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
                   key={file.id}
                   onPress={() => !isDisabled && toggleFileSelection(file.id)}
                   disabled={isDisabled}
-                  className={`flex-row items-start p-4 rounded-xl mb-3 ${
-                    isSelected
-                      ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500'
-                      : 'bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800'
-                  } ${isDisabled ? 'opacity-50' : ''}`}
+                  style={{
+                    backgroundColor: isSelected ? colors.primaryHover : colors.surface,
+                    borderWidth: isSelected ? 2 : 1,
+                    borderColor: isSelected ? colors.primary : colors.border,
+                    opacity: isDisabled ? 0.5 : 1,
+                  }}
+                  className="flex-row items-start p-4 rounded-xl mb-3"
                   accessible
                   accessibilityRole="checkbox"
-                  accessibilityState={{ 
+                  accessibilityState={{
                     checked: isSelected,
                     disabled: isDisabled,
                   }}
@@ -299,24 +304,25 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
                     <Ionicons
                       name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
                       size={24}
-                      color={isSelected ? '#3B82F6' : '#A1A1AA'}
+                      color={isSelected ? colors.primary : colors.textTertiary}
                     />
                   </View>
                   <View className="flex-1">
-                    <Text 
-                      className="text-base font-medium text-zinc-900 dark:text-white mb-1"
+                    <Text
+                      style={{ color: colors.text }}
+                      className="text-base font-medium mb-1"
                       numberOfLines={2}
                     >
                       {file.filename}
                     </Text>
                     <View className="flex-row items-center flex-wrap">
-                      <Text className="text-xs text-zinc-500 dark:text-zinc-400 mr-3">
+                      <Text style={{ color: colors.textSecondary }} className="text-xs mr-3">
                         {file.file_type.toUpperCase()}
                       </Text>
-                      <Text className="text-xs text-zinc-500 dark:text-zinc-400 mr-3">
+                      <Text style={{ color: colors.textSecondary }} className="text-xs mr-3">
                         {formatFileSize(file.file_size)}
                       </Text>
-                      <Text className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <Text style={{ color: colors.textSecondary }} className="text-xs">
                         {formatDate(file.upload_date)}
                       </Text>
                     </View>
@@ -337,33 +343,34 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
       </ScrollView>
 
       {/* Footer with Save Button */}
-      <View className="border-t border-zinc-200 dark:border-zinc-800 px-4 py-4">
+      <View style={{ borderTopWidth: 1, borderTopColor: colors.border }} className="px-4 py-4">
         <TouchableOpacity
           onPress={handleSave}
           disabled={isSaving || (!useAllFiles && selectedFileIds.length === 0)}
-          className={`py-4 rounded-xl items-center ${
-            isSaving || (!useAllFiles && selectedFileIds.length === 0)
-              ? 'bg-zinc-300 dark:bg-zinc-800'
-              : 'bg-blue-500'
-          }`}
+          style={{
+            backgroundColor: isSaving || (!useAllFiles && selectedFileIds.length === 0)
+              ? colors.surface
+              : colors.primary
+          }}
+          className="py-4 rounded-xl items-center"
           accessible
           accessibilityRole="button"
           accessibilityLabel="Save file selections"
           accessibilityState={{ disabled: isSaving || (!useAllFiles && selectedFileIds.length === 0) }}
         >
           {isSaving ? (
-            <ActivityIndicator color="white" />
+            <ActivityIndicator color={'#FFFFFF'} />
           ) : (
-            <Text className="text-white font-semibold text-base">
-              {useAllFiles 
-                ? 'Use All Files' 
+            <Text style={{ color: '#FFFFFF' }} className="font-semibold text-base">
+              {useAllFiles
+                ? 'Use All Files'
                 : `Use ${selectedFileIds.length} Selected File${selectedFileIds.length !== 1 ? 's' : ''}`
               }
             </Text>
           )}
         </TouchableOpacity>
         {!useAllFiles && selectedFileIds.length === 0 && (
-          <Text className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-2">
+          <Text style={{ color: colors.textSecondary }} className="text-xs text-center mt-2">
             Select at least one file or enable "Use All Files"
           </Text>
         )}

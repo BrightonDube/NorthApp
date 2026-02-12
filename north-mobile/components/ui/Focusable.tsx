@@ -19,8 +19,8 @@
 
 import React from 'react';
 import { Pressable, View, StyleSheet, type PressableProps, type ViewStyle } from 'react-native';
-import { useColorScheme } from 'react-native';
 import { useHaptic } from '@/hooks/useHaptic';
+import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
 export interface FocusableProps extends PressableProps {
   /**
@@ -81,11 +81,11 @@ export function Focusable({
   children,
   ...pressableProps
 }: FocusableProps) {
-  const colorScheme = useColorScheme();
+  const colors = useThemeColors();
   const haptic = useHaptic();
   
   // Default focus colors with high contrast (3:1 ratio minimum)
-  const defaultFocusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB'; // Blue-400 / Blue-600
+  const defaultFocusColor = colors.primary;
   const finalFocusBorderColor = focusBorderColor || defaultFocusColor;
 
   // Handle press with optional haptic feedback
@@ -174,7 +174,8 @@ export function FocusableButton({
   style,
   ...props
 }: FocusableButtonProps) {
-  const colorScheme = useColorScheme();
+  const colors = useThemeColors();
+  const isDark = useIsDark();
   
   const getVariantStyle = (pressed: boolean, focused: boolean): ViewStyle => {
     // Calm design system tokens
@@ -191,7 +192,7 @@ export function FocusableButton({
     if (disabled) {
       return {
         ...baseStyle,
-        backgroundColor: colorScheme === 'dark' ? '#292524' : '#E7E5E4', // surface-highlight
+        backgroundColor: colors.backgroundTertiary, // surface-highlight
         opacity: 0.5,
       };
     }
@@ -201,7 +202,7 @@ export function FocusableButton({
         return {
           ...baseStyle,
           // Use calm design system brand colors
-          backgroundColor: colorScheme === 'dark' ? '#FAFAF9' : '#292524', // brand-primary
+          backgroundColor: isDark ? colors.text : colors.backgroundSecondary, // brand-primary
           opacity: pressed ? 0.8 : 1,
         };
       
@@ -211,7 +212,7 @@ export function FocusableButton({
           backgroundColor: 'transparent',
           borderWidth: 1,
           // Use calm design system brand colors
-          borderColor: colorScheme === 'dark' ? '#FAFAF9' : '#292524', // brand-primary
+          borderColor: colors.text, // brand-primary
           opacity: pressed ? 0.8 : 1,
         };
       
@@ -220,7 +221,7 @@ export function FocusableButton({
           ...baseStyle,
           // Use calm design system surface colors
           backgroundColor: pressed 
-            ? (colorScheme === 'dark' ? '#292524' : '#F5F5F4') // surface-highlight / surface
+            ? colors.backgroundSecondary // surface-highlight / surface
             : 'transparent',
         };
       

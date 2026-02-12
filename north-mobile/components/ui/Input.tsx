@@ -20,9 +20,9 @@ import {
   TextInputProps,
   View,
   Text,
-  useColorScheme,
   StyleSheet,
 } from 'react-native';
+import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
 export interface InputProps extends TextInputProps {
   /** Label text displayed above the input */
@@ -71,37 +71,34 @@ export const Input = forwardRef<TextInput, InputProps>(
     },
     ref
   ) => {
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const colors = useThemeColors();
+    const isDark = useIsDark();
     
     // Determine if input should show error state
     const showError = hasError || !!error;
     
-    // Focus indicator color
-    const focusColor = isDark ? '#60A5FA' : '#2563EB';
-    
     // Input background color based on state
     const getBackgroundColor = () => {
       if (!editable) {
-        return isDark ? '#1C1917' : '#F5F5F4'; // surface color for disabled
+        return colors.surface; // surface color for disabled
       }
-      return isDark ? '#1C1917' : '#FAFAF9'; // background color
+      return colors.background; // background color
     };
     
     // Border color based on state
     const getBorderColor = () => {
       if (showError) {
-        return '#FF453A'; // error color
+        return colors.error; // error color
       }
-      return isDark ? '#252220' : '#E7E5E4'; // border-subtle
+      return colors.border; // border-subtle
     };
     
     // Text color based on state
     const getTextColor = () => {
       if (!editable) {
-        return isDark ? '#57534E' : '#A8A29E'; // text-tertiary for disabled
+        return colors.textTertiary; // text-tertiary for disabled
       }
-      return isDark ? '#FAFAF9' : '#1C1917'; // text-primary
+      return colors.text; // text-primary
     };
 
     return (
@@ -111,7 +108,7 @@ export const Input = forwardRef<TextInput, InputProps>(
           <Text
             className={`text-sub font-medium mb-2 ${labelClassName}`}
             style={{
-              color: isDark ? '#A8A29E' : '#78716C', // text-secondary
+              color: colors.textSecondary, // text-secondary
             }}
           >
             {label}
@@ -122,7 +119,7 @@ export const Input = forwardRef<TextInput, InputProps>(
         <TextInput
           ref={ref}
           editable={editable}
-          placeholderTextColor={isDark ? '#57534E' : '#A8A29E'} // text-tertiary
+          placeholderTextColor={colors.textTertiary} // text-tertiary
           className={`text-body ${className}`}
           style={[
             styles.input,
@@ -145,7 +142,7 @@ export const Input = forwardRef<TextInput, InputProps>(
           <Text
             className="text-caption mt-2"
             style={{
-              color: error ? '#FF453A' : (isDark ? '#78716C' : '#A8A29E'),
+              color: error ? colors.error : colors.textTertiary,
             }}
           >
             {error || helperText}

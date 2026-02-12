@@ -15,7 +15,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
-  useColorScheme,
   Alert,
   Platform,
 } from 'react-native';
@@ -26,6 +25,7 @@ import { FileProcessor, type FileData } from '@/lib/fileProcessor';
 import { StorageService } from '@/lib/storageService';
 import { useContextStore } from '@/stores/contextStore';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import { logError, getUserFriendlyMessage, type ErrorContext } from '@/lib/errorLogger';
 
 /**
@@ -101,8 +101,7 @@ export function FileUploadComponent({
   const [retryCount, setRetryCount] = useState(0);
   
   const prefersReducedMotion = useReducedMotion();
-  const colorScheme = useColorScheme();
-  const focusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB';
+  const colors = useThemeColors();
   
   const fileValidator = new FileValidator();
   const fileProcessor = new FileProcessor();
@@ -563,7 +562,7 @@ export function FileUploadComponent({
               onPress={handleFileSelect}
               style={({ focused }) => [
                 styles.uploadZone,
-                focused && { borderWidth: 2, borderColor: focusColor },
+                focused && { borderWidth: 2, borderColor: colors.focus },
               ]}
               className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-8 items-center justify-center min-h-[200px]"
               accessible
@@ -684,7 +683,7 @@ export function FileUploadComponent({
               onPress={handleCancelUpload}
               style={({ focused }) => [
                 styles.button,
-                focused && { borderWidth: 2, borderColor: focusColor },
+                focused && { borderWidth: 2, borderColor: colors.focus },
               ]}
               className="flex-1 bg-zinc-200 dark:bg-zinc-800 rounded-xl py-4 items-center"
               accessible
@@ -700,7 +699,7 @@ export function FileUploadComponent({
               onPress={handleConfirmUpload}
               style={({ focused }) => [
                 styles.button,
-                focused && { borderWidth: 2, borderColor: focusColor },
+                focused && { borderWidth: 2, borderColor: colors.focus },
               ]}
               className="flex-1 bg-blue-500 rounded-xl py-4 items-center"
               accessible

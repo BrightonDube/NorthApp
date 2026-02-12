@@ -58,7 +58,7 @@ The following environment variables must be set in Supabase:
 
 - `SUPABASE_URL`: Your Supabase project URL (auto-provided)
 - `SUPABASE_ANON_KEY`: Your Supabase anon key (auto-provided)
-- `GEMINI_API_KEY`: Your Google Gemini API key
+- `GEMINI_KEY`: Your Google Gemini API key
 
 ## Setup Instructions
 
@@ -77,7 +77,7 @@ supabase link --project-ref <your-project-ref>
 ### 3. Set Environment Variables
 
 ```bash
-supabase secrets set GEMINI_API_KEY=<your-gemini-api-key>
+supabase secrets set GEMINI_KEY=<your-gemini-api-key>
 ```
 
 ### 4. Deploy the Function

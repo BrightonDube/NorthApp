@@ -15,6 +15,7 @@
 
 import React, { useRef, useEffect, useCallback } from 'react';
 import { FlatList, View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import type { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { StreamingIndicator } from './StreamingIndicator';
@@ -71,6 +72,7 @@ export function MessageList({
   onLoadMore,
   isLoadingMore = false,
 }: MessageListProps) {
+  const colors = useThemeColors();
   const flatListRef = useRef<FlatList>(null);
   const shouldAutoScroll = useRef(true);
 
@@ -116,23 +118,24 @@ export function MessageList({
     return (
       <View className="py-4 items-center">
         {isLoadingMore ? (
-          <ActivityIndicator size="small" className="text-zinc-500 dark:text-zinc-400" />
+          <ActivityIndicator size="small" color={colors.textSecondary} />
         ) : (
           <Pressable
             onPress={onLoadMore}
-            className="bg-zinc-100 dark:bg-zinc-800 px-4 py-2 rounded-full"
+            style={{ backgroundColor: colors.surface }}
+            className="px-4 py-2 rounded-full"
             accessible
             accessibilityRole="button"
             accessibilityLabel="Load more messages"
           >
-            <Text className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <Text style={{ color: colors.text }} className="text-sm font-medium">
               Load More
             </Text>
           </Pressable>
         )}
       </View>
     );
-  }, [hasMore, onLoadMore, isLoadingMore]);
+  }, [hasMore, onLoadMore, isLoadingMore, colors]);
 
   // Render empty state
   if (!isLoading && messages.length === 0 && !streamingMessage) {
@@ -143,7 +146,7 @@ export function MessageList({
         accessibilityRole="text"
         accessibilityLabel={emptyMessage}
       >
-        <Text className="text-center text-zinc-500 dark:text-zinc-400 text-base">
+        <Text style={{ color: colors.textSecondary }} className="text-center text-base">
           {emptyMessage}
         </Text>
       </View>

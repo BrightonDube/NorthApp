@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
@@ -22,6 +23,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Logo } from '@/components/Logo';
 import { AppleLogo } from '@/components/AppleLogo';
 import { GoogleLogo } from '@/components/GoogleLogo';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 /**
  * Email validation regex
@@ -43,6 +45,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 export default function LoginScreen() {
   const { login, loginWithApple, loginWithGoogle, isLoading, error, clearError } = useAuthStore();
+  const colors = useThemeColors();
   
   // Form state
   const [email, setEmail] = useState('');
@@ -142,27 +145,27 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 }}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="w-full max-w-md mx-auto">
+          <View style={styles.content}>
             {/* Logo */}
-            <View className="items-center mb-8">
+            <View style={styles.logoContainer}>
               <Logo size={100} />
             </View>
 
             {/* Header */}
-            <View className="mb-12">
-              <Text className="text-4xl font-bold text-zinc-900 mb-3">
+            <View style={styles.headerContainer}>
+              <Text style={[styles.title, { color: colors.text }]}>
                 Welcome to North
               </Text>
-              <Text className="text-lg text-zinc-600">
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 Your personal board of directors
               </Text>
             </View>
@@ -170,25 +173,34 @@ export default function LoginScreen() {
             {/* Error Display */}
             {error && (
               <View 
-                className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200"
+                style={[styles.errorContainer, { 
+                  backgroundColor: colors.error + '10', 
+                  borderColor: colors.error + '40' 
+                }]}
                 accessible
                 accessibilityRole="alert"
                 accessibilityLiveRegion="assertive"
               >
-                <Text className="text-red-800 text-sm">{error}</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             )}
 
             {/* Email Input */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Email
               </Text>
               <TextInput
-                className={`w-full px-4 py-3 border rounded-lg text-base ${
-                  emailError ? 'border-red-500' : 'border-gray-300'
-                }`}
+                style={[
+                  styles.input,
+                  { 
+                    backgroundColor: colors.input,
+                    color: colors.text,
+                    borderColor: emailError ? colors.error : colors.border,
+                  }
+                ]}
                 placeholder="you@example.com"
+                placeholderTextColor={colors.textTertiary}
                 value={email}
                 onChangeText={handleEmailChange}
                 onBlur={() => validateEmail(email)}

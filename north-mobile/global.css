@@ -129,13 +129,13 @@
   .dark {
     /* ============ Color Tokens ============ */
     
-    /* Background colors - Deep, warm blacks */
-    --background: #0C0A09;
+    /* Background colors - Warm dark grays (not pure black) */
+    --background: #1A1816;
     --foreground: #FAFAF9;
     
     /* Surface colors (cards, inputs, modals) - Layered warmth */
-    --surface: #1C1917;
-    --surface-highlight: #292524;
+    --surface: #252220;
+    --surface-highlight: #332F2B;
     
     /* Brand colors - Light warmth */
     --brand-primary: #FAFAF9;

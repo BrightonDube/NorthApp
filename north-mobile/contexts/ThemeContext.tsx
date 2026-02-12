@@ -7,7 +7,8 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useColorScheme as useSystemColorScheme, Appearance } from 'react-native';
+import { useColorScheme as useSystemColorScheme, Appearance, View } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const THEME_STORAGE_KEY = '@north/theme_preference';
@@ -33,6 +34,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useSystemColorScheme();
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
   const [isLoading, setIsLoading] = useState(true);
+  const { setColorScheme } = useColorScheme();
 
   const activeTheme: ActiveTheme = 
     themeMode === 'system' 
@@ -42,6 +44,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadThemePreference();
   }, []);
+
+  // Apply theme to NativeWind whenever activeTheme changes
+  useEffect(() => {
+    setColorScheme(activeTheme);
+  }, [activeTheme, setColorScheme]);
 
   useEffect(() => {
     if (themeMode === 'system') {
@@ -99,26 +106,26 @@ export function useThemeColors() {
   const isDark = useIsDark();
   
   return {
-    background: isDark ? '#09090B' : '#FFFFFF',
-    backgroundSecondary: isDark ? '#18181B' : '#F9FAFB',
-    backgroundTertiary: isDark ? '#27272A' : '#F4F4F5',
-    surface: isDark ? '#18181B' : '#FFFFFF',
-    surfaceHover: isDark ? '#27272A' : '#F9FAFB',
-    text: isDark ? '#FAFAFA' : '#09090B',
-    textSecondary: isDark ? '#A1A1AA' : '#71717A',
-    textTertiary: isDark ? '#71717A' : '#A1A1AA',
-    border: isDark ? '#27272A' : '#E4E4E7',
-    borderSecondary: isDark ? '#3F3F46' : '#D4D4D8',
-    primary: isDark ? '#3B82F6' : '#2563EB',
-    primaryHover: isDark ? '#2563EB' : '#1D4ED8',
+    background: isDark ? '#1A1816' : '#FAFAF9',
+    backgroundSecondary: isDark ? '#252220' : '#F5F5F4',
+    backgroundTertiary: isDark ? '#332F2B' : '#E7E5E4',
+    surface: isDark ? '#252220' : '#F5F5F4',
+    surfaceHover: isDark ? '#332F2B' : '#E7E5E4',
+    text: isDark ? '#FAFAF9' : '#1C1917',
+    textSecondary: isDark ? '#A8A29E' : '#78716C',
+    textTertiary: isDark ? '#78716C' : '#A8A29E',
+    border: isDark ? '#332F2B' : '#E7E5E4',
+    borderSecondary: isDark ? '#44403C' : '#D6D3D1',
+    primary: isDark ? '#60A5FA' : '#3B82F6',
+    primaryHover: isDark ? '#3B82F6' : '#2563EB',
     success: isDark ? '#10B981' : '#059669',
     error: isDark ? '#EF4444' : '#DC2626',
     warning: isDark ? '#F59E0B' : '#D97706',
-    card: isDark ? '#18181B' : '#FFFFFF',
-    input: isDark ? '#27272A' : '#F4F4F5',
-    messageSent: isDark ? '#3B82F6' : '#09090B',
-    messageReceived: isDark ? '#27272A' : '#F4F4F5',
-    messageTextSent: isDark ? '#FFFFFF' : '#FFFFFF',
-    messageTextReceived: isDark ? '#FAFAFA' : '#09090B',
+    card: isDark ? '#252220' : '#F5F5F4',
+    input: isDark ? '#332F2B' : '#E7E5E4',
+    messageSent: isDark ? '#332F2B' : '#292524',
+    messageReceived: isDark ? '#252220' : '#E7E5E4',
+    messageTextSent: isDark ? '#FAFAF9' : '#FAFAF9',
+    messageTextReceived: isDark ? '#FAFAF9' : '#1C1917',
   };
 }

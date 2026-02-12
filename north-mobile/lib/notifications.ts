@@ -16,6 +16,7 @@ export async function scheduleDailyReminder(
   body: string
 ): Promise<string> {
   const trigger: Notifications.DailyTriggerInput = {
+    type: Notifications.SchedulableTriggerInputTypes.DAILY,
     hour,
     minute,
     repeats: true,
@@ -41,6 +42,7 @@ export async function scheduleDelayedNotification(
   body: string
 ): Promise<string> {
   const trigger: Notifications.TimeIntervalTriggerInput = {
+    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
     seconds,
     repeats: false,
   };

@@ -33,14 +33,14 @@ import { supabase } from '@/lib/supabase';
 import { searchEngine } from '@/lib/searchEngine';
 import { coachDeepLinkGenerator } from '@/lib/coachDeepLinkGenerator';
 import { dbCoachToCoach, filterByCategory } from '@/lib/marketplace.types';
-import { useTheme } from '@/lib/theme';
+import { useThemeColors } from '@/contexts/ThemeContext';
 import type { PublicCoach, CoachCategory } from '@/types';
 
 /**
  * App Logo Component
  */
 function AppLogo() {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
   return (
     <View style={styles.logoContainer}>
       <Logo size={40} />
@@ -61,7 +61,7 @@ function SearchBar({
   onChangeText: (text: string) => void; 
   onClear: () => void;
 }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
 
   return (
     <View style={[styles.searchContainer, { backgroundColor: colors.input }]}>
@@ -115,7 +115,7 @@ function FeaturedSection({
   onCoachPress: (coach: PublicCoach) => void;
   onShare: (coachId: string) => void;
 }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
 
   if (coaches.length === 0) {
     return null;
@@ -163,7 +163,7 @@ function EmptyState({
   searchQuery: string; 
   selectedCategory: CoachCategory | null;
 }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
 
   const message = searchQuery 
     ? `No coaches found for "${searchQuery}"`
@@ -202,7 +202,7 @@ function ErrorState({
   message: string; 
   onRetry: () => void;
 }) {
-  const { colors } = useTheme();
+  const colors = useThemeColors();
 
   return (
     <View 
@@ -235,7 +235,7 @@ function ErrorState({
 
 export default function MarketplaceScreen() {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const colors = useThemeColors();
   const { user } = useAuthStore();
   
   // State

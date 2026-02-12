@@ -26,7 +26,6 @@ import {
   Pressable,
   ActivityIndicator,
   StyleSheet,
-  useColorScheme,
   Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -39,6 +38,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useCoachStore } from '@/stores/coachStore';
 import type { PublicCoach } from '@/types';
 import { getCategoryColor, getCategoryDisplay } from '@/lib/marketplace.types';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 /**
  * CoachPreviewScreen displays full coach details before installation.
@@ -58,7 +58,7 @@ import { getCategoryColor, getCategoryDisplay } from '@/lib/marketplace.types';
 export default function CoachPreviewScreen() {
   const router = useRouter();
   const { coachId } = useLocalSearchParams<{ coachId: string }>();
-  const colorScheme = useColorScheme();
+  const colors = useThemeColors();
   const { user } = useAuthStore();
   const { fetchCoaches } = useCoachStore();
 
@@ -208,16 +208,13 @@ export default function CoachPreviewScreen() {
     router.back();
   };
 
-  // Focus indicator color
-  const focusColor = colorScheme === 'dark' ? '#60A5FA' : '#2563EB';
-
   // Render loading state
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, colorScheme === 'dark' && styles.containerDark]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#FFFFFF' : '#09090B'} />
-          <Text style={[styles.loadingText, colorScheme === 'dark' && styles.loadingTextDark]}>
+          <ActivityIndicator size="large" color={colors.text} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
             Loading coach details...
           </Text>
         </View>
@@ -228,28 +225,27 @@ export default function CoachPreviewScreen() {
   // Render error state
   if (error || !coach) {
     return (
-      <SafeAreaView style={[styles.container, colorScheme === 'dark' && styles.containerDark]} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={[styles.errorTitle, colorScheme === 'dark' && styles.errorTitleDark]}>
+          <Text style={[styles.errorTitle, { color: colors.text }]}>
             Unable to Load Coach
           </Text>
-          <Text style={[styles.errorMessage, colorScheme === 'dark' && styles.errorMessageDark]}>
+          <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
             {error || 'This coach is no longer available.'}
           </Text>
           <Pressable
             onPress={handleCancel}
-            style={({ pressed, focused }) => [
+            style={({ pressed }) => [
               styles.errorButton,
-              colorScheme === 'dark' && styles.errorButtonDark,
+              { backgroundColor: colors.text },
               pressed && styles.buttonPressed,
-              focused && { borderWidth: 2, borderColor: focusColor },
             ]}
             accessible
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Text style={[styles.errorButtonText, colorScheme === 'dark' && styles.errorButtonTextDark]}>
+            <Text style={[styles.errorButtonText, { color: colors.background }]}>
               Go Back
             </Text>
           </Pressable>
@@ -270,16 +266,15 @@ export default function CoachPreviewScreen() {
   });
 
   return (
-    <SafeAreaView style={[styles.container, colorScheme === 'dark' && styles.containerDark]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={[styles.header, colorScheme === 'dark' && styles.headerDark]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Pressable
           onPress={handleCancel}
-          style={({ pressed, focused }) => [
+          style={({ pressed }) => [
             styles.closeButton,
-            colorScheme === 'dark' && styles.closeButtonDark,
+            { backgroundColor: colors.secondaryBackground },
             pressed && styles.buttonPressed,
-            focused && { borderWidth: 2, borderColor: focusColor },
           ]}
           accessible
           accessibilityRole="button"
@@ -288,10 +283,10 @@ export default function CoachPreviewScreen() {
           <Ionicons 
             name="close" 
             size={24} 
-            color={colorScheme === 'dark' ? '#A1A1AA' : '#71717A'} 
+            color={colors.textSecondary} 
           />
         </Pressable>
-        <Text style={[styles.headerTitle, colorScheme === 'dark' && styles.headerTitleDark]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
           Coach Preview
         </Text>
         <View style={styles.headerRight} />
@@ -304,17 +299,17 @@ export default function CoachPreviewScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Coach Icon */}
-        <View style={styles.iconContainer}>
+        <View style={[styles.iconContainer, { backgroundColor: colors.secondaryBackground }]}>
           <Text style={styles.icon}>{coach.icon}</Text>
         </View>
 
         {/* Coach Name */}
-        <Text style={[styles.name, colorScheme === 'dark' && styles.nameDark]}>
+        <Text style={[styles.name, { color: colors.text }]}>
           {coach.name}
         </Text>
 
         {/* Creator Info */}
-        <Text style={[styles.creator, colorScheme === 'dark' && styles.creatorDark]}>
+        <Text style={[styles.creator, { color: colors.textSecondary }]}>
           by {coach.creatorName}
         </Text>
 
@@ -324,26 +319,26 @@ export default function CoachPreviewScreen() {
         </View>
 
         {/* Creation Date */}
-        <Text style={[styles.date, colorScheme === 'dark' && styles.dateDark]}>
+        <Text style={[styles.date, { color: colors.textTertiary }]}>
           Created {createdDate}
         </Text>
 
         {/* Divider */}
-        <View style={[styles.divider, colorScheme === 'dark' && styles.dividerDark]} />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
         {/* Description Section */}
-        <Text style={[styles.sectionTitle, colorScheme === 'dark' && styles.sectionTitleDark]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
           About This Coach
         </Text>
-        <Text style={[styles.description, colorScheme === 'dark' && styles.descriptionDark]}>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
           {coach.systemPrompt}
         </Text>
 
         {/* Already Installed Notice */}
         {alreadyInstalled && (
-          <View style={[styles.notice, colorScheme === 'dark' && styles.noticeDark]}>
+          <View style={[styles.notice, { backgroundColor: colors.successBackground }]}>
             <Text style={styles.noticeIcon}>✓</Text>
-            <Text style={[styles.noticeText, colorScheme === 'dark' && styles.noticeTextDark]}>
+            <Text style={[styles.noticeText, { color: colors.successText }]}>
               You already have this coach installed
             </Text>
           </View>
@@ -351,20 +346,19 @@ export default function CoachPreviewScreen() {
       </ScrollView>
 
       {/* Action Buttons */}
-      <View style={[styles.footer, colorScheme === 'dark' && styles.footerDark]}>
+      <View style={[styles.footer, { borderTopColor: colors.border }]}>
         <Pressable
           onPress={handleCancel}
-          style={({ pressed, focused }) => [
+          style={({ pressed }) => [
             styles.cancelButton,
-            colorScheme === 'dark' && styles.cancelButtonDark,
+            { backgroundColor: colors.secondaryBackground },
             pressed && styles.buttonPressed,
-            focused && { borderWidth: 2, borderColor: focusColor },
           ]}
           accessible
           accessibilityRole="button"
           accessibilityLabel="Cancel"
         >
-          <Text style={[styles.cancelButtonText, colorScheme === 'dark' && styles.cancelButtonTextDark]}>
+          <Text style={[styles.cancelButtonText, { color: colors.text }]}>
             Cancel
           </Text>
         </Pressable>
@@ -372,12 +366,11 @@ export default function CoachPreviewScreen() {
         <Pressable
           onPress={handleInstall}
           disabled={installing}
-          style={({ pressed, focused }) => [
+          style={({ pressed }) => [
             styles.installButton,
-            colorScheme === 'dark' && styles.installButtonDark,
-            installing && styles.installButtonDisabled,
+            { backgroundColor: colors.text },
+            installing && { backgroundColor: colors.border },
             pressed && !installing && styles.buttonPressed,
-            focused && { borderWidth: 2, borderColor: focusColor },
           ]}
           accessible
           accessibilityRole="button"
@@ -385,9 +378,9 @@ export default function CoachPreviewScreen() {
           accessibilityState={{ disabled: installing }}
         >
           {installing ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={styles.installButtonText}>
+            <Text style={[styles.installButtonText, { color: colors.background }]}>
               {alreadyInstalled ? 'Open Coach' : 'Install Coach'}
             </Text>
           )}
@@ -400,10 +393,6 @@ export default function CoachPreviewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  containerDark: {
-    backgroundColor: '#09090B',
   },
   header: {
     flexDirection: 'row',
@@ -412,10 +401,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E4E4E7',
-  },
-  headerDark: {
-    borderBottomColor: '#27272A',
   },
   closeButton: {
     width: 40,
@@ -423,18 +408,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20,
-    backgroundColor: '#F4F4F5',
-  },
-  closeButtonDark: {
-    backgroundColor: '#18181B',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#09090B',
-  },
-  headerTitleDark: {
-    color: '#FAFAFA',
   },
   headerRight: {
     width: 40,
@@ -452,7 +429,6 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#F4F4F5',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -468,22 +444,14 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#09090B',
     textAlign: 'center',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
-  nameDark: {
-    color: '#FAFAFA',
-  },
   creator: {
     fontSize: 15,
-    color: '#71717A',
     textAlign: 'center',
     marginBottom: 16,
-  },
-  creatorDark: {
-    color: '#A1A1AA',
   },
   categoryBadge: {
     alignSelf: 'center',
@@ -500,49 +468,29 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 13,
-    color: '#A1A1AA',
     textAlign: 'center',
     marginBottom: 24,
   },
-  dateDark: {
-    color: '#71717A',
-  },
   divider: {
     height: 1,
-    backgroundColor: '#E4E4E7',
     marginVertical: 24,
-  },
-  dividerDark: {
-    backgroundColor: '#27272A',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#09090B',
     marginBottom: 12,
-  },
-  sectionTitleDark: {
-    color: '#FAFAFA',
   },
   description: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#52525B',
     marginBottom: 24,
-  },
-  descriptionDark: {
-    color: '#D4D4D8',
   },
   notice: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
-  },
-  noticeDark: {
-    backgroundColor: '#14532D',
   },
   noticeIcon: {
     fontSize: 20,
@@ -551,11 +499,7 @@ const styles = StyleSheet.create({
   noticeText: {
     flex: 1,
     fontSize: 14,
-    color: '#166534',
     fontWeight: '500',
-  },
-  noticeTextDark: {
-    color: '#BBF7D0',
   },
   footer: {
     flexDirection: 'row',
@@ -563,48 +507,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E4E4E7',
-  },
-  footerDark: {
-    borderTopColor: '#27272A',
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#F4F4F5',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cancelButtonDark: {
-    backgroundColor: '#18181B',
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#09090B',
-  },
-  cancelButtonTextDark: {
-    color: '#FAFAFA',
   },
   installButton: {
     flex: 2,
-    backgroundColor: '#09090B',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  installButtonDark: {
-    backgroundColor: '#FAFAFA',
-  },
-  installButtonDisabled: {
-    backgroundColor: '#D4D4D8',
-  },
   installButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
   buttonPressed: {
     opacity: 0.8,
@@ -617,12 +541,8 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#71717A',
     marginTop: 16,
     textAlign: 'center',
-  },
-  loadingTextDark: {
-    color: '#A1A1AA',
   },
   errorContainer: {
     flex: 1,
@@ -637,38 +557,22 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#09090B',
     marginBottom: 8,
     textAlign: 'center',
   },
-  errorTitleDark: {
-    color: '#FAFAFA',
-  },
   errorMessage: {
     fontSize: 15,
-    color: '#71717A',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
   },
-  errorMessageDark: {
-    color: '#A1A1AA',
-  },
   errorButton: {
-    backgroundColor: '#09090B',
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
-  errorButtonDark: {
-    backgroundColor: '#FAFAFA',
-  },
   errorButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  errorButtonTextDark: {
-    color: '#09090B',
   },
 });

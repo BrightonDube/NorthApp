@@ -15,17 +15,20 @@ import {
   Platform,
   ScrollView,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
 import { Logo } from '@/components/Logo';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { signup, isLoading, error, clearError } = useAuthStore();
+  const colors = useThemeColors();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -113,27 +116,27 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 }}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="w-full max-w-md mx-auto">
+          <View style={styles.content}>
             {/* Logo */}
-            <View className="items-center mb-6">
+            <View style={styles.logoContainer}>
               <Logo size={80} />
             </View>
 
             {/* Header */}
-            <View className="mb-8">
-              <Text className="text-3xl font-bold text-gray-900 mb-2">
+            <View style={styles.headerContainer}>
+              <Text style={[styles.title, { color: colors.text }]}>
                 Create Account
               </Text>
-              <Text className="text-base text-gray-600">
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 Join North and build your personal board of directors
               </Text>
             </View>
@@ -141,23 +144,32 @@ export default function RegisterScreen() {
             {/* Error Display */}
             {error && (
               <View 
-                className="mb-4 p-4 bg-red-50 rounded-lg border border-red-200"
+                style={[styles.errorContainer, { 
+                  backgroundColor: colors.error + '10', 
+                  borderColor: colors.error + '40' 
+                }]}
                 accessible
                 accessibilityRole="alert"
                 accessibilityLiveRegion="assertive"
               >
-                <Text className="text-red-800 text-sm">{error}</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
               </View>
             )}
 
             {/* Name Input */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Name</Text>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Name</Text>
               <TextInput
-                className={`w-full px-4 py-3 border rounded-lg text-base ${
-                  nameError ? 'border-red-500' : 'border-gray-300'
-                }`}
+                style={[
+                  styles.input,
+                  { 
+                    backgroundColor: colors.input,
+                    color: colors.text,
+                    borderColor: nameError ? colors.error : colors.border,
+                  }
+                ]}
                 placeholder="Your name"
+                placeholderTextColor={colors.textTertiary}
                 value={name}
                 onChangeText={(v) => { setName(v); if (nameError) validateName(v); }}
                 onBlur={() => validateName(name)}
@@ -168,17 +180,25 @@ export default function RegisterScreen() {
                 accessibilityLabel="Name input"
                 accessibilityHint="Enter your full name"
               />
-              {nameError && <Text className="text-red-500 text-sm mt-1">{nameError}</Text>}
+              {nameError && (
+                <Text style={[styles.errorTextSmall, { color: colors.error }]}>{nameError}</Text>
+              )}
             </View>
 
             {/* Email Input */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Email</Text>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</Text>
               <TextInput
-                className={`w-full px-4 py-3 border rounded-lg text-base ${
-                  emailError ? 'border-red-500' : 'border-gray-300'
-                }`}
+                style={[
+                  styles.input,
+                  { 
+                    backgroundColor: colors.input,
+                    color: colors.text,
+                    borderColor: emailError ? colors.error : colors.border,
+                  }
+                ]}
                 placeholder="you@example.com"
+                placeholderTextColor={colors.textTertiary}
                 value={email}
                 onChangeText={(v) => { setEmail(v); if (emailError) validateEmail(v); }}
                 onBlur={() => validateEmail(email)}
@@ -190,17 +210,25 @@ export default function RegisterScreen() {
                 accessibilityLabel="Email address input"
                 accessibilityHint="Enter your email address"
               />
-              {emailError && <Text className="text-red-500 text-sm mt-1">{emailError}</Text>}
+              {emailError && (
+                <Text style={[styles.errorTextSmall, { color: colors.error }]}>{emailError}</Text>
+              )}
             </View>
 
             {/* Password Input */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Password</Text>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
               <TextInput
-                className={`w-full px-4 py-3 border rounded-lg text-base ${
-                  passwordError ? 'border-red-500' : 'border-gray-300'
-                }`}
+                style={[
+                  styles.input,
+                  { 
+                    backgroundColor: colors.input,
+                    color: colors.text,
+                    borderColor: passwordError ? colors.error : colors.border,
+                  }
+                ]}
                 placeholder="At least 6 characters"
+                placeholderTextColor={colors.textTertiary}
                 value={password}
                 onChangeText={(v) => { setPassword(v); if (passwordError) validatePassword(v); }}
                 onBlur={() => validatePassword(password)}
@@ -212,17 +240,25 @@ export default function RegisterScreen() {
                 accessibilityLabel="Password input"
                 accessibilityHint="Enter a password with at least 6 characters"
               />
-              {passwordError && <Text className="text-red-500 text-sm mt-1">{passwordError}</Text>}
+              {passwordError && (
+                <Text style={[styles.errorTextSmall, { color: colors.error }]}>{passwordError}</Text>
+              )}
             </View>
 
             {/* Confirm Password Input */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Confirm Password</Text>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Confirm Password</Text>
               <TextInput
-                className={`w-full px-4 py-3 border rounded-lg text-base ${
-                  confirmPasswordError ? 'border-red-500' : 'border-gray-300'
-                }`}
+                style={[
+                  styles.input,
+                  { 
+                    backgroundColor: colors.input,
+                    color: colors.text,
+                    borderColor: confirmPasswordError ? colors.error : colors.border,
+                  }
+                ]}
                 placeholder="Confirm your password"
+                placeholderTextColor={colors.textTertiary}
                 value={confirmPassword}
                 onChangeText={(v) => { setConfirmPassword(v); if (confirmPasswordError) validateConfirmPassword(v); }}
                 onBlur={() => validateConfirmPassword(confirmPassword)}
@@ -234,15 +270,17 @@ export default function RegisterScreen() {
                 accessibilityLabel="Confirm password input"
                 accessibilityHint="Re-enter your password to confirm"
               />
-              {confirmPasswordError && <Text className="text-red-500 text-sm mt-1">{confirmPasswordError}</Text>}
+              {confirmPasswordError && (
+                <Text style={[styles.errorTextSmall, { color: colors.error }]}>{confirmPasswordError}</Text>
+              )}
             </View>
 
             {/* Register Button */}
             <TouchableOpacity
-              className={`w-full rounded-lg mb-4 ${
-                isLoading ? 'bg-gray-400' : 'bg-blue-600'
-              }`}
-              style={{ paddingVertical: 16, minHeight: 48 }}
+              style={[
+                styles.button,
+                { backgroundColor: isLoading ? colors.textTertiary : colors.primary }
+              ]}
               onPress={handleRegister}
               disabled={isLoading}
               testID="register-button"
@@ -251,30 +289,30 @@ export default function RegisterScreen() {
               accessibilityState={{ disabled: isLoading }}
             >
               {isLoading ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color={colors.background} />
               ) : (
-                <Text className="text-white text-center text-base font-semibold">
+                <Text style={[styles.buttonText, { color: colors.background }]}>
                   Create Account
                 </Text>
               )}
             </TouchableOpacity>
 
             {/* Sign In Link */}
-            <View className="flex-row justify-center mt-4">
-              <Text className="text-gray-600">Already have an account? </Text>
+            <View style={styles.linkContainer}>
+              <Text style={[styles.linkText, { color: colors.textSecondary }]}>Already have an account? </Text>
               <Link href="/(auth)/login" asChild>
                 <TouchableOpacity
                   accessibilityRole="link"
                   accessibilityLabel="Sign in to your account"
                 >
-                  <Text className="text-blue-600 font-semibold">Sign In</Text>
+                  <Text style={[styles.linkTextBold, { color: colors.primary }]}>Sign In</Text>
                 </TouchableOpacity>
               </Link>
             </View>
 
             {/* Footer */}
-            <View className="mt-6">
-              <Text className="text-center text-sm text-gray-600">
+            <View style={styles.footerContainer}>
+              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                 By creating an account, you agree to our Terms of Service and Privacy Policy
               </Text>
             </View>
@@ -284,3 +322,98 @@ export default function RegisterScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  content: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  headerContainer: {
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+  },
+  errorContainer: {
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  errorText: {
+    fontSize: 14,
+  },
+  errorTextSmall: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  input: {
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    fontSize: 16,
+  },
+  button: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+    minHeight: 48,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  linkContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  linkText: {
+    fontSize: 14,
+  },
+  linkTextBold: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  footerContainer: {
+    marginTop: 24,
+  },
+  footerText: {
+    textAlign: 'center',
+    fontSize: 12,
+  },
+});

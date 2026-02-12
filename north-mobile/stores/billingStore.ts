@@ -152,6 +152,7 @@ interface BillingStoreInternal extends BillingStore {
   isPaywallVisible: boolean;
   error: string | null;
   lastSynced: number | null;
+  lastUpgradeTime: number | null;
   
   // Additional internal actions
   initialize: (userId?: string) => Promise<void>;
@@ -188,6 +189,7 @@ export const useBillingStore = create<BillingStoreInternal>()(
       isPaywallVisible: false,
       error: null,
       lastSynced: null,
+      lastUpgradeTime: null,
 
   /**
    * Initialize RevenueCat and fetch initial entitlements
@@ -229,11 +231,15 @@ export const useBillingStore = create<BillingStoreInternal>()(
         
         // If we have active entitlements from RevenueCat, use them
         if (entitlements.pro.isActive) {
+          const wasNotPro = !get().isProUser;
+          
           set({
             entitlements,
             isProUser: true,
             isLoading: false,
             lastSynced: Date.now(),
+            // Set lastUpgradeTime only if this is a new upgrade
+            lastUpgradeTime: wasNotPro ? Date.now() : get().lastUpgradeTime,
           });
 
           console.log('[BillingStore] Entitlements fetched from RevenueCat:', {
@@ -254,6 +260,8 @@ export const useBillingStore = create<BillingStoreInternal>()(
       
       if (user?.user_metadata?.is_pro === true) {
         console.log('[BillingStore] Pro status granted via user metadata');
+        const wasNotPro = !get().isProUser;
+        
         set({
           entitlements: {
             pro: {
@@ -264,6 +272,8 @@ export const useBillingStore = create<BillingStoreInternal>()(
           isProUser: true,
           isLoading: false,
           lastSynced: Date.now(),
+          // Set lastUpgradeTime only if this is a new upgrade
+          lastUpgradeTime: wasNotPro ? Date.now() : get().lastUpgradeTime,
         });
         return;
       }

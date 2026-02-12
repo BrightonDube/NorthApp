@@ -16,6 +16,7 @@ import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useAuthStore } from '@/stores/authStore';
+import { useTheme, useIsDark, useThemeColors } from '@/contexts/ThemeContext';
 
 // Admin email for access control
 const ADMIN_EMAIL = 'max@north.app';
@@ -24,6 +25,8 @@ const ADMIN_EMAIL = 'max@north.app';
  * Tab icon component
  */
 function TabIcon({ icon, label, focused }: { icon: string; label: string; focused: boolean }) {
+  const colors = useThemeColors();
+  
   return (
     <View style={{ alignItems: 'center', paddingTop: 8 }}>
       <Text style={{ fontSize: 24 }}>{icon}</Text>
@@ -31,7 +34,7 @@ function TabIcon({ icon, label, focused }: { icon: string; label: string; focuse
         style={{
           fontSize: 10,
           marginTop: 2,
-          color: focused ? '#3B82F6' : '#9CA3AF',
+          color: focused ? colors.primary : colors.textTertiary,
           fontWeight: focused ? '600' : '400',
         }}
       >
@@ -45,6 +48,8 @@ export default function TabsLayout() {
   const prefersReducedMotion = useReducedMotion();
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const isDark = useIsDark();
   
   // Check if user is admin
   const isAdmin = user?.email === ADMIN_EMAIL || user?.isAdmin === true;
@@ -55,14 +60,14 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.background,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: colors.border,
           height: 80 + insets.bottom,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 20,
         },
-        tabBarActiveTintColor: '#3B82F6',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
         // Lazy load tabs for better performance
         lazy: true,
         // Subtle fade animation between tabs (< 200ms)

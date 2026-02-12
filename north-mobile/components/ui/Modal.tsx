@@ -23,11 +23,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  useColorScheme,
   type ModalProps as RNModalProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
 export interface ModalProps extends Omit<RNModalProps, 'animationType' | 'transparent'> {
   /**
@@ -104,8 +104,8 @@ export function Modal({
   contentClassName = '',
   ...modalProps
 }: ModalProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const colors = useThemeColors();
+  const isDark = useIsDark();
   
   // Animation values
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -199,13 +199,16 @@ export function Modal({
         style={{
           opacity: contentAnim,
           transform: [{ translateY: translateYAnim }],
+          backgroundColor: colors.background,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          shadowColor: isDark ? colors.text : colors.text,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDark ? 0.1 : 0.15,
+          shadowRadius: 12,
+          elevation: 8,
         }}
-        className={`
-          bg-background dark:bg-background-dark
-          rounded-t-2xl
-          ${isDark ? 'shadow-lg-dark' : 'shadow-lg'}
-          ${contentClassName}
-        `}
+        className={contentClassName}
       >
         <SafeAreaView edges={['bottom']}>
           {/* Content with 24px padding */}

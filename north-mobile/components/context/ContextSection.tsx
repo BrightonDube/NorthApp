@@ -10,6 +10,7 @@
 import { View, Text } from 'react-native';
 import { ContextCard } from './ContextCard';
 import type { UserContext, ContextCategory } from '@/types';
+import { useThemeColors } from '@/contexts/ThemeContext';
 
 interface ContextSectionProps {
   category: ContextCategory;
@@ -63,10 +64,12 @@ export function ContextSection({
   onEdit,
   onDelete,
 }: ContextSectionProps) {
+  const colors = useThemeColors();
+  
   return (
     <View className="mb-6">
       {/* Section Header */}
-      <Text className="text-xl font-bold text-zinc-900 dark:text-white mb-3">
+      <Text style={{ color: colors.text }} className="text-xl font-bold mb-3">
         {categoryTitles[category]}
       </Text>
 
@@ -84,15 +87,19 @@ export function ContextSection({
         </View>
       ) : (
         <View
-          className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+          style={{ 
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          }}
+          className="p-4 rounded-xl border"
           accessible
           accessibilityRole="text"
           accessibilityLabel={`No ${categoryTitles[category].toLowerCase()} yet`}
         >
-          <Text className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+          <Text style={{ color: colors.textSecondary }} className="text-sm text-center">
             No {categoryTitles[category].toLowerCase()} yet
           </Text>
-          <Text className="text-xs text-zinc-400 dark:text-zinc-500 text-center mt-1">
+          <Text style={{ color: colors.textTertiary }} className="text-xs text-center mt-1">
             {categoryDescriptions[category]}
           </Text>
         </View>
