@@ -21,6 +21,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
     '[Supabase] Missing environment variables. Please ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set in your .env file or EAS secrets.'
   );
+  console.error('[Supabase] URL present:', !!supabaseUrl, '| Key present:', !!supabaseAnonKey);
 }
 
 /**

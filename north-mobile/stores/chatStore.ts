@@ -466,9 +466,21 @@ export const useChatStore = create<ChatStore>()(
           });
 
           // Call Edge Function with SSE streaming
+          const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+          const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+          
+          // Validate env vars are available (prevents crash if misconfigured)
+          if (!supabaseUrl || !supabaseAnonKey) {
+            console.error('[ChatStore] Missing environment variables:', {
+              hasUrl: !!supabaseUrl,
+              hasKey: !!supabaseAnonKey,
+            });
+            throw new Error('App configuration error. Please restart the app.');
+          }
+          
           if (__DEV__) {
             console.log('[ChatStore] Calling Edge Function:', {
-              url: `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
+              url: `${supabaseUrl}/functions/v1/chat`,
               sessionId,
               coachId,
             });
@@ -481,13 +493,13 @@ export const useChatStore = create<ChatStore>()(
           let response: Response;
           try {
             response = await fetch(
-              `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
+              `${supabaseUrl}/functions/v1/chat`,
               {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${session.access_token}`,
-                  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+                  'apikey': supabaseAnonKey,
                 },
                 body: JSON.stringify({
                   sessionId,

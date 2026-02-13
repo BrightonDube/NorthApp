@@ -94,7 +94,9 @@ export async function initializeRevenueCat(userId?: string): Promise<void> {
     console.log('[BillingStore] RevenueCat initialized successfully');
   } catch (error) {
     console.error('[BillingStore] Error initializing RevenueCat:', error);
-    throw error;
+    // Don't throw - allow app to continue without billing functionality
+    // This prevents app crashes when RevenueCat has issues (network, config, etc.)
+    // The app will function without Pro features and can retry later
   }
 }
 
