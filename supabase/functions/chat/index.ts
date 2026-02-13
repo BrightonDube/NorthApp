@@ -1,22 +1,24 @@
 /**
  * Chat Edge Function
- * 
- * Handles AI chat requests with context-aware prompt composition and streaming responses.
- * 
+ *
+ * Handles AI chat with context-aware prompts and streaming responses.
+ * Supports multiple LLM providers (Groq, Gemini) selected at runtime
+ * from the llm_config table.
+ *
  * Features:
- * - JWT authentication validation
- * - Prompt composition with user context
- * - Conversation history integration
- * - Google Gemini API streaming
- * - Server-Sent Events (SSE) response
- * - Message persistence to database
- * 
+ * - JWT authentication
+ * - Multi-provider LLM support (Groq, Gemini)
+ * - Runtime provider selection via llm_config table
+ * - Context injection (user context + file attachments)
+ * - Conversation history
+ * - SSE streaming responses
+ * - Message persistence
+ *
  * Validates: Requirements 5.1-5.5, 9.1-9.7
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.1.3';
 import { buildPromptContext, filterSessionFiles, type FileAttachment } from './context-injection.ts';
 
 const corsHeaders = {
@@ -30,57 +32,253 @@ interface ChatRequest {
   message: string;
 }
 
+interface LLMConfig {
+  provider: 'groq' | 'gemini';
+  model: string;
+  temperature: number;
+  max_tokens: number;
+}
+
+// ─── Provider Implementations ────────────────────────────────────────────────
+
+/**
+ * Stream chat completion from Groq (OpenAI-compatible API)
+ */
+async function streamGroq(
+  systemPrompt: string,
+  history: Array<{ role: string; content: string }>,
+  userMessage: string,
+  config: LLMConfig,
+): Promise<ReadableStream<Uint8Array>> {
+  const apiKey = Deno.env.get('GROQ_API_KEY');
+  if (!apiKey) throw new Error('GROQ_API_KEY not configured');
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history,
+    { role: 'user', content: userMessage },
+  ];
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages,
+      temperature: config.temperature,
+      max_tokens: config.max_tokens,
+      top_p: 0.9,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Groq API error:', res.status, err);
+    throw new Error(`Groq API error ${res.status}: ${err}`);
+  }
+
+  return res.body!;
+}
+
+/**
+ * Stream chat completion from Gemini REST API (no SDK)
+ */
+async function streamGemini(
+  systemPrompt: string,
+  history: Array<{ role: string; content: string }>,
+  userMessage: string,
+  config: LLMConfig,
+): Promise<ReadableStream<Uint8Array>> {
+  const apiKey = Deno.env.get('GEMINI_KEY');
+  if (!apiKey) throw new Error('GEMINI_KEY not configured');
+
+  const contents = [
+    ...history.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+    { role: 'user', parts: [{ text: userMessage }] },
+  ];
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: {
+        temperature: config.temperature,
+        topP: 0.9,
+        topK: 40,
+        maxOutputTokens: config.max_tokens,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Gemini API error:', res.status, err);
+    throw new Error(`Gemini API error ${res.status}: ${err}`);
+  }
+
+  return res.body!;
+}
+
+// ─── SSE Parsers ─────────────────────────────────────────────────────────────
+
+/**
+ * Parse Groq SSE stream (OpenAI format) and yield text tokens
+ */
+async function* parseGroqStream(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') return;
+
+        try {
+          const parsed = JSON.parse(data);
+          const token = parsed.choices?.[0]?.delta?.content;
+          if (token) yield token;
+        } catch {
+          // skip malformed chunks
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/**
+ * Parse Gemini SSE stream and yield text tokens
+ */
+async function* parseGeminiStream(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data: ')) continue;
+        const data = trimmed.slice(6);
+
+        try {
+          const parsed = JSON.parse(data);
+          const parts = parsed.candidates?.[0]?.content?.parts;
+          if (parts) {
+            for (const part of parts) {
+              if (part.text) yield part.text;
+            }
+          }
+        } catch {
+          // skip malformed chunks
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ─── Main Handler ────────────────────────────────────────────────────────────
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Validate authorization
+    // ── Auth ──────────────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Initialize Supabase client
+    // Extract the JWT token from the Authorization header
+    const token = authHeader.replace('Bearer ', '');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: authHeader } } },
     );
 
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    // Pass token explicitly to getUser() - required for edge functions
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
     if (authError || !user) {
+      console.error('Auth error:', authError?.message || 'No user found');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Parse request
+    // ── Parse & Validate Request ─────────────────────────────────────────
     const { sessionId, coachId, message }: ChatRequest = await req.json();
 
-    // Validate input
     if (!sessionId || !coachId || !message) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     if (message.length > 10000) {
       return new Response(
         JSON.stringify({ error: 'Message too long' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Fetch coach
+    // ── Fetch LLM Config ─────────────────────────────────────────────────
+    const { data: llmConfigRow } = await supabaseClient
+      .from('llm_config')
+      .select('provider, model, temperature, max_tokens')
+      .eq('is_active', true)
+      .single();
+
+    const llmConfig: LLMConfig = llmConfigRow ?? {
+      provider: 'groq',
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+      max_tokens: 4096,
+    };
+
+    console.log(`[chat] Using provider: ${llmConfig.provider} / ${llmConfig.model}`);
+
+    // ── Fetch Coach ──────────────────────────────────────────────────────
     const { data: coach, error: coachError } = await supabaseClient
       .from('coaches')
       .select('system_prompt, name')
@@ -90,18 +288,17 @@ serve(async (req) => {
     if (coachError || !coach) {
       return new Response(
         JSON.stringify({ error: 'Coach not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // Fetch user context
+    // ── Fetch Context ────────────────────────────────────────────────────
     const { data: contexts } = await supabaseClient
       .from('user_context')
       .select('category, content')
       .eq('user_id', user.id)
       .order('category');
 
-    // Fetch user file attachments
     const { data: fileAttachments } = await supabaseClient
       .from('file_attachments')
       .select('id, filename, file_type, upload_date, extracted_content, extraction_success')
@@ -109,85 +306,63 @@ serve(async (req) => {
       .eq('extraction_success', true)
       .order('upload_date', { ascending: false });
 
-    // Fetch session-specific file selections (if any)
     const { data: sessionFileSelections } = await supabaseClient
       .from('session_file_selections')
       .select('file_id')
       .eq('session_id', sessionId);
 
-    // Filter files based on session selections
-    const sessionFileIds = sessionFileSelections?.map(s => s.file_id);
+    const sessionFileIds = sessionFileSelections?.map((s) => s.file_id);
     const filteredFiles = filterSessionFiles(
       (fileAttachments as FileAttachment[]) || [],
-      sessionFileIds
+      sessionFileIds,
     );
 
-    // Fetch conversation history (last 10 messages)
-    const { data: messages } = await supabaseClient
+    const systemPrompt = buildPromptContext(
+      coach.system_prompt,
+      contexts || [],
+      filteredFiles,
+    );
+
+    // ── Fetch Conversation History ───────────────────────────────────────
+    const { data: dbMessages } = await supabaseClient
       .from('messages')
       .select('role, content')
       .eq('chat_session_id', sessionId)
       .order('created_at', { ascending: true })
       .limit(10);
 
-    // Format context by category
-    const contextByCategory = {
-      values: contexts?.filter(c => c.category === 'values').map(c => c.content) || [],
-      goals: contexts?.filter(c => c.category === 'goals').map(c => c.content) || [],
-      projects: contexts?.filter(c => c.category === 'projects').map(c => c.content) || [],
-      constraints: contexts?.filter(c => c.category === 'constraints').map(c => c.content) || [],
-    };
+    const history = (dbMessages || []).map((m) => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.content,
+    }));
 
-    // Build system prompt with context and file attachments
-    const systemPrompt = buildPromptContext(
-      coach.system_prompt,
-      contexts || [],
-      filteredFiles
-    );
+    // ── Call LLM Provider ────────────────────────────────────────────────
+    let providerStream: ReadableStream<Uint8Array>;
+    let parseStream: (body: ReadableStream<Uint8Array>) => AsyncGenerator<string>;
 
-    // Format conversation history for Gemini
-    const history = messages?.map(m => ({
-      role: m.role === 'user' ? 'user' : 'model',
-      parts: [{ text: m.content }],
-    })) || [];
+    if (llmConfig.provider === 'gemini') {
+      providerStream = await streamGemini(systemPrompt, history, message, llmConfig);
+      parseStream = parseGeminiStream;
+    } else {
+      providerStream = await streamGroq(systemPrompt, history, message, llmConfig);
+      parseStream = parseGroqStream;
+    }
 
-    // Initialize Gemini
-    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_KEY') ?? '');
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-preview-05-20',
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.9,
-        topK: 40,
-        maxOutputTokens: 4096,
-      },
-    });
-
-    // Start chat with history
-    const chat = model.startChat({
-      history,
-      systemInstruction: systemPrompt,
-    });
-
-    // Stream response
-    const result = await chat.sendMessageStream(message);
-
-    // Create SSE stream
+    // ── Build SSE Response Stream ────────────────────────────────────────
     const encoder = new TextEncoder();
     let fullResponse = '';
 
-    const stream = new ReadableStream({
+    const sseStream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of result.stream) {
-            const text = chunk.text();
-            fullResponse += text;
+          for await (const token of parseStream(providerStream)) {
+            fullResponse += token;
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: 'token', data: text })}\n\n`)
+              encoder.encode(`data: ${JSON.stringify({ type: 'token', data: token })}\n\n`),
             );
           }
 
-          // Save message to database
+          // Save assistant message to database
           const { data: savedMessage, error: saveError } = await supabaseClient
             .from('messages')
             .insert({
@@ -203,26 +378,38 @@ serve(async (req) => {
           }
 
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({
-              type: 'done',
-              data: { messageId: savedMessage?.id }
-            })}\n\n`)
+            encoder.encode(
+              `data: ${JSON.stringify({ type: 'done', data: { messageId: savedMessage?.id } })}\n\n`,
+            ),
           );
           controller.close();
         } catch (error) {
           console.error('Streaming error:', error);
+
+          // If we have partial content, try to save it
+          if (fullResponse.length > 0) {
+            await supabaseClient
+              .from('messages')
+              .insert({
+                chat_session_id: sessionId,
+                role: 'assistant',
+                content: fullResponse + '\n\n[Response interrupted]',
+              })
+              .select()
+              .single();
+          }
+
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({
-              type: 'error',
-              data: { message: 'Failed to generate response' }
-            })}\n\n`)
+            encoder.encode(
+              `data: ${JSON.stringify({ type: 'error', data: { message: 'Failed to generate response' } })}\n\n`,
+            ),
           );
           controller.close();
         }
       },
     });
 
-    return new Response(stream, {
+    return new Response(sseStream, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/event-stream',
@@ -233,8 +420,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('Edge function error:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Internal server error', details: String(error) }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });

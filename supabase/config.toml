@@ -60,3 +60,7 @@ max_frequency = "5s"
 [functions.chat]
 # Verify JWT tokens for the chat function
 verify_jwt = true
+
+[functions.generate-report]
+# Verify JWT tokens for the generate-report function
+verify_jwt = true
