@@ -141,6 +141,13 @@
           "sounds": [],
           "mode": "production"
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "north-app",
+          "project": "north-mobile"
+        }
       ]
     ],
     "extra": {

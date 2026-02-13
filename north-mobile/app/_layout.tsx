@@ -22,6 +22,7 @@ import {
   PERFORMANCE_MARKS,
   setupPerformanceObserver 
 } from '@/lib/performance';
+import { initSentry, setUser as setSentryUser } from '@/lib/sentry';
 
 // Suppress non-critical warnings
 // These warnings don't impact functionality and only add noise to the console
@@ -71,6 +72,11 @@ export default function RootLayout() {
   const [showCustomSplash, setShowCustomSplash] = useState(true);
   const [splashVisible, setSplashVisible] = useState(true);
   
+  // Initialize Sentry for crash reporting (must be early in lifecycle)
+  useEffect(() => {
+    initSentry();
+  }, []);
+
   // Setup performance observer in development
   useEffect(() => {
     if (__DEV__) {
@@ -223,6 +229,15 @@ export default function RootLayout() {
       appStateSubscription.remove();
     };
   }, []);
+
+  // Set Sentry user context when user changes
+  useEffect(() => {
+    if (user) {
+      setSentryUser({ id: user.id, email: user.email, name: user.name });
+    } else {
+      setSentryUser(null);
+    }
+  }, [user?.id]);
 
   // Initialize app data in parallel when user is authenticated
   // Validates: Requirement 14.1 - Optimize initial data fetching (parallel requests)

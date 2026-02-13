@@ -18,6 +18,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Updates from 'expo-updates';
+import { captureException } from '@/lib/sentry';
 
 interface Props {
   children: ReactNode;
@@ -51,15 +52,10 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('ErrorBoundary caught an error:', error);
     console.error('Error Info:', errorInfo);
 
-    // In production, you could send this to an error tracking service like Sentry
-    // Example:
-    // Sentry.captureException(error, {
-    //   contexts: {
-    //     react: {
-    //       componentStack: errorInfo.componentStack,
-    //     },
-    //   },
-    // });
+    // Send to Sentry for crash reporting
+    captureException(error, {
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   resetError = (): void => {
