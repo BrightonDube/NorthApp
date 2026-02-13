@@ -34,6 +34,87 @@ import { useCoachStore } from '@/stores/coachStore';
 import { useThemeColors } from '@/contexts/ThemeContext';
 import { getCoachThemeColor } from '@/lib/coachColors';
 import type { Coach } from '@/types';
+import type { CoachCategory } from '@/types';
+
+/**
+ * Extract a human-readable "about" from the system prompt.
+ * Takes the first meaningful paragraph that describes the coach's purpose.
+ */
+function extractAboutFromPrompt(prompt: string): string {
+  const lines = prompt.split('\n').filter(l => l.trim().length > 0);
+  // Look for lines starting with "You are" or "Your purpose"
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('You are') || trimmed.startsWith('Your purpose')) {
+      return trimmed;
+    }
+  }
+  // Fallback: first line that's descriptive (not a heading/keyword)
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.length > 30 && !trimmed.endsWith(':') && !trimmed.startsWith('-') && !trimmed.startsWith('*')) {
+      return trimmed.length > 200 ? trimmed.substring(0, 200) + '...' : trimmed;
+    }
+  }
+  return 'An AI coaching assistant designed to help you grow.';
+}
+
+/**
+ * Returns default expectations based on coach category
+ */
+function getDefaultExpectations(category: CoachCategory): string[] {
+  const defaults: Record<string, string[]> = {
+    Business: [
+      'Socratic questioning to deepen your thinking',
+      'Framework-based analysis, not direct answers',
+      'Challenges to your assumptions and blind spots',
+      'Every response ends with a probing question',
+    ],
+    Creative: [
+      'Structured critique focused on clarity and impact',
+      'Guidance to improve your own work, not rewrites',
+      'Audience-first analysis of your writing',
+      'Actionable feedback on structure and persuasion',
+    ],
+    General: [
+      'Reflective questions about your own behavior',
+      'Perspective-shifting exercises',
+      'Frameworks for difficult conversations',
+      'Focus on emotional intelligence and self-awareness',
+    ],
+    Health: [
+      'Focus on sustainable habit formation',
+      'Small, achievable steps rather than drastic changes',
+      'Questions about obstacles and motivations',
+      'No medical advice — general wellness principles only',
+    ],
+    Productivity: [
+      'Systems and habits for consistent output',
+      'Time management and prioritization frameworks',
+      'Focus on eliminating friction, not adding tools',
+      'Questions to uncover what actually drives your productivity',
+    ],
+    Learning: [
+      'Active recall and spaced repetition principles',
+      'Questions that deepen understanding, not just memorization',
+      'Meta-learning strategies tailored to your goals',
+      'Focus on connecting new knowledge to what you already know',
+    ],
+    Entertainment: [
+      'Creative exploration and brainstorming support',
+      'Questions to spark new ideas and perspectives',
+      'Playful approach to problem-solving',
+      'Encouragement to think outside the box',
+    ],
+    Technical: [
+      'Problem decomposition and debugging strategies',
+      'Best practices guidance through questions',
+      'Architecture and design pattern discussions',
+      'Focus on understanding, not just solutions',
+    ],
+  };
+  return defaults[category] || defaults['General'];
+}
 
 /**
  * CoachIconSection Component
@@ -208,11 +289,61 @@ export default function CoachProfileScreen() {
           {coach.category}
         </Text>
 
-        {/* Placeholder for future sections */}
-        <View style={styles.placeholder}>
-          <Text style={[styles.placeholderText, { color: colors.textTertiary }]}>
-            Additional sections (tags, about, expectations) will be added in subsequent tasks
-          </Text>
+        {/* Tags section */}
+        {coach.tags && coach.tags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            {coach.tags.map((tag, index) => (
+              <View 
+                key={index} 
+                style={[styles.tag, { backgroundColor: colors.backgroundTertiary }]}
+              >
+                <Text style={[styles.tagText, { color: colors.textSecondary }]}>
+                  {tag}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* About section */}
+        {coach.about ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>About</Text>
+            <Text style={[styles.sectionBody, { color: colors.textSecondary }]}>
+              {coach.about}
+            </Text>
+          </View>
+        ) : coach.systemPrompt ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>About</Text>
+            <Text style={[styles.sectionBody, { color: colors.textSecondary }]}>
+              {extractAboutFromPrompt(coach.systemPrompt)}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Expectations section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>What to Expect</Text>
+          {(coach.expectations && coach.expectations.length > 0) ? (
+            coach.expectations.map((expectation, index) => (
+              <View key={index} style={styles.expectationRow}>
+                <Text style={[styles.expectationBullet, { color: colors.primary || colors.text }]}>•</Text>
+                <Text style={[styles.expectationText, { color: colors.textSecondary }]}>
+                  {expectation}
+                </Text>
+              </View>
+            ))
+          ) : (
+            getDefaultExpectations(coach.category).map((expectation, index) => (
+              <View key={index} style={styles.expectationRow}>
+                <Text style={[styles.expectationBullet, { color: colors.primary || colors.text }]}>•</Text>
+                <Text style={[styles.expectationText, { color: colors.textSecondary }]}>
+                  {expectation}
+                </Text>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -296,15 +427,50 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  placeholder: {
-    padding: 20,
-    borderRadius: 12,
-    marginTop: 16,
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 32,
   },
-  placeholderText: {
-    fontSize: 14,
-    textAlign: 'center',
-    fontStyle: 'italic',
+  tag: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  tagText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  section: {
+    marginBottom: 28,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    letterSpacing: -0.3,
+  },
+  sectionBody: {
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  expectationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  expectationBullet: {
+    fontSize: 18,
+    lineHeight: 22,
+    marginRight: 10,
+    fontWeight: '600',
+  },
+  expectationText: {
+    fontSize: 15,
+    lineHeight: 22,
+    flex: 1,
   },
   footer: {
     paddingHorizontal: 24,
