@@ -21,11 +21,11 @@ import {
   SurfaceGradientBackground,
 } from '../GradientBackground';
 import { generateLightGradient, generateDarkGradient } from '@/design-system/utils/gradient-utils';
+import { useIsDark } from '@/contexts/ThemeContext';
 
-// Mock useColorScheme
-let mockColorScheme: 'light' | 'dark' | null | undefined = 'light';
-jest.mock('react-native/Libraries/Utilities/useColorScheme', () => ({
-  default: jest.fn(() => mockColorScheme),
+// Mock ThemeContext
+jest.mock('@/contexts/ThemeContext', () => ({
+  useIsDark: jest.fn(),
 }));
 
 // Mock expo-linear-gradient
@@ -53,7 +53,7 @@ jest.mock('expo-linear-gradient', () => ({
 describe('GradientBackground Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockColorScheme = 'light';
+    (useIsDark as jest.Mock).mockReturnValue(false);
   });
 
   describe('Basic Rendering', () => {
@@ -175,7 +175,7 @@ describe('GradientBackground Component', () => {
     });
 
     it('should use dark mode colors when color scheme is dark', () => {
-      mockColorScheme = 'dark';
+      (useIsDark as jest.Mock).mockReturnValue(true);
       
       const { getByTestId } = render(
         <GradientBackground variant="calm">
@@ -188,7 +188,7 @@ describe('GradientBackground Component', () => {
     });
 
     it('should switch calm variant colors in dark mode', () => {
-      mockColorScheme = 'dark';
+      (useIsDark as jest.Mock).mockReturnValue(true);
       
       const { getByTestId } = render(
         <GradientBackground variant="calm">
@@ -201,7 +201,7 @@ describe('GradientBackground Component', () => {
     });
 
     it('should switch surface variant colors in dark mode', () => {
-      mockColorScheme = 'dark';
+      (useIsDark as jest.Mock).mockReturnValue(true);
       
       const { getByTestId } = render(
         <GradientBackground variant="surface">
@@ -304,7 +304,7 @@ describe('GradientBackground Component', () => {
     });
 
     it('should use custom gradient in dark mode', () => {
-      mockColorScheme = 'dark';
+      (useIsDark as jest.Mock).mockReturnValue(true);
       
       const customGradient = {
         light: generateLightGradient('#FAFAF9', 'linear'),
@@ -373,7 +373,7 @@ describe('GradientBackground Component', () => {
     });
 
     it('should use solid background color when disabled in dark mode', () => {
-      mockColorScheme = 'dark';
+      (useIsDark as jest.Mock).mockReturnValue(true);
       
       const { UNSAFE_root } = render(
         <GradientBackground disabled variant="calm">
@@ -508,7 +508,7 @@ describe('GradientBackground Component', () => {
       expect(gradient.props.colors).toEqual(['#FAFAF9', '#F5F5F4']);
       
       // Switch to dark mode
-      mockColorScheme = 'dark';
+      (useIsDark as jest.Mock).mockReturnValue(true);
       rerender(
         <GradientBackground>
           <Text>Test Content</Text>
@@ -570,7 +570,7 @@ describe('GradientBackground Component', () => {
       let gradient = getByTestId('linear-gradient');
       expect(gradient.props.colors).toEqual(['#FAFAF9', '#F5F5F4']);
       
-      mockColorScheme = 'dark';
+      (useIsDark as jest.Mock).mockReturnValue(true);
       rerender(
         <GradientBackground>
           <Text>Test Content</Text>

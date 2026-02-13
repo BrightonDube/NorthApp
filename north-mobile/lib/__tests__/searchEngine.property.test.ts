@@ -297,17 +297,18 @@ describe('Search Engine Properties', () => {
           }),
           async (searchTerm) => {
             // Use a unique prefix that won't accidentally match the search term
-            const uniquePrefix = 'xyzqwerty';
+            // Avoid common letter combinations by using underscores as separators
+            const uniquePrefix = 'xyz_qwerty_prefix';
             
             // Create coaches with the search term in different fields
             const coaches: PublicCoach[] = [
               {
                 id: 'coach-1',
-                name: `${searchTerm} in name`,
+                name: `${searchTerm} in title field`,
                 icon: '🤖',
                 systemPrompt: `${uniquePrefix} prompt without term`,
                 creatorId: 'user-1',
-                creatorName: `${uniquePrefix}Creator1`,
+                creatorName: `${uniquePrefix}_creator1`,
                 isPublic: true,
                 category: CoachCategory.PRODUCTIVITY,
                 isFeatured: false,
@@ -317,11 +318,11 @@ describe('Search Engine Properties', () => {
               },
               {
                 id: 'coach-2',
-                name: `${uniquePrefix}Name2`,
+                name: `${uniquePrefix}_title2`,
                 icon: '📚',
                 systemPrompt: `Contains ${searchTerm} in prompt`,
                 creatorId: 'user-2',
-                creatorName: `${uniquePrefix}Creator2`,
+                creatorName: `${uniquePrefix}_creator2`,
                 isPublic: true,
                 category: CoachCategory.LEARNING,
                 isFeatured: false,
@@ -331,7 +332,7 @@ describe('Search Engine Properties', () => {
               },
               {
                 id: 'coach-3',
-                name: `${uniquePrefix}Name3`,
+                name: `${uniquePrefix}_title3`,
                 icon: '💪',
                 systemPrompt: `${uniquePrefix} prompt without term`,
                 creatorId: 'user-3',
@@ -345,11 +346,11 @@ describe('Search Engine Properties', () => {
               },
               {
                 id: 'coach-4',
-                name: `${uniquePrefix}Name4`,
+                name: `${uniquePrefix}_title4`,
                 icon: '🎨',
                 systemPrompt: `${uniquePrefix} prompt without term`,
                 creatorId: 'user-4',
-                creatorName: `${uniquePrefix}Creator4`,
+                creatorName: `${uniquePrefix}_creator4`,
                 isPublic: true,
                 category: CoachCategory.CREATIVE,
                 isFeatured: false,

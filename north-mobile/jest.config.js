@@ -37,4 +37,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
+  // Add worker configuration to prevent memory issues with large property test files
+  maxWorkers: '50%',
+  workerIdleMemoryLimit: '512MB',
 };

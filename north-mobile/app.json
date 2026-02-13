@@ -47,8 +47,8 @@
       },
       "package": "com.brighton.northapp",
       "versionCode": 3,
-      "enableProguardInReleaseBuilds": true,
-      "enableShrinkResourcesInReleaseBuilds": true,
+      "enableProguardInReleaseBuilds": false,
+      "enableShrinkResourcesInReleaseBuilds": false,
       "permissions": [
         "com.android.vending.BILLING",
         "android.permission.INTERNET",
@@ -125,8 +125,8 @@
           },
           "android": {
             "minSdkVersion": 24,
-            "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableProguardInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false
           }
         }
       ],

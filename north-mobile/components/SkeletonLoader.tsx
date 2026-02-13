@@ -14,9 +14,10 @@
  * Validates: Requirements 7.3, 7.4, 7.5
  */
 
-import { View, StyleSheet, Animated, useColorScheme } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useIsDark } from '@/contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface SkeletonProps {
@@ -71,7 +72,7 @@ export function Skeleton({
   variant = 'rectangle',
   animated = true,
 }: SkeletonProps) {
-  const colorScheme = useColorScheme();
+  const isDark = useIsDark();
   const prefersReducedMotion = useReducedMotion();
   const shimmerPosition = useRef(new Animated.Value(-1)).current;
 
@@ -85,8 +86,8 @@ export function Skeleton({
   // Calm Design System colors - surface with subtle highlight
   // Light mode: #F5F5F4 (surface) with #E7E5E4 (highlight)
   // Dark mode: #1C1917 (surface) with #292524 (highlight)
-  const baseColor = colorScheme === 'dark' ? '#1C1917' : '#F5F5F4';
-  const highlightColor = colorScheme === 'dark' ? '#292524' : '#E7E5E4';
+  const baseColor = isDark ? '#1C1917' : '#F5F5F4';
+  const highlightColor = isDark ? '#292524' : '#E7E5E4';
 
   useEffect(() => {
     // Disable animation if user prefers reduced motion

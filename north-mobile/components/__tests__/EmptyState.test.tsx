@@ -17,19 +17,19 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { EmptyState } from '../EmptyState';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useColorScheme } from 'react-native';
+import { useIsDark } from '@/contexts/ThemeContext';
 
 // Mock dependencies
 jest.mock('@/hooks/useReducedMotion');
-jest.mock('react-native/Libraries/Utilities/useColorScheme', () => ({
-  default: jest.fn(),
+jest.mock('@/contexts/ThemeContext', () => ({
+  useIsDark: jest.fn(),
 }));
 
 describe('EmptyState Component', () => {
   beforeEach(() => {
     // Reset mocks
     (useReducedMotion as jest.Mock).mockReturnValue(false);
-    (useColorScheme as jest.Mock).mockReturnValue('light');
+    (useIsDark as jest.Mock).mockReturnValue(false);
   });
 
   describe('Rendering', () => {
@@ -144,7 +144,7 @@ describe('EmptyState Component', () => {
 
   describe('Theme Support', () => {
     it('should apply light mode colors by default', () => {
-      (useColorScheme as jest.Mock).mockReturnValue('light');
+      (useIsDark as jest.Mock).mockReturnValue(false);
       
       const { getByText } = render(
         <EmptyState
@@ -162,7 +162,7 @@ describe('EmptyState Component', () => {
     });
 
     it('should apply dark mode colors when theme is dark', () => {
-      (useColorScheme as jest.Mock).mockReturnValue('dark');
+      (useIsDark as jest.Mock).mockReturnValue(true);
       
       const { getByText } = render(
         <EmptyState
@@ -180,7 +180,7 @@ describe('EmptyState Component', () => {
     });
 
     it('should apply dark mode button styles when theme is dark', () => {
-      (useColorScheme as jest.Mock).mockReturnValue('dark');
+      (useIsDark as jest.Mock).mockReturnValue(true);
       
       const { getByText } = render(
         <EmptyState

@@ -306,18 +306,39 @@ export const useBillingStore = create<BillingStoreInternal>()(
    */
   fetchOfferings: async () => {
     if (!isInitialized) {
+      console.log('[BillingStore] Cannot fetch offerings - RevenueCat not initialized');
       return;
     }
 
     try {
       const offerings = await Purchases.getOfferings();
       
-      if (offerings.current) {
-        set({ offerings: offerings.current });
-        console.log('[BillingStore] Offerings fetched:', offerings.current.identifier);
+      if (!offerings.current || !offerings.current.availablePackages || offerings.current.availablePackages.length === 0) {
+        console.warn('[BillingStore] No offerings available. Please configure products in RevenueCat dashboard.');
+        set({ 
+          error: 'Store is not configured yet. Please try again later.',
+          offerings: null 
+        });
+        return;
       }
-    } catch (error) {
+      
+      set({ offerings: offerings.current, error: null });
+      console.log('[BillingStore] Offerings fetched:', offerings.current.identifier);
+    } catch (error: any) {
       console.error('[BillingStore] Error fetching offerings:', error);
+      
+      // Provide helpful error message for configuration issues
+      if (error.code === 'CONFIGURATION_ERROR' || error.message?.includes('configuration')) {
+        set({ 
+          error: 'Store configuration error. Please contact support.',
+          offerings: null 
+        });
+      } else {
+        set({ 
+          error: 'Unable to load subscription options. Please try again.',
+          offerings: null 
+        });
+      }
     }
   },
 

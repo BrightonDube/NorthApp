@@ -63,8 +63,12 @@ describe('MessageBubble', () => {
 
       const bubble = getByTestId(`message-bubble-${mockUserMessage.id}`);
       
-      // User messages should be right-aligned
-      expect(bubble.props.className).toContain('items-end');
+      // User messages should be right-aligned (check style object)
+      const style = bubble.props.style;
+      const hasFlexEnd = Array.isArray(style) 
+        ? style.some(s => s?.alignItems === 'flex-end')
+        : style?.alignItems === 'flex-end';
+      expect(hasFlexEnd).toBe(true);
     });
 
     it('should have correct accessibility label for user messages', () => {
@@ -105,8 +109,12 @@ describe('MessageBubble', () => {
 
       const bubble = getByTestId(`message-bubble-${mockAssistantMessage.id}`);
       
-      // Assistant messages should be left-aligned
-      expect(bubble.props.className).toContain('items-start');
+      // Assistant messages should be left-aligned (check style object)
+      const style = bubble.props.style;
+      const hasFlexStart = Array.isArray(style)
+        ? style.some(s => s?.alignItems === 'flex-start')
+        : style?.alignItems === 'flex-start';
+      expect(hasFlexStart).toBe(true);
     });
 
     it('should have correct accessibility label for assistant messages', () => {

@@ -426,12 +426,36 @@ export const useChatStore = create<ChatStore>()(
             },
           }));
 
-          // Get current session token for Edge Function auth
-          const { data: { session } } = await supabase.auth.getSession();
+          // Get current session with automatic refresh if needed
+          // getSession() will automatically refresh an expired token
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
-          if (!session) {
-            throw new Error('No active session');
+          if (sessionError) {
+            console.error('[ChatStore] Session error:', sessionError);
+            throw new Error('Authentication failed. Please log in again.');
           }
+          
+          if (!session?.access_token) {
+            throw new Error('No active session. Please log in again.');
+          }
+
+          // Verify the session is valid by checking the user
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError) {
+            console.error('[ChatStore] User verification error:', userError);
+            throw new Error('Authentication failed. Please log in again.');
+          }
+          
+          if (!user) {
+            throw new Error('User not authenticated. Please log in again.');
+          }
+
+          console.log('[ChatStore] Auth validated:', {
+            userId: user.id,
+            hasAccessToken: !!session.access_token,
+            tokenExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'
+          });
 
           // Initialize streaming state
           set({
@@ -453,6 +477,7 @@ export const useChatStore = create<ChatStore>()(
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.access_token}`,
+                'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
               },
               body: JSON.stringify({
                 sessionId,

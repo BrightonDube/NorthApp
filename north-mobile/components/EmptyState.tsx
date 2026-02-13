@@ -43,7 +43,7 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -53,6 +53,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useIsDark } from '@/contexts/ThemeContext';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 /**
@@ -405,8 +406,7 @@ export function EmptyState({
   illustrationType = 'circle',
   disableAnimation = false,
 }: EmptyStateProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const isDark = useIsDark();
   const prefersReducedMotion = useReducedMotion();
   
   // Determine if animation should be active

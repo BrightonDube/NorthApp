@@ -156,7 +156,7 @@ describe('Input Component', () => {
         ? styles.find((s) => s?.borderColor)?.borderColor
         : styles?.borderColor;
       
-      expect(borderColor).toBe('#FF453A'); // error color
+      expect(borderColor).toBe('#DC2626'); // error color from ThemeContext
     });
 
     it('should be disabled when editable is false', () => {

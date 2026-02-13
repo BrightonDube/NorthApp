@@ -102,7 +102,7 @@ describe('Home Screen - FAB Behavior', () => {
 
       // Assert: FAB should be visible
       expect(getByText('Create Custom Coach')).toBeTruthy();
-      expect(getByText(/Requires Pro/)).toBeTruthy();
+      expect(getByText(/Upgrade to Pro to unlock/)).toBeTruthy();
       
       // Assert: FAB should have proper accessibility
       const fabButton = getByLabelText('Create custom coach');

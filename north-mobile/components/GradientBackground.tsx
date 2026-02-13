@@ -44,8 +44,9 @@
  */
 
 import React from 'react';
-import { View, ViewProps, StyleSheet, useColorScheme } from 'react-native';
+import { View, ViewProps, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useIsDark } from '@/contexts/ThemeContext';
 import type { GradientResult } from '@/design-system/utils/gradient-utils';
 
 /**
@@ -148,8 +149,7 @@ export function GradientBackground({
   style,
   ...viewProps
 }: GradientBackgroundProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const isDark = useIsDark();
   
   // If disabled, render as regular View with solid background
   if (disabled) {

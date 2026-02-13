@@ -14,6 +14,11 @@ import { useBillingStore } from '@/stores/billingStore';
 import type { Coach } from '@/types';
 import { Alert } from 'react-native';
 
+// Arbitraries that filter out whitespace-only strings
+const coachNameArbitrary = fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0);
+const coachIconArbitrary = fc.string({ minLength: 1, maxLength: 2 }).filter((s) => s.trim().length > 0);
+const systemPromptArbitrary = fc.string({ minLength: 20, maxLength: 500 }).filter((s) => s.trim().length > 0);
+
 // Mock the billing store
 jest.mock('@/stores/billingStore');
 
@@ -61,9 +66,9 @@ describe('Coach Visibility Permissions Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(), // coach ID
-          fc.string({ minLength: 1, maxLength: 50 }), // coach name
-          fc.string({ minLength: 1, maxLength: 2 }), // icon
-          fc.string({ minLength: 20, maxLength: 500 }), // system prompt
+          coachNameArbitrary, // coach name
+          coachIconArbitrary, // icon
+          systemPromptArbitrary, // system prompt
           async (coachId, name, icon, systemPrompt) => {
             // Setup: Mock Pro user
             (useBillingStore as unknown as jest.Mock).mockReturnValue(true);
@@ -85,7 +90,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             const onSave = jest.fn().mockResolvedValue(undefined);
             const onClose = jest.fn();
 
-            const { getByA11yRole } = render(
+            const { getByRole, getAllByRole } = render(
               <CoachEditModal
                 visible={true}
                 coach={coach}
@@ -95,7 +100,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             );
 
             // Action: Find and toggle the switch
-            const switchElement = getByA11yRole('switch');
+            const switchElements = getAllByRole('switch'); const switchElement = switchElements[switchElements.length - 1]; // Get the actual Switch, not the TouchableOpacity wrapper
             expect(switchElement.props.accessibilityState.disabled).toBe(false);
 
             // Toggle to true
@@ -107,7 +112,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             });
 
             // Save the changes
-            const saveButton = getByA11yRole('button', { name: 'Save changes' });
+            const saveButton = getByRole('button', { name: 'Save changes' });
             fireEvent.press(saveButton);
 
             // Assert: onSave was called with isPublic: true
@@ -127,9 +132,9 @@ describe('Coach Visibility Permissions Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(), // coach ID
-          fc.string({ minLength: 1, maxLength: 50 }), // coach name
-          fc.string({ minLength: 1, maxLength: 2 }), // icon
-          fc.string({ minLength: 20, maxLength: 500 }), // system prompt
+          coachNameArbitrary, // coach name
+          coachIconArbitrary, // icon
+          systemPromptArbitrary, // system prompt
           async (coachId, name, icon, systemPrompt) => {
             // Setup: Mock Pro user
             (useBillingStore as unknown as jest.Mock).mockReturnValue(true);
@@ -151,7 +156,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             const onSave = jest.fn().mockResolvedValue(undefined);
             const onClose = jest.fn();
 
-            const { getByA11yRole } = render(
+            const { getByRole, getAllByRole } = render(
               <CoachEditModal
                 visible={true}
                 coach={coach}
@@ -161,7 +166,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             );
 
             // Action: Find and toggle the switch
-            const switchElement = getByA11yRole('switch');
+            const switchElements = getAllByRole('switch'); const switchElement = switchElements[switchElements.length - 1]; // Get the actual Switch, not the TouchableOpacity wrapper
             expect(switchElement.props.accessibilityState.disabled).toBe(false);
 
             // Toggle to false
@@ -173,7 +178,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             });
 
             // Save the changes
-            const saveButton = getByA11yRole('button', { name: 'Save changes' });
+            const saveButton = getByRole('button', { name: 'Save changes' });
             fireEvent.press(saveButton);
 
             // Assert: onSave was called with isPublic: false
@@ -193,7 +198,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(), // coach ID
-          fc.string({ minLength: 1, maxLength: 50 }), // coach name
+          coachNameArbitrary, // coach name
           fc.array(fc.boolean(), { minLength: 2, maxLength: 5 }), // sequence of toggle states
           async (coachId, name, toggleSequence) => {
             // Setup: Mock Pro user
@@ -216,7 +221,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             const onSave = jest.fn().mockResolvedValue(undefined);
             const onClose = jest.fn();
 
-            const { getByA11yRole } = render(
+            const { getByRole, getAllByRole } = render(
               <CoachEditModal
                 visible={true}
                 coach={coach}
@@ -225,7 +230,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               />
             );
 
-            const switchElement = getByA11yRole('switch');
+            const switchElements = getAllByRole('switch'); const switchElement = switchElements[switchElements.length - 1]; // Get the actual Switch, not the TouchableOpacity wrapper
 
             // Action: Apply sequence of toggles
             for (const toggleState of toggleSequence) {
@@ -266,9 +271,9 @@ describe('Coach Visibility Permissions Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(), // coach ID
-          fc.string({ minLength: 1, maxLength: 50 }), // coach name
-          fc.string({ minLength: 1, maxLength: 2 }), // icon
-          fc.string({ minLength: 20, maxLength: 500 }), // system prompt
+          coachNameArbitrary, // coach name
+          coachIconArbitrary, // icon
+          systemPromptArbitrary, // system prompt
           fc.boolean(), // initial isPublic state
           async (coachId, name, icon, systemPrompt, initialIsPublic) => {
             // Setup: Mock non-Pro user
@@ -291,7 +296,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             const onSave = jest.fn().mockResolvedValue(undefined);
             const onClose = jest.fn();
 
-            const { getByA11yRole } = render(
+            const { getByRole, getAllByRole } = render(
               <CoachEditModal
                 visible={true}
                 coach={coach}
@@ -301,7 +306,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             );
 
             // Assert: Switch is disabled
-            const switchElement = getByA11yRole('switch');
+            const switchElements = getAllByRole('switch'); const switchElement = switchElements[switchElements.length - 1]; // Get the actual Switch, not the TouchableOpacity wrapper
             expect(switchElement.props.accessibilityState.disabled).toBe(true);
             expect(switchElement.props.disabled).toBe(true);
           }
@@ -314,7 +319,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(), // coach ID
-          fc.string({ minLength: 1, maxLength: 50 }), // coach name
+          coachNameArbitrary, // coach name
           fc.boolean(), // initial isPublic state
           fc.boolean(), // attempted new state
           async (coachId, name, initialIsPublic, attemptedState) => {
@@ -338,7 +343,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             const onSave = jest.fn().mockResolvedValue(undefined);
             const onClose = jest.fn();
 
-            const { getByA11yRole } = render(
+            const { getByRole, getAllByRole } = render(
               <CoachEditModal
                 visible={true}
                 coach={coach}
@@ -347,7 +352,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               />
             );
 
-            const switchElement = getByA11yRole('switch');
+            const switchElements = getAllByRole('switch'); const switchElement = switchElements[switchElements.length - 1]; // Get the actual Switch, not the TouchableOpacity wrapper
             const initialValue = switchElement.props.value;
 
             // Action: Attempt to toggle (should not work because switch is disabled)
@@ -365,7 +370,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(), // coach ID
-          fc.string({ minLength: 1, maxLength: 50 }), // coach name
+          coachNameArbitrary, // coach name
           async (coachId, name) => {
             // Setup: Mock non-Pro user
             (useBillingStore as unknown as jest.Mock).mockReturnValue(false);
@@ -387,7 +392,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             const onSave = jest.fn().mockResolvedValue(undefined);
             const onClose = jest.fn();
 
-            const { getByA11yRole } = render(
+            const { getByRole, getAllByRole } = render(
               <CoachEditModal
                 visible={true}
                 coach={coach}
@@ -397,7 +402,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             );
 
             // Action: Tap the container (TouchableOpacity wrapping the switch)
-            const switchElement = getByA11yRole('switch');
+            const switchElements = getAllByRole('switch'); const switchElement = switchElements[switchElements.length - 1]; // Get the actual Switch, not the TouchableOpacity wrapper
             const touchableContainer = switchElement.parent;
             
             if (touchableContainer) {
@@ -422,7 +427,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(), // coach ID
-          fc.string({ minLength: 1, maxLength: 50 }), // coach name
+          coachNameArbitrary, // coach name
           fc.boolean(), // initial isPublic state
           async (coachId, name, initialIsPublic) => {
             // Setup: Mock non-Pro user
@@ -445,7 +450,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             const onSave = jest.fn().mockResolvedValue(undefined);
             const onClose = jest.fn();
 
-            const { getByA11yRole } = render(
+            const { getByRole, getAllByRole } = render(
               <CoachEditModal
                 visible={true}
                 coach={coach}
@@ -455,7 +460,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
             );
 
             // Action: Try to save (even though toggle is disabled)
-            const saveButton = getByA11yRole('button', { name: 'Save changes' });
+            const saveButton = getByRole('button', { name: 'Save changes' });
             fireEvent.press(saveButton);
 
             // Assert: onSave was not called with isPublic changes

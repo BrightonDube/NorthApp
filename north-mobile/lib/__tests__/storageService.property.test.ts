@@ -44,9 +44,9 @@ describe('Storage Service Properties', () => {
           error: null,
         });
       }),
-      getPublicUrl: jest.fn().mockReturnValue({
+      getPublicUrl: jest.fn().mockImplementation((path: string) => ({
         data: { publicUrl: `https://example.com/${path}` },
-      }),
+      })),
       createSignedUrl: jest.fn().mockResolvedValue({
         data: { signedUrl: 'https://example.com/signed-url?token=abc123' },
         error: null,

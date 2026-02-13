@@ -310,7 +310,7 @@ describe('CoachCreateModal - Validation', () => {
 
   describe('Save Button State', () => {
     it('disables Create button when form is invalid', () => {
-      const { getByText } = render(
+      const { getByRole } = render(
         <CoachCreateModal
           visible={true}
           onCreate={mockOnCreate}
@@ -318,15 +318,13 @@ describe('CoachCreateModal - Validation', () => {
         />
       );
 
-      const createButton = getByText('Create');
-      
-      // Button should be disabled (grayed out) when form is invalid
-      // We can check this by verifying the text color class
-      expect(createButton.props.className).toContain('text-zinc-300');
+      // Button should be disabled when form is invalid
+      const createButton = getByRole('button', { name: 'Create coach' });
+      expect(createButton.props.accessibilityState.disabled).toBe(true);
     });
 
     it('enables Create button when form is valid', () => {
-      const { getByText, getByLabelText } = render(
+      const { getByText, getByLabelText, getByRole } = render(
         <CoachCreateModal
           visible={true}
           onCreate={mockOnCreate}
@@ -340,10 +338,9 @@ describe('CoachCreateModal - Validation', () => {
       const systemPromptInput = getByLabelText('System prompt input');
       fireEvent.changeText(systemPromptInput, 'You are a helpful coach who provides guidance.');
 
-      const createButton = getByText('Create');
-      
-      // Button should be enabled (blue) when form is valid
-      expect(createButton.props.className).toContain('text-blue-600');
+      // Button should be enabled when form is valid
+      const createButton = getByRole('button', { name: 'Create coach' });
+      expect(createButton.props.accessibilityState.disabled).toBe(false);
     });
 
     it('disables Create button during submission', async () => {
