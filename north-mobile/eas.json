@@ -65,28 +65,28 @@
   "submit": {
     "preview": {
       "android": {
-        "serviceAccountKeyPath": "./service-account.json",
+        "serviceAccountKey": "${ANDROID_SERVICE_ACCOUNT_JSON}",
         "track": "internal",
         "releaseStatus": "completed"
       }
     },
     "internal-testing": {
       "android": {
-        "serviceAccountKeyPath": "./service-account.json",
+        "serviceAccountKey": "${ANDROID_SERVICE_ACCOUNT_JSON}",
         "track": "internal",
         "releaseStatus": "completed"
       }
     },
     "closed-testing": {
       "android": {
-        "serviceAccountKeyPath": "./service-account.json",
+        "serviceAccountKey": "${ANDROID_SERVICE_ACCOUNT_JSON}",
         "track": "alpha",
         "releaseStatus": "completed"
       }
     },
     "open-testing": {
       "android": {
-        "serviceAccountKeyPath": "./service-account.json",
+        "serviceAccountKey": "${ANDROID_SERVICE_ACCOUNT_JSON}",
         "track": "beta",
         "releaseStatus": "completed"
       }
@@ -98,7 +98,7 @@
         "appleTeamId": "${APPLE_TEAM_ID}"
       },
       "android": {
-        "serviceAccountKeyPath": "./service-account.json",
+        "serviceAccountKey": "${ANDROID_SERVICE_ACCOUNT_JSON}",
         "track": "production",
         "releaseStatus": "completed"
       }

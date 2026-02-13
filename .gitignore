@@ -62,3 +62,4 @@ coverage/
 *.temp
 .cache/
 fix-tasks-comprehensive.ps1
+north-mobile/temp_service_key.json
