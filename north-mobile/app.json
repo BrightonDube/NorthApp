@@ -47,8 +47,6 @@
       },
       "package": "com.brighton.northapp",
       "versionCode": 10,
-      "enableProguardInReleaseBuilds": false,
-      "enableShrinkResourcesInReleaseBuilds": false,
       "permissions": [
         "com.android.vending.BILLING",
         "android.permission.INTERNET",
@@ -146,7 +144,8 @@
         "@sentry/react-native/expo",
         {
           "organization": "north-app",
-          "project": "north-mobile"
+          "project": "north-mobile",
+          "autoUploadSourceMaps": false
         }
       ]
     ],
