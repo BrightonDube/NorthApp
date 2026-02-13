@@ -2,7 +2,7 @@
  * Unit Tests for ReportGenerator
  * 
  * Tests the ReportGenerator class implementation including:
- * - OpenAI API client configuration
+ * - Gemini AI via Supabase Edge Functions
  * - generateReport() method with structured prompt
  * - AI response parsing into SessionReport structure
  * 
@@ -11,11 +11,9 @@
 
 import { ReportGenerator, REPORT_CONFIG } from '../../lib/reportGenerator';
 import { supabase } from '../../lib/supabase';
-import OpenAI from 'openai';
 
 // Mock dependencies
 jest.mock('../../lib/supabase');
-jest.mock('openai');
 
 describe('ReportGenerator', () => {
   let generator: ReportGenerator;
@@ -36,16 +34,6 @@ describe('ReportGenerator', () => {
       expect(REPORT_CONFIG.MIN_SUMMARY_SENTENCES).toBe(2);
       expect(REPORT_CONFIG.MAX_SUMMARY_SENTENCES).toBe(4);
       expect(['openai', 'gemini']).toContain(REPORT_CONFIG.AI_PROVIDER);
-    });
-
-    it('should initialize OpenAI client when API key is available', () => {
-      const originalEnv = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-      process.env.EXPO_PUBLIC_OPENAI_API_KEY = 'test-key';
-      
-      const testGenerator = new ReportGenerator();
-      expect(testGenerator).toBeDefined();
-      
-      process.env.EXPO_PUBLIC_OPENAI_API_KEY = originalEnv;
     });
   });
 
