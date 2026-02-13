@@ -344,6 +344,14 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Reports Section */}
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <SettingsRow 
+            label="Session Reports" 
+            onPress={() => router.push('/report' as any)}
+          />
+        </View>
+
         {/* Notifications Section */}
         <NotificationSettings />
 
