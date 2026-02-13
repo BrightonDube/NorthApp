@@ -4,7 +4,7 @@
 
 CREATE TABLE IF NOT EXISTS llm_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  provider TEXT NOT NULL DEFAULT 'groq' CHECK (provider IN ('groq', 'gemini')),
+  provider TEXT NOT NULL DEFAULT 'groq' CHECK (provider IN ('groq', 'gemini', 'xai')),
   model TEXT NOT NULL DEFAULT 'llama-3.3-70b-versatile',
   temperature NUMERIC(3,2) NOT NULL DEFAULT 0.7,
   max_tokens INTEGER NOT NULL DEFAULT 4096,
