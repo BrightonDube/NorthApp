@@ -1,0 +1,136 @@
+/**
+ * Dynamic Expo configuration
+ * 
+ * Sets app name based on APP_VARIANT environment variable:
+ * - development: "North-dev" (installs separately)
+ * - production: "North"
+ */
+
+const IS_DEV = process.env.APP_VARIANT === 'development';
+
+module.exports = {
+  name: IS_DEV ? 'North-dev' : 'North',
+  slug: 'north',
+  version: '1.0.1',
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'automatic',
+  scheme: IS_DEV ? 'north-dev' : 'north',
+  description: 'Your personal board of directors. North helps you make better decisions by connecting you with AI coaches who understand your values, goals, and context.',
+  primaryColor: '#09090B',
+  splash: {
+    image: './assets/splash-icon.png',
+    resizeMode: 'contain',
+    backgroundColor: '#4A90E2',
+  },
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: IS_DEV ? 'com.brighton.northapp.dev' : 'com.brighton.northapp',
+    usesAppleSignIn: true,
+    buildNumber: '1',
+    associatedDomains: ['applinks:north.app', 'applinks:www.north.app'],
+    infoPlist: {
+      UIBackgroundModes: ['remote-notification'],
+      NSCameraUsageDescription: 'North does not use the camera.',
+      NSMicrophoneUsageDescription: 'North does not use the microphone.',
+      NSPhotoLibraryUsageDescription: 'North does not access your photo library.',
+      NSLocationWhenInUseUsageDescription: 'North does not use your location.',
+      NSUserTrackingUsageDescription: 'North respects your privacy and does not track you across apps or websites.',
+      SKAdNetworkItems: [{ SKAdNetworkIdentifier: 'cstr6suwn9.skadnetwork' }],
+      ITSAppUsesNonExemptEncryption: false,
+    },
+  },
+  android: {
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#ffffff',
+    },
+    package: IS_DEV ? 'com.brighton.northapp.dev' : 'com.brighton.northapp',
+    versionCode: 10,
+    permissions: [
+      'com.android.vending.BILLING',
+      'android.permission.INTERNET',
+      'android.permission.ACCESS_NETWORK_STATE',
+      'android.permission.POST_NOTIFICATIONS',
+    ],
+    blockedPermissions: [
+      'android.permission.CAMERA',
+      'android.permission.RECORD_AUDIO',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android.permission.ACCESS_FINE_LOCATION',
+      'android.permission.ACCESS_COARSE_LOCATION',
+    ],
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [{ scheme: IS_DEV ? 'north-dev' : 'north', host: 'auth', pathPrefix: '/callback' }],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          { scheme: 'https', host: 'north.app' },
+          { scheme: 'https', host: 'www.north.app' },
+        ],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+      {
+        action: 'VIEW',
+        data: [{ scheme: IS_DEV ? 'north-dev' : 'north' }],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ],
+  },
+  web: {
+    favicon: './assets/favicon.png',
+  },
+  plugins: [
+    'expo-router',
+    'expo-web-browser',
+    [
+      'expo-build-properties',
+      {
+        ios: { deploymentTarget: '15.1' },
+        android: {
+          minSdkVersion: 24,
+          targetSdkVersion: 35,
+          compileSdkVersion: 35,
+        },
+      },
+    ],
+    'expo-apple-authentication',
+    [
+      'expo-notifications',
+      {
+        icon: './assets/notification-icon.png',
+        color: '#09090B',
+        sounds: [],
+        mode: 'production',
+      },
+    ],
+    [
+      '@sentry/react-native/expo',
+      {
+        organization: 'north-app',
+        project: 'north-mobile',
+        autoUploadSourceMaps: false,
+      },
+    ],
+  ],
+  extra: {
+    eas: {
+      projectId: 'bc083779-e1cd-4c55-9fec-8fd405495396',
+    },
+    router: {},
+  },
+  owner: 'brightondubes-organization',
+  runtimeVersion: {
+    policy: 'sdkVersion',
+  },
+  updates: {
+    url: 'https://u.expo.dev/bc083779-e1cd-4c55-9fec-8fd405495396',
+  },
+};
