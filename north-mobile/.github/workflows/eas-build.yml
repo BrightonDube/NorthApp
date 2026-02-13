@@ -1,0 +1,269 @@
+name: EAS Build & Submit
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Build profile to use'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - internal-testing
+          - production
+
+env:
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+jobs:
+  # =============================================================================
+  # Pre-flight Check - Validate Service Account JSON
+  # =============================================================================
+  preflight:
+    name: Pre-flight Checks
+    runs-on: ubuntu-latest
+    outputs:
+      project_id: ${{ steps.verify.outputs.project_id }}
+      client_email: ${{ steps.verify.outputs.client_email }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify Service Account JSON
+        id: verify
+        env:
+          ANDROID_SERVICE_ACCOUNT_JSON: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "🔍 Running pre-flight service account verification..."
+          node scripts/verify-service-account.js
+          
+          # Extract values for downstream jobs
+          PROJECT_ID=$(echo '${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' | jq -r '.project_id')
+          CLIENT_EMAIL=$(echo '${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' | jq -r '.client_email')
+          
+          echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
+          echo "client_email=$CLIENT_EMAIL" >> $GITHUB_OUTPUT
+
+      - name: Display Service Account Info
+        run: |
+          echo "📋 Service Account Configuration:"
+          echo "   Project ID: ${{ steps.verify.outputs.project_id }}"
+          echo "   Client Email: ${{ steps.verify.outputs.client_email }}"
+
+  # =============================================================================
+  # Release Guard - Pre-build validation checks
+  # =============================================================================
+  release-guard:
+    needs: preflight
+    name: Release Guard Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate app.json configuration
+        run: |
+          echo "🔍 Running Release Guard checks..."
+          
+          # Check targetSdkVersion >= 34
+          TARGET_SDK=$(node -e "const app = require('./app.json'); const plugins = app.expo.plugins || []; const buildProps = plugins.find(p => Array.isArray(p) && p[0] === 'expo-build-properties'); if (buildProps && buildProps[1]?.android?.targetSdkVersion) { console.log(buildProps[1].android.targetSdkVersion); } else { console.log('34'); }")
+          echo "Target SDK: $TARGET_SDK"
+          if [ "$TARGET_SDK" -lt 34 ]; then
+            echo "❌ FAIL: targetSdkVersion must be >= 34 for Play Store compliance"
+            exit 1
+          fi
+          echo "✅ targetSdkVersion >= 34"
+          
+          # Check versionCode exists
+          VERSION_CODE=$(node -e "console.log(require('./app.json').expo.android.versionCode)")
+          echo "Version Code: $VERSION_CODE"
+          if [ -z "$VERSION_CODE" ] || [ "$VERSION_CODE" = "undefined" ]; then
+            echo "❌ FAIL: versionCode is not set in app.json"
+            exit 1
+          fi
+          echo "✅ versionCode is set"
+          
+          # Check package name doesn't contain "example" or "test"
+          PACKAGE=$(node -e "console.log(require('./app.json').expo.android.package)")
+          if [[ "$PACKAGE" == *"example"* ]] || [[ "$PACKAGE" == *"com.test"* ]]; then
+            echo "❌ FAIL: Package name contains 'example' or 'com.test'"
+            exit 1
+          fi
+          echo "✅ Package name is valid: $PACKAGE"
+          
+          # Check Hermes is enabled (Expo SDK 50+ uses Hermes by default)
+          echo "✅ Hermes is enabled by default in Expo SDK 50+"
+          
+          echo "🎉 All Release Guard checks passed!"
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "🔍 Scanning for hardcoded secrets..."
+          
+          # Search for common API key patterns
+          if grep -rE "(AIzaSy|sk-[a-zA-Z0-9]{20,}|goog_[a-zA-Z0-9]{20,})" --include="*.ts" --include="*.tsx" --include="*.js" --exclude-dir=node_modules .; then
+            echo "❌ FAIL: Potential hardcoded API keys found!"
+            exit 1
+          fi
+          
+          echo "✅ No hardcoded secrets detected"
+
+  # =============================================================================
+  # Internal Testing Build (on push to main)
+  # =============================================================================
+  build-preview:
+    name: Build & Submit to Internal Testing
+    needs: [preflight, release-guard]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Display build info
+        run: |
+          echo "🚀 Building for Internal Testing"
+          echo "   GCP Project: ${{ needs.preflight.outputs.project_id }}"
+          echo "   Service Account: ${{ needs.preflight.outputs.client_email }}"
+
+      - name: Create service-account.json
+        run: |
+          echo '${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' > service-account.json
+
+      - name: Build and Submit to Internal Testing
+        run: |
+          eas build --platform android --profile preview --non-interactive --auto-submit
+
+      - name: Cleanup service account
+        if: always()
+        run: rm -f service-account.json
+
+  # =============================================================================
+  # Production Build (on tag push v*)
+  # =============================================================================
+  build-production:
+    name: Build & Submit to Production
+    needs: [preflight, release-guard]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Display build info
+        run: |
+          echo "🚀 Building for Production"
+          echo "   GCP Project: ${{ needs.preflight.outputs.project_id }}"
+          echo "   Service Account: ${{ needs.preflight.outputs.client_email }}"
+          echo "   Tag: ${{ github.ref_name }}"
+
+      - name: Create service-account.json
+        run: |
+          echo '${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' > service-account.json
+
+      - name: Build and Submit to Production
+        run: |
+          eas build --platform android --profile production --non-interactive --auto-submit
+
+      - name: Cleanup service account
+        if: always()
+        run: rm -f service-account.json
+
+  # =============================================================================
+  # Manual Build (workflow_dispatch)
+  # =============================================================================
+  build-manual:
+    name: Manual Build & Submit
+    needs: [preflight, release-guard]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Display build info
+        run: |
+          echo "🚀 Manual Build"
+          echo "   Profile: ${{ github.event.inputs.profile }}"
+          echo "   GCP Project: ${{ needs.preflight.outputs.project_id }}"
+          echo "   Service Account: ${{ needs.preflight.outputs.client_email }}"
+
+      - name: Create service-account.json
+        run: |
+          echo '${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' > service-account.json
+
+      - name: Build and Submit
+        run: |
+          eas build --platform android --profile ${{ github.event.inputs.profile }} --non-interactive --auto-submit
+
+      - name: Cleanup service account
+        if: always()
+        run: rm -f service-account.json

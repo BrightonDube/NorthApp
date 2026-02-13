@@ -1,13 +1,14 @@
 {
   "cli": {
     "version": ">= 7.0.0",
-    "appVersionSource": "remote"
+    "requireCommit": true
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "internal-testing",
+      "channel": "development",
+      "environment": "development",
       "ios": {
         "simulator": true
       },
@@ -15,69 +16,79 @@
         "buildType": "apk"
       }
     },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "environment": "production",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
     "internal-testing": {
       "distribution": "internal",
       "channel": "internal-testing",
+      "environment": "production",
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL}",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY}",
-        "EXPO_PUBLIC_REVENUECAT_API_KEY": "${EXPO_PUBLIC_REVENUECAT_API_KEY}"
       }
     },
     "closed-testing": {
       "distribution": "internal",
       "channel": "closed-testing",
+      "environment": "production",
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL}",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY}",
-        "EXPO_PUBLIC_REVENUECAT_API_KEY": "${EXPO_PUBLIC_REVENUECAT_API_KEY}"
       }
     },
     "open-testing": {
       "distribution": "internal",
       "channel": "open-testing",
+      "environment": "production",
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL}",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY}",
-        "EXPO_PUBLIC_REVENUECAT_API_KEY": "${EXPO_PUBLIC_REVENUECAT_API_KEY}"
       }
     },
     "production": {
       "distribution": "store",
       "channel": "production",
+      "environment": "production",
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "${EXPO_PUBLIC_SUPABASE_URL}",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "${EXPO_PUBLIC_SUPABASE_ANON_KEY}",
-        "EXPO_PUBLIC_REVENUECAT_API_KEY": "${EXPO_PUBLIC_REVENUECAT_API_KEY}"
       }
     }
   },
   "submit": {
+    "preview": {
+      "android": {
+        "serviceAccountKeyPath": "./service-account.json",
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    },
     "internal-testing": {
       "android": {
-        "track": "internal"
+        "serviceAccountKeyPath": "./service-account.json",
+        "track": "internal",
+        "releaseStatus": "completed"
       }
     },
     "closed-testing": {
       "android": {
-        "track": "alpha"
+        "serviceAccountKeyPath": "./service-account.json",
+        "track": "alpha",
+        "releaseStatus": "completed"
       }
     },
     "open-testing": {
       "android": {
-        "track": "beta"
+        "serviceAccountKeyPath": "./service-account.json",
+        "track": "beta",
+        "releaseStatus": "completed"
       }
     },
     "production": {
@@ -87,7 +98,9 @@
         "appleTeamId": "${APPLE_TEAM_ID}"
       },
       "android": {
-        "track": "production"
+        "serviceAccountKeyPath": "./service-account.json",
+        "track": "production",
+        "releaseStatus": "completed"
       }
     }
   }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "North",
     "slug": "north",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -46,7 +46,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.brighton.northapp",
-      "versionCode": 3,
+      "versionCode": 7,
       "enableProguardInReleaseBuilds": false,
       "enableShrinkResourcesInReleaseBuilds": false,
       "permissions": [
@@ -125,6 +125,8 @@
           },
           "android": {
             "minSdkVersion": 24,
+            "targetSdkVersion": 35,
+            "compileSdkVersion": 35,
             "enableProguardInReleaseBuilds": false,
             "enableShrinkResourcesInReleaseBuilds": false
           }

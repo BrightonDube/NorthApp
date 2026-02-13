@@ -451,11 +451,13 @@ export const useChatStore = create<ChatStore>()(
             throw new Error('User not authenticated. Please log in again.');
           }
 
-          console.log('[ChatStore] Auth validated:', {
-            userId: user.id,
-            hasAccessToken: !!session.access_token,
-            tokenExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'
-          });
+          if (__DEV__) {
+            console.log('[ChatStore] Auth validated:', {
+              userId: user.id,
+              hasAccessToken: !!session.access_token,
+              tokenExpiry: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown'
+            });
+          }
 
           // Initialize streaming state
           set({
@@ -464,38 +466,73 @@ export const useChatStore = create<ChatStore>()(
           });
 
           // Call Edge Function with SSE streaming
-          console.log('[ChatStore] Calling Edge Function:', {
-            url: `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
-            sessionId,
-            coachId,
-          });
+          if (__DEV__) {
+            console.log('[ChatStore] Calling Edge Function:', {
+              url: `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
+              sessionId,
+              coachId,
+            });
+          }
           
-          const response = await fetch(
-            `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-                'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
-              },
-              body: JSON.stringify({
-                sessionId,
-                coachId,
-                message: content,
-              }),
+          // Create AbortController with 30s timeout to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
+          let response: Response;
+          try {
+            response = await fetch(
+              `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+                },
+                body: JSON.stringify({
+                  sessionId,
+                  coachId,
+                  message: content,
+                }),
+                signal: controller.signal,
+              }
+            );
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+              throw new Error('The coach is taking too long to respond. Please try again.');
             }
-          );
+            throw fetchError;
+          }
+          clearTimeout(timeoutId);
 
-          console.log('[ChatStore] Response status:', response.status, response.statusText);
+          if (__DEV__) {
+            console.log('[ChatStore] Response status:', response.status, response.statusText);
+          }
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('[ChatStore] Edge Function error:', {
-              status: response.status,
-              statusText: response.statusText,
-              body: errorText,
-            });
+            if (__DEV__) {
+              console.error('[ChatStore] Edge Function error:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText,
+              });
+            }
+            
+            // Handle Gemini safety filter / blocked content (typically 400 or 403)
+            if (response.status === 400 || response.status === 403) {
+              const lowerText = (errorText || '').toLowerCase();
+              if (lowerText.includes('safety') || lowerText.includes('blocked') || lowerText.includes('harm')) {
+                throw new Error('Your message could not be processed due to content safety guidelines. Please rephrase and try again.');
+              }
+            }
+            
+            // Handle server errors (5xx) with user-friendly message
+            if (response.status >= 500) {
+              throw new Error('The coaching service is temporarily unavailable. Please try again in a moment.');
+            }
+            
             throw new Error(`Edge Function error (${response.status}): ${errorText || response.statusText}`);
           }
 

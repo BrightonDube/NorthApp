@@ -24,6 +24,13 @@ interface DbCoachRow {
   system_prompt: string;
   creator_id: string | null;
   is_public: boolean;
+  category: string;
+  is_featured: boolean;
+  source_coach_id: string | null;
+  theme_color?: string;
+  about?: string;
+  expectations?: string[];
+  tags?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +39,20 @@ interface DbCoachRow {
  * Map database row to Coach type
  */
 function mapDbToCoach(row: DbCoachRow): Coach {
+  // Import CoachCategory enum for mapping
+  const { CoachCategory } = require('@/types');
+  
+  // Map string category to enum, defaulting to GENERAL
+  const categoryMap: Record<string, any> = {
+    'Productivity': CoachCategory.PRODUCTIVITY,
+    'Learning': CoachCategory.LEARNING,
+    'Health': CoachCategory.HEALTH,
+    'Entertainment': CoachCategory.ENTERTAINMENT,
+    'Business': CoachCategory.BUSINESS,
+    'Creative': CoachCategory.CREATIVE,
+    'General': CoachCategory.GENERAL,
+  };
+  
   return {
     id: row.id,
     name: row.name,
@@ -39,6 +60,13 @@ function mapDbToCoach(row: DbCoachRow): Coach {
     systemPrompt: row.system_prompt,
     creatorId: row.creator_id,
     isPublic: row.is_public,
+    category: categoryMap[row.category] || CoachCategory.GENERAL,
+    isFeatured: row.is_featured || false,
+    sourceCoachId: row.source_coach_id,
+    themeColor: row.theme_color,
+    about: row.about,
+    expectations: row.expectations,
+    tags: row.tags,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -173,11 +201,12 @@ export const useCoachStore = create<CoachStore>()(
             throw new Error('User not authenticated');
           }
 
-          // Fetch default coaches (creator_id IS NULL) and user's private coaches
+          // Fetch: public coaches (is_public = true), default coaches (creator_id IS NULL), 
+          // and user's private coaches (creator_id = user.id)
           const { data, error } = await supabase
             .from('coaches')
             .select('*')
-            .or(`creator_id.is.null,creator_id.eq.${user.id}`)
+            .or(`is_public.eq.true,creator_id.is.null,creator_id.eq.${user.id}`)
             .order('name');
 
           if (error) throw error;
@@ -256,6 +285,8 @@ export const useCoachStore = create<CoachStore>()(
         const { isOnline } = useNetworkStore.getState();
 
         const tempId = optimisticId || `temp-${Date.now()}`;
+        // Import CoachCategory for default value
+        const { CoachCategory } = require('@/types');
         const tempCoach: Coach = {
           id: tempId,
           name: trimmedName,
@@ -263,6 +294,9 @@ export const useCoachStore = create<CoachStore>()(
           systemPrompt: trimmedPrompt,
           creatorId: '',
           isPublic: false,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };

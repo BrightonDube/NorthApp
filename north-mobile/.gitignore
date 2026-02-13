@@ -39,6 +39,9 @@ Thumbs.db
 .env.local
 .env*.local
 
+# Google Service Account (generated from env var in CI)
+service-account.json
+
 # Firebase/Google Services config (contains API keys)
 google-services.json
 GoogleService-Info.plist

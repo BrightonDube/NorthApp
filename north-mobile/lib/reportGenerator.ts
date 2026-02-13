@@ -14,7 +14,6 @@
  */
 
 import { supabase } from './supabase';
-import OpenAI from 'openai';
 import type { 
   SessionReport, 
   SessionReportInsert,
@@ -48,16 +47,6 @@ export const REPORT_CONFIG = {
   MIN_SUMMARY_SENTENCES: 2,
   MAX_SUMMARY_SENTENCES: 4,
   
-  /**
-   * AI provider to use: 'openai' or 'gemini'
-   * Defaults to 'gemini' if OPENAI_API_KEY is not set
-   */
-  AI_PROVIDER: (process.env.EXPO_PUBLIC_OPENAI_API_KEY ? 'openai' : 'gemini') as 'openai' | 'gemini',
-  
-  /**
-   * OpenAI model to use for report generation
-   */
-  OPENAI_MODEL: 'gpt-4o-mini',
 } as const;
 
 /**
@@ -105,7 +94,7 @@ interface AIReportResponse {
  * Report Generator Class
  * 
  * Generates structured session reports by analyzing conversation messages
- * using AI. Supports both OpenAI and Google Gemini as AI providers.
+ * using Google Gemini via Supabase Edge Functions.
  * Implements retry logic and handles various error scenarios.
  * 
  * @example
@@ -116,15 +105,8 @@ interface AIReportResponse {
  * ```
  */
 export class ReportGenerator {
-  private openaiClient: OpenAI | null = null;
-
   constructor() {
-    // Initialize OpenAI client if API key is available
-    if (process.env.EXPO_PUBLIC_OPENAI_API_KEY) {
-      this.openaiClient = new OpenAI({
-        apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
-      });
-    }
+    // No initialization needed - Gemini is called via Supabase Edge Functions
   }
   /**
    * Generate a report for a completed session
@@ -431,66 +413,14 @@ Respond with a JSON object in this exact format:
   /**
    * Call the AI service to analyze the conversation
    * 
-   * This method supports two AI providers:
-   * - OpenAI: Direct API call using OpenAI SDK
-   * - Gemini: HTTP request to Supabase Edge Function
-   * 
-   * The provider is selected based on REPORT_CONFIG.AI_PROVIDER
+   * Uses Google Gemini via Supabase Edge Function.
    * 
    * @param prompt - The analysis prompt
    * @returns The AI response as a string
    * @private
    */
   private async callAIService(prompt: string): Promise<string> {
-    if (REPORT_CONFIG.AI_PROVIDER === 'openai') {
-      return this.callOpenAI(prompt);
-    } else {
-      return this.callGemini(prompt);
-    }
-  }
-
-  /**
-   * Call OpenAI API to analyze the conversation
-   * 
-   * Uses the OpenAI SDK to make a direct API call to GPT-4.
-   * 
-   * @param prompt - The analysis prompt
-   * @returns The AI response as a string
-   * @private
-   */
-  private async callOpenAI(prompt: string): Promise<string> {
-    if (!this.openaiClient) {
-      throw new Error('OpenAI client not initialized. Please set EXPO_PUBLIC_OPENAI_API_KEY environment variable.');
-    }
-
-    try {
-      const completion = await this.openaiClient.chat.completions.create({
-        model: REPORT_CONFIG.OPENAI_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert at analyzing coaching conversations and generating structured session reports. Always respond with valid JSON in the exact format requested.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      });
-
-      const response = completion.choices[0]?.message?.content;
-      
-      if (!response) {
-        throw new Error('Empty response from OpenAI');
-      }
-
-      return response;
-    } catch (error) {
-      console.error('OpenAI API error:', error);
-      throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    return this.callGemini(prompt);
   }
 
   /**
@@ -512,16 +442,38 @@ Respond with a JSON object in this exact format:
         throw new Error('Not authenticated');
       }
 
-      // Call the generate-report edge function
-      const { data, error } = await supabase.functions.invoke('generate-report', {
-        body: { prompt },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      // Call the generate-report edge function with a 15s timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
+      let data: any;
+      let error: any;
+      
+      try {
+        const result = await supabase.functions.invoke('generate-report', {
+          body: { prompt },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+        data = result.data;
+        error = result.error;
+      } catch (invokeError) {
+        clearTimeout(timeoutId);
+        if (invokeError instanceof Error && invokeError.name === 'AbortError') {
+          throw new Error('Report generation timed out. Please try again.');
+        }
+        throw invokeError;
+      }
+      clearTimeout(timeoutId);
 
       if (error) {
-        throw new Error(`AI service error: ${error.message}`);
+        // Handle Gemini safety filter / blocked content
+        const errorMsg = error.message || '';
+        if (errorMsg.toLowerCase().includes('safety') || errorMsg.toLowerCase().includes('blocked') || errorMsg.toLowerCase().includes('harm')) {
+          throw new Error('The AI could not process this session due to content safety guidelines. Please review the session content.');
+        }
+        throw new Error(`AI service error: ${errorMsg}`);
       }
 
       if (!data || !data.success || !data.response) {
