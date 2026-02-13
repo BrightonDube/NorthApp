@@ -22,7 +22,7 @@ const corsHeaders = {
 };
 
 interface LLMConfig {
-  provider: 'groq' | 'gemini';
+  provider: 'groq' | 'gemini' | 'xai';
   model: string;
   temperature: number;
   max_tokens: number;
@@ -91,6 +91,37 @@ async function callGemini(prompt: string, config: LLMConfig): Promise<string> {
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 }
 
+/**
+ * Call X.AI Grok API (non-streaming) for report generation
+ */
+async function callXai(prompt: string, config: LLMConfig): Promise<string> {
+  const apiKey = Deno.env.get('XAI_API_KEY') || Deno.env.get('GROK_API_KEY');
+  if (!apiKey) throw new Error('XAI_API_KEY not configured. Set XAI_API_KEY or GROK_API_KEY in Supabase secrets.');
+
+  const res = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: config.max_tokens,
+      stream: false,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`X.AI API error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? '';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -150,6 +181,8 @@ serve(async (req) => {
     let text: string;
     if (llmConfig.provider === 'gemini') {
       text = await callGemini(prompt, llmConfig);
+    } else if (llmConfig.provider === 'xai') {
+      text = await callXai(prompt, llmConfig);
     } else {
       text = await callGroq(prompt, llmConfig);
     }

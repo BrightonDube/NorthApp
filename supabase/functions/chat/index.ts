@@ -33,7 +33,7 @@ interface ChatRequest {
 }
 
 interface LLMConfig {
-  provider: 'groq' | 'gemini';
+  provider: 'groq' | 'gemini' | 'xai';
   model: string;
   temperature: number;
   max_tokens: number;
@@ -125,6 +125,48 @@ async function streamGemini(
     const err = await res.text();
     console.error('Gemini API error:', res.status, err);
     throw new Error(`Gemini API error ${res.status}: ${err}`);
+  }
+
+  return res.body!;
+}
+
+/**
+ * Stream chat completion from X.AI Grok (OpenAI-compatible API)
+ */
+async function streamXai(
+  systemPrompt: string,
+  history: Array<{ role: string; content: string }>,
+  userMessage: string,
+  config: LLMConfig,
+): Promise<ReadableStream<Uint8Array>> {
+  const apiKey = Deno.env.get('XAI_API_KEY') || Deno.env.get('GROK_API_KEY');
+  if (!apiKey) throw new Error('XAI_API_KEY not configured. Set XAI_API_KEY or GROK_API_KEY in Supabase secrets.');
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history,
+    { role: 'user', content: userMessage },
+  ];
+
+  const res = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages,
+      temperature: config.temperature,
+      max_tokens: config.max_tokens,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('X.AI API error:', res.status, err);
+    throw new Error(`X.AI API error ${res.status}: ${err}`);
   }
 
   return res.body!;
@@ -343,6 +385,9 @@ serve(async (req) => {
     if (llmConfig.provider === 'gemini') {
       providerStream = await streamGemini(systemPrompt, history, message, llmConfig);
       parseStream = parseGeminiStream;
+    } else if (llmConfig.provider === 'xai') {
+      providerStream = await streamXai(systemPrompt, history, message, llmConfig);
+      parseStream = parseGroqStream; // X.AI uses OpenAI-compatible format
     } else {
       providerStream = await streamGroq(systemPrompt, history, message, llmConfig);
       parseStream = parseGroqStream;
