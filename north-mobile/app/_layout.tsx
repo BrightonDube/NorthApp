@@ -280,8 +280,10 @@ export default function RootLayout() {
     }
   }, [user?.id, isAppReady]);
 
-  // Show loading while initializing auth - render Slot to mount navigation
-  if (!isAuthInitialized || isLoading) {
+  // Show loading ONLY during initial auth initialization
+  // Do NOT block on isLoading for subsequent operations (login/logout)
+  // as that unmounts the entire navigation stack, causing infinite spinners
+  if (!isAuthInitialized) {
     return (
       <ThemeProvider>
         <ErrorBoundary>

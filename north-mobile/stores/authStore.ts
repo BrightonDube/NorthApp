@@ -341,11 +341,37 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
               return;
             }
           } else {
-            // If no tokens in URL, the auth state listener should handle it
-            console.log('No tokens in redirect URL, checking session...');
-            await supabase.auth.getSession();
+            // Check for PKCE authorization code (Supabase v2 default flow)
+            let code: string | null = null;
+            if (url.includes('?')) {
+              const queryParams = new URLSearchParams(url.split('?')[1].split('#')[0]);
+              code = queryParams.get('code');
+            }
+
+            if (code) {
+              console.log('Found PKCE code, exchanging for session...');
+              const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+              if (exchangeError) {
+                set({ error: exchangeError.message, isLoading: false });
+                return;
+              }
+            } else {
+              console.log('No tokens or code in redirect URL, checking session...');
+              await supabase.auth.getSession();
+            }
           }
-        } else if (result.type === 'cancel') {
+
+          // Set user directly to avoid race condition with auth listener
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) {
+            const user = await convertUser(currentSession.user);
+            const converted = convertSession(currentSession);
+            await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(converted));
+            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+            set({ user, session: converted, isLoading: false, error: null });
+            return;
+          }
+        } else if (result.type === 'cancel' || result.type === 'dismiss') {
           set({ error: null, isLoading: false });
           return;
         }
@@ -428,11 +454,37 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
               return;
             }
           } else {
-            // If no tokens in URL, the auth state listener should handle it
-            console.log('No tokens in redirect URL, checking session...');
-            await supabase.auth.getSession();
+            // Check for PKCE authorization code (Supabase v2 default flow)
+            let code: string | null = null;
+            if (url.includes('?')) {
+              const queryParams = new URLSearchParams(url.split('?')[1].split('#')[0]);
+              code = queryParams.get('code');
+            }
+
+            if (code) {
+              console.log('Found PKCE code, exchanging for session...');
+              const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+              if (exchangeError) {
+                set({ error: exchangeError.message, isLoading: false });
+                return;
+              }
+            } else {
+              console.log('No tokens or code in redirect URL, checking session...');
+              await supabase.auth.getSession();
+            }
           }
-        } else if (result.type === 'cancel') {
+
+          // Set user directly to avoid race condition with auth listener
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) {
+            const user = await convertUser(currentSession.user);
+            const converted = convertSession(currentSession);
+            await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(converted));
+            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+            set({ user, session: converted, isLoading: false, error: null });
+            return;
+          }
+        } else if (result.type === 'cancel' || result.type === 'dismiss') {
           set({ error: null, isLoading: false });
           return;
         }
@@ -650,42 +702,48 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
  */
 export function setupAuthListener() {
   supabase.auth.onAuthStateChange(async (event, session) => {
-    const store = useAuthStore.getState();
+    try {
+      const store = useAuthStore.getState();
 
-    if (event === 'SIGNED_IN' && session) {
-      // User signed in, update state
-      const user = await convertUser(session.user);
-      const convertedSession = convertSession(session);
-      
-      await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(convertedSession));
-      await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-      
-      useAuthStore.setState({
-        user,
-        session: convertedSession,
-        isLoading: false,
-        error: null,
-        lastSynced: Date.now(),
-      });
-    } else if (event === 'SIGNED_OUT') {
-      // User signed out, clear state
-      await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-      await AsyncStorage.removeItem(USER_STORAGE_KEY);
-      
-      useAuthStore.setState({
-        user: null,
-        session: null,
-        isLoading: false,
-        error: null,
-      });
-    } else if (event === 'TOKEN_REFRESHED' && session) {
-      // Token refreshed, update session
-      const convertedSession = convertSession(session);
-      await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(convertedSession));
-      
-      useAuthStore.setState({
-        session: convertedSession,
-      });
+      if (event === 'SIGNED_IN' && session) {
+        // User signed in, update state
+        const user = await convertUser(session.user);
+        const convertedSession = convertSession(session);
+        
+        await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(convertedSession));
+        await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+        
+        useAuthStore.setState({
+          user,
+          session: convertedSession,
+          isLoading: false,
+          error: null,
+          lastSynced: Date.now(),
+        });
+      } else if (event === 'SIGNED_OUT') {
+        // User signed out, clear state
+        await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+        await AsyncStorage.removeItem(USER_STORAGE_KEY);
+        
+        useAuthStore.setState({
+          user: null,
+          session: null,
+          isLoading: false,
+          error: null,
+        });
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        // Token refreshed, update session
+        const convertedSession = convertSession(session);
+        await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(convertedSession));
+        
+        useAuthStore.setState({
+          session: convertedSession,
+        });
+      }
+    } catch (error) {
+      console.error('Auth state change handler error:', error);
+      // Ensure isLoading is cleared even if handler fails
+      useAuthStore.setState({ isLoading: false });
     }
   });
 }
