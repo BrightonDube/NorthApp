@@ -16,7 +16,10 @@
     "test:unit": "jest --testPathPattern=unit",
     "test:integration": "jest --config jest.integration.config.js",
     "validate:tokens": "jest design-system/__tests__/token-validation.test.ts --verbose",
-    "validate:tokens:ci": "jest design-system/__tests__/token-validation.test.ts --ci --json --outputFile=validation-results.json"
+    "validate:tokens:ci": "jest design-system/__tests__/token-validation.test.ts --ci --json --outputFile=validation-results.json",
+    "setup:service-account": "node scripts/setup-service-account.js",
+    "prebuild": "npm run setup:service-account",
+    "presubmit": "npm run setup:service-account"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
