@@ -11,7 +11,8 @@
       "channel": "development",
       "environment": "development",
       "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "APP_VARIANT": "development"
       },
       "ios": {
         "simulator": true
