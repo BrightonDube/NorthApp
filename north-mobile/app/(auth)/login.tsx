@@ -15,7 +15,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
@@ -145,27 +144,27 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        className="flex-1"
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={{ flexGrow: 1, padding: 24 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.content}>
+          <View className="flex-1 justify-center max-w-md w-full mx-auto">
             {/* Logo */}
-            <View style={styles.logoContainer}>
+            <View className="items-center mb-8">
               <Logo size={100} />
             </View>
 
             {/* Header */}
-            <View style={styles.headerContainer}>
-              <Text style={[styles.title, { color: colors.text }]}>
+            <View className="mb-8">
+              <Text className="text-3xl font-bold text-center mb-2" style={{ color: colors.text }}>
                 Welcome to North
               </Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              <Text className="text-base text-center" style={{ color: colors.textSecondary }}>
                 Your personal board of directors
               </Text>
             </View>
@@ -173,32 +172,31 @@ export default function LoginScreen() {
             {/* Error Display */}
             {error && (
               <View 
-                style={[styles.errorContainer, { 
+                className="mb-6 p-4 rounded-lg border"
+                style={{ 
                   backgroundColor: colors.error + '10', 
                   borderColor: colors.error + '40' 
-                }]}
+                }}
                 accessible
                 accessibilityRole="alert"
                 accessibilityLiveRegion="assertive"
               >
-                <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+                <Text className="text-sm" style={{ color: colors.error }}>{error}</Text>
               </View>
             )}
 
             {/* Email Input */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+            <View className="mb-4">
+              <Text className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                 Email
               </Text>
               <TextInput
-                style={[
-                  styles.input,
-                  { 
-                    backgroundColor: colors.input,
-                    color: colors.text,
-                    borderColor: emailError ? colors.error : colors.border,
-                  }
-                ]}
+                className="w-full px-4 py-3 rounded-lg border text-base"
+                style={{ 
+                  backgroundColor: colors.input,
+                  color: colors.text,
+                  borderColor: emailError ? colors.error : colors.border,
+                }}
                 placeholder="you@example.com"
                 placeholderTextColor={colors.textTertiary}
                 value={email}

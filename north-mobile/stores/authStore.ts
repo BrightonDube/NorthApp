@@ -552,6 +552,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
       if (error || !supabaseSession) {
         // Session invalid or expired - clear local state if we had it
+        // Suppress "Invalid Refresh Token" errors as they're expected on first launch
+        if (error && !error.message.includes('Refresh Token Not Found')) {
+          console.warn('Session restoration error:', error.message);
+        }
+        
         if (storedSessionStr) {
           await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
           await AsyncStorage.removeItem(USER_STORAGE_KEY);
