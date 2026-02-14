@@ -248,7 +248,7 @@ export default function CoachProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Header with back button */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Pressable
@@ -348,19 +348,19 @@ export default function CoachProfileScreen() {
       </ScrollView>
 
       {/* Footer with Start Session button */}
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
         <Pressable
           onPress={handleStartSession}
           style={({ pressed }) => [
             styles.startButton,
-            { backgroundColor: colors.text },
-            pressed && styles.buttonPressed,
+            { backgroundColor: '#3B82F6' },
+            pressed && { backgroundColor: '#2563EB' },
           ]}
           accessible
           accessibilityRole="button"
           accessibilityLabel="Start coaching session"
         >
-          <Text style={[styles.startButtonText, { color: colors.background }]}>
+          <Text style={[styles.startButtonText, { color: '#FFFFFF' }]}>
             Start Coaching Session
           </Text>
         </Pressable>
