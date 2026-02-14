@@ -319,13 +319,17 @@ export const useCoachStore = create<CoachStore>()(
         }
 
         try {
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error('You must be logged in to create a coach');
+
           const { data, error } = await supabase
             .from('coaches')
             .insert({ 
               name: trimmedName, 
               icon: trimmedIcon, 
               system_prompt: trimmedPrompt, 
-              is_public: false 
+              is_public: false,
+              creator_id: authUser.id,
             })
             .select()
             .single();
