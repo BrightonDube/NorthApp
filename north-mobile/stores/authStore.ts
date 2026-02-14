@@ -303,11 +303,36 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }
 
       if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(
+        // Race WebBrowser against a timeout — on Android production,
+        // the deep link may be handled by Expo Router instead of WebBrowser,
+        // causing openAuthSessionAsync to hang indefinitely.
+        const browserPromise = WebBrowser.openAuthSessionAsync(
           data.url,
           redirectTo,
           { showInRecents: true }
         );
+        const timeoutPromise = new Promise<{ type: 'timeout' }>((resolve) =>
+          setTimeout(() => resolve({ type: 'timeout' }), 60000)
+        );
+
+        const result = await Promise.race([browserPromise, timeoutPromise]) as any;
+
+        if (result.type === 'timeout') {
+          // WebBrowser hung — the deep link was likely handled by auth/callback screen.
+          // Check if session was established by the callback handler.
+          console.log('[loginWithGoogle] WebBrowser timed out, checking session...');
+          const { data: { session: existingSession } } = await supabase.auth.getSession();
+          if (existingSession) {
+            const user = await convertUser(existingSession.user);
+            const converted = convertSession(existingSession);
+            await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(converted));
+            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+            set({ user, session: converted, isLoading: false, error: null });
+          } else {
+            set({ isLoading: false });
+          }
+          return;
+        }
 
         if (result.type === 'success') {
           const url = result.url;
@@ -416,11 +441,32 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       }
 
       if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(
+        // Race WebBrowser against a timeout — same as Google login
+        const browserPromise = WebBrowser.openAuthSessionAsync(
           data.url,
           redirectTo,
           { showInRecents: true }
         );
+        const timeoutPromise = new Promise<{ type: 'timeout' }>((resolve) =>
+          setTimeout(() => resolve({ type: 'timeout' }), 60000)
+        );
+
+        const result = await Promise.race([browserPromise, timeoutPromise]) as any;
+
+        if (result.type === 'timeout') {
+          console.log('[loginWithApple] WebBrowser timed out, checking session...');
+          const { data: { session: existingSession } } = await supabase.auth.getSession();
+          if (existingSession) {
+            const user = await convertUser(existingSession.user);
+            const converted = convertSession(existingSession);
+            await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(converted));
+            await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+            set({ user, session: converted, isLoading: false, error: null });
+          } else {
+            set({ isLoading: false });
+          }
+          return;
+        }
 
         if (result.type === 'success') {
           const url = result.url;

@@ -45,6 +45,13 @@ export function useDeepLinking() {
     const subscription = Linking.addEventListener('url', ({ url }) => {
       console.log('Deep link received:', url);
       
+      // Always store auth callback deep links — they need to be processed
+      // even during loading (e.g., when loginWithGoogle is running)
+      if (url && url.includes('auth/callback')) {
+        setPendingDeepLink(url);
+        return;
+      }
+
       // If user is not authenticated, store the deep link for later
       if (!user && !isLoading) {
         setPendingDeepLink(url);
