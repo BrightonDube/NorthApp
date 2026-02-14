@@ -1,73 +1,27 @@
 /**
  * Sentry Error Tracking Configuration
  * 
- * Initializes Sentry for crash reporting and error tracking.
- * Only active in production builds.
+ * Initializes Sentry for crash reporting, error tracking,
+ * Session Replay, Feedback Widget, and Structured Logs.
  * 
- * Setup:
- * 1. Create a Sentry account at https://sentry.io
- * 2. Create a new project for React Native
- * 3. Add SENTRY_DSN to EAS secrets: eas env:create --name SENTRY_DSN --value "your-dsn" --environment production
+ * Sentry is initialized at module level in _layout.tsx via Sentry.init()
+ * (before any React rendering). This file provides helper utilities
+ * for capturing errors, setting user context, and adding breadcrumbs.
  */
 
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
 
-// Get DSN from environment
-const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
+const SENTRY_DSN = 'https://a5af9d8e4ce379ff5a7225fd4b2b8d07@o4509556480212992.ingest.de.sentry.io/4510885965135952';
 
 /**
  * Initialize Sentry SDK
- * Should be called as early as possible in the app lifecycle
+ * Called from _layout.tsx — kept as a no-op since Sentry.init() is now
+ * called at module scope in _layout.tsx (required by Sentry wizard).
  */
 export function initSentry(): void {
-  // Only initialize in production builds
-  if (__DEV__) {
-    console.log('[Sentry] Skipping initialization in development mode');
-    return;
-  }
-
-  if (!SENTRY_DSN) {
-    console.warn('[Sentry] DSN not configured. Error tracking disabled.');
-    return;
-  }
-
-  try {
-    Sentry.init({
-      dsn: SENTRY_DSN,
-      
-      // Enable debug in non-production for troubleshooting
-      debug: false,
-      
-      // Set environment based on release channel
-      environment: Constants.expoConfig?.extra?.eas?.channel || 'production',
-      
-      // Release version for tracking
-      release: `${Constants.expoConfig?.name}@${Constants.expoConfig?.version}`,
-      
-      // Distribution for Android version codes
-      dist: String(Constants.expoConfig?.android?.versionCode || '1'),
-      
-      // Sample rate for performance monitoring (1.0 = 100%)
-      tracesSampleRate: 0.2,
-      
-      // Attach user info when available
-      sendDefaultPii: false,
-      
-      // Filter out known non-actionable errors
-      beforeSend(event) {
-        // Filter out network errors that are expected
-        if (event.exception?.values?.[0]?.value?.includes('Network request failed')) {
-          return null;
-        }
-        return event;
-      },
-    });
-
-    console.log('[Sentry] Initialized successfully');
-  } catch (error) {
-    console.error('[Sentry] Failed to initialize:', error);
-  }
+  // Sentry.init() is called at module level in _layout.tsx
+  // This function is retained for backward compatibility
 }
 
 /**

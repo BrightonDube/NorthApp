@@ -114,9 +114,9 @@ module.exports = {
     [
       '@sentry/react-native/expo',
       {
-        organization: 'north-app',
-        project: 'north-mobile',
-        autoUploadSourceMaps: false,
+        url: 'https://sentry.io/',
+        organization: 'insculpt-inc',
+        project: 'react-native',
       },
     ],
   ],

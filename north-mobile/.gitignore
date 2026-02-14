@@ -68,3 +68,5 @@ run-*.js
 # Coverage
 coverage/
 .nyc_output/
+
+.env.local

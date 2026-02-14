@@ -22,7 +22,34 @@ import {
   PERFORMANCE_MARKS,
   setupPerformanceObserver 
 } from '@/lib/performance';
-import { initSentry, setUser as setSentryUser } from '@/lib/sentry';
+import { setUser as setSentryUser } from '@/lib/sentry';
+import * as Sentry from '@sentry/react-native';
+import Constants from 'expo-constants';
+
+Sentry.init({
+  dsn: 'https://a5af9d8e4ce379ff5a7225fd4b2b8d07@o4509556480212992.ingest.de.sentry.io/4510885965135952',
+  sendDefaultPii: true,
+  enableLogs: true,
+  debug: false,
+  environment: Constants.expoConfig?.extra?.eas?.channel || (__DEV__ ? 'development' : 'production'),
+  release: `${Constants.expoConfig?.name || 'north'}@${Constants.expoConfig?.version || '1.0.0'}`,
+  // Session Replay: 10% of sessions, 100% of error sessions
+  replaysSessionSampleRate: __DEV__ ? 0 : 0.1,
+  replaysOnErrorSampleRate: 1,
+  // Performance: 20% of transactions in prod, 100% in dev
+  tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+  integrations: [
+    Sentry.mobileReplayIntegration(),
+    Sentry.feedbackIntegration(),
+  ],
+  beforeSend(event) {
+    // Filter out expected network errors in production
+    if (event.exception?.values?.[0]?.value?.includes('Network request failed')) {
+      return null;
+    }
+    return event;
+  },
+});
 
 // Suppress non-critical warnings
 // These warnings don't impact functionality and only add noise to the console
@@ -63,7 +90,7 @@ SplashScreen.preventAutoHideAsync();
  * 
  * Validates: Requirements 13.7, 20.1 (cold start < 2s)
  */
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const { restoreSession, isLoading, user } = useAuthStore();
   const { initialize: initializeBilling } = useBillingStore();
   const { initialize: initializeNetwork, cleanup: cleanupNetwork } = useNetworkStore();
@@ -72,10 +99,7 @@ export default function RootLayout() {
   const [showCustomSplash, setShowCustomSplash] = useState(true);
   const [splashVisible, setSplashVisible] = useState(true);
   
-  // Initialize Sentry for crash reporting (must be early in lifecycle)
-  useEffect(() => {
-    initSentry();
-  }, []);
+  // Sentry is initialized at module scope above (before React rendering)
 
   // Setup performance observer in development
   useEffect(() => {
@@ -327,7 +351,7 @@ export default function RootLayout() {
       </ErrorBoundary>
     </ThemeProvider>
   );
-}
+});
 
 /**
  * Global Paywall Component
