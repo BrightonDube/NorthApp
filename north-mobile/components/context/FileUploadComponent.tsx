@@ -20,6 +20,8 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { FileValidator, type FileMetadata } from '@/lib/fileValidator';
 import { FileProcessor, type FileData } from '@/lib/fileProcessor';
 import { StorageService } from '@/lib/storageService';
@@ -189,12 +191,84 @@ export function FileUploadComponent({
         
         input.click();
       } else {
-        // For native platforms, show alert to install document picker
-        Alert.alert(
-          'Document Picker Required',
-          'To upload files on mobile, please install expo-document-picker:\n\nnpx expo install expo-document-picker',
-          [{ text: 'OK' }]
-        );
+        // Native platforms: use expo-document-picker
+        const result = await DocumentPicker.getDocumentAsync({
+          type: [
+            'application/pdf',
+            'text/plain',
+            'text/markdown',
+          ],
+          copyToCacheDirectory: true,
+        });
+
+        if (result.canceled || !result.assets || result.assets.length === 0) {
+          return;
+        }
+
+        const asset = result.assets[0];
+        const fileUri = asset.uri;
+        const fileName = asset.name || 'unknown';
+        const fileSize = asset.size || 0;
+        const mimeType = asset.mimeType || 'application/octet-stream';
+
+        // Read file data
+        const base64Data = await FileSystem.readAsStringAsync(fileUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const binaryString = atob(base64Data);
+        const data = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          data[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create file metadata
+        const fileMetadata: FileMetadata = {
+          name: fileName,
+          size: fileSize,
+          type: mimeType,
+        };
+
+        // Validate file
+        const typeResult = fileValidator.validateFileType(fileMetadata);
+        if (!typeResult.valid) {
+          setValidationError(typeResult.error || 'Invalid file type');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          return;
+        }
+
+        const sizeResult = fileValidator.validateFileSize(fileMetadata);
+        if (!sizeResult.valid) {
+          setValidationError(sizeResult.error || 'File too large');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          return;
+        }
+
+        const quotaResult = await fileValidator.checkStorageQuota(userId, fileSize);
+        if (!quotaResult.valid) {
+          setValidationError(quotaResult.error || 'Storage quota exceeded');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          return;
+        }
+
+        // Generate preview
+        setIsGeneratingPreview(true);
+        const preview = await generatePreview({
+          name: fileName,
+          data,
+        });
+        setIsGeneratingPreview(false);
+
+        // Set selected file
+        setSelectedFile({
+          name: fileName,
+          size: fileSize,
+          type: mimeType,
+          data,
+          preview,
+        });
+
+        setValidationError(null);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     } catch (error) {
       console.error('Error selecting file:', error);

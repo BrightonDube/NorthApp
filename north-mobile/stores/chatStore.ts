@@ -426,13 +426,21 @@ export const useChatStore = create<ChatStore>()(
             },
           }));
 
-          // Get current session with automatic refresh if needed
-          // getSession() will automatically refresh an expired token
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          // Get current session - refresh if expired or about to expire
+          let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          // Force refresh if token expires within 60 seconds
+          if (session?.expires_at && session.expires_at * 1000 - Date.now() < 60000) {
+            console.log('[ChatStore] Token expiring soon, refreshing...');
+            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+            if (!refreshError && refreshed.session) {
+              session = refreshed.session;
+            }
+          }
           
           if (sessionError) {
             console.error('[ChatStore] Session error:', sessionError);
-            throw new Error('Authentication failed. Please log in again.');
+            throw new Error('Your session has expired. Please log in again.');
           }
           
           if (!session?.access_token) {
@@ -440,7 +448,7 @@ export const useChatStore = create<ChatStore>()(
           }
 
           // Verify the session is valid by checking the user
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          const { data: { user }, error: userError } = await supabase.auth.getUser(session.access_token);
           
           if (userError) {
             console.error('[ChatStore] User verification error:', userError);
@@ -544,8 +552,13 @@ export const useChatStore = create<ChatStore>()(
             if (response.status >= 500) {
               throw new Error('The coaching service is temporarily unavailable. Please try again in a moment.');
             }
+
+            // Handle 401 auth errors with user-friendly message
+            if (response.status === 401) {
+              throw new Error('Your session has expired. Please close this screen and log in again.');
+            }
             
-            throw new Error(`Edge Function error (${response.status}): ${errorText || response.statusText}`);
+            throw new Error(`Something went wrong. Please try again.`);
           }
 
           // Handle SSE stream

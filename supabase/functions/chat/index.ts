@@ -359,10 +359,31 @@ serve(async (req) => {
       sessionFileIds,
     );
 
+    // ── Fetch Historical Session Context ─────────────────────────────────
+    // Pull recent session reports for this coach to provide continuity
+    const { data: recentReports } = await supabaseClient
+      .from('session_reports')
+      .select('summary, key_insights, action_items, topics, created_at')
+      .eq('user_id', user.id)
+      .eq('coach_id', coachId)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    // Pull pending action items across all coaches for accountability
+    const { data: pendingActions } = await supabaseClient
+      .from('action_items')
+      .select('text, created_at')
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
     const systemPrompt = buildPromptContext(
       coach.system_prompt,
       contexts || [],
       filteredFiles,
+      recentReports || [],
+      pendingActions || [],
     );
 
     // ── Fetch Conversation History ───────────────────────────────────────

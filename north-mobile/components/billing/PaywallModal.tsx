@@ -186,9 +186,12 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
             </View>
           ) : (
             <View style={{ backgroundColor: colors.surface }} className="rounded-2xl p-8 mb-8 items-center">
-              <Ionicons name="alert-circle-outline" size={32} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary }} className="text-center mt-3">
-                Subscription plans are not available at the moment.
+              <Ionicons name="construct-outline" size={32} color={colors.textSecondary} />
+              <Text style={{ color: colors.text }} className="text-center mt-3 font-semibold text-base">
+                Coming Soon
+              </Text>
+              <Text style={{ color: colors.textSecondary }} className="text-center mt-2">
+                Pro subscription plans are being set up and will be available shortly. Check back soon!
               </Text>
             </View>
           )}

@@ -99,13 +99,7 @@ export default function CoachPreviewScreen() {
       // Fetch coach data
       const { data: coachData, error: fetchError } = await supabase
         .from('coaches')
-        .select(`
-          *,
-          creator:creator_id (
-            id,
-            email
-          )
-        `)
+        .select('*')
         .eq('id', coachId)
         .eq('is_public', true)
         .single();
@@ -125,7 +119,7 @@ export default function CoachPreviewScreen() {
         icon: coachData.icon,
         systemPrompt: coachData.system_prompt,
         creatorId: coachData.creator_id,
-        creatorName: coachData.creator?.email?.split('@')[0] || 'Unknown',
+        creatorName: coachData.creator_name || 'North',
         isPublic: coachData.is_public,
         category: coachData.category,
         isFeatured: coachData.is_featured,

@@ -27,20 +27,28 @@ export interface FileAttachment {
   extraction_success: boolean;
 }
 
-export interface PromptContext {
-  userValues: string;
-  userGoals: string;
-  userProjects: string;
-  userConstraints: string;
-  fileAttachments: string;
+export interface SessionReportContext {
+  summary: string;
+  key_insights: string | null;
+  action_items: string | null;
+  topics: string | null;
+  created_at: string;
+}
+
+export interface PendingActionItem {
+  text: string;
+  created_at: string;
 }
 
 /**
- * Build complete prompt context including user context and file attachments
+ * Build complete prompt context including user context, file attachments,
+ * and historical session data for continuity.
  * 
  * @param coachSystemPrompt - The coach's base system prompt
  * @param contexts - User context items (values, goals, projects, constraints)
  * @param fileAttachments - User's file attachments (optional)
+ * @param recentReports - Recent session reports for this coach (optional)
+ * @param pendingActions - Pending action items across all coaches (optional)
  * @returns Complete system prompt with all context
  * 
  * Validates: Requirements 4.1, 4.2, 7.2, 7.3
@@ -48,7 +56,9 @@ export interface PromptContext {
 export function buildPromptContext(
   coachSystemPrompt: string,
   contexts: UserContext[],
-  fileAttachments?: FileAttachment[]
+  fileAttachments?: FileAttachment[],
+  recentReports?: SessionReportContext[],
+  pendingActions?: PendingActionItem[],
 ): string {
   // Format context by category
   const contextByCategory = {
@@ -81,6 +91,36 @@ ${contextByCategory.constraints.length > 0 ? contextByCategory.constraints.map(c
   if (fileAttachments && fileAttachments.length > 0) {
     const fileContent = formatFileContent(fileAttachments);
     systemPrompt += `\n\n${fileContent}`;
+  }
+
+  // Add historical session context for continuity
+  if (recentReports && recentReports.length > 0) {
+    systemPrompt += `\n\nPRIOR SESSION HISTORY (Use this for continuity — reference past discussions naturally, don't repeat them):`;
+    for (const report of recentReports) {
+      const date = new Date(report.created_at).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric',
+      });
+      systemPrompt += `\n\n[Session ${date}] ${report.summary}`;
+      if (report.topics) {
+        try {
+          const topics = typeof report.topics === 'string' ? JSON.parse(report.topics) : report.topics;
+          if (Array.isArray(topics) && topics.length > 0) {
+            systemPrompt += `\nTopics: ${topics.join(', ')}`;
+          }
+        } catch { /* skip malformed topics */ }
+      }
+    }
+  }
+
+  // Add pending action items for accountability
+  if (pendingActions && pendingActions.length > 0) {
+    systemPrompt += `\n\nPENDING ACTION ITEMS (The user committed to these — gently check in when relevant, don't nag):`;
+    for (const action of pendingActions) {
+      const date = new Date(action.created_at).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric',
+      });
+      systemPrompt += `\n- ${action.text} (since ${date})`;
+    }
   }
 
   return systemPrompt;
