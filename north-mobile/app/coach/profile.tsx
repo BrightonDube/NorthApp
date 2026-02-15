@@ -351,16 +351,15 @@ export default function CoachProfileScreen() {
       <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
         <Pressable
           onPress={handleStartSession}
-          style={({ pressed }) => [
+          style={[
             styles.startButton,
             { backgroundColor: '#3B82F6' },
-            pressed && { backgroundColor: '#2563EB' },
           ]}
           accessible
           accessibilityRole="button"
           accessibilityLabel="Start coaching session"
         >
-          <Text style={[styles.startButtonText, { color: '#FFFFFF' }]}>
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600', textAlign: 'center' }}>
             Start Coaching Session
           </Text>
         </Pressable>
@@ -482,6 +481,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 56,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   startButtonText: {
     fontSize: 16,
