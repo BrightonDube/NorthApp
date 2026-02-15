@@ -294,7 +294,7 @@ describe('Deep Linking Properties', () => {
           
           // Should successfully parse
           expect(parsed).not.toBeNull();
-          expect(parsed?.screen).toBe('/coach/preview/[coachId]');
+          expect(parsed?.screen).toBe('/coach/profile');
           expect(parsed?.params?.coachId).toBe(coachId);
           
           // Coach ID should be preserved exactly

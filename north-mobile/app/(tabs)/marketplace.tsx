@@ -333,10 +333,10 @@ export default function MarketplaceScreen() {
       .slice(0, 5);
   }, [coaches]);
 
-  // Handle coach press - navigate to preview
+  // Handle coach press - navigate to profile
   const handleCoachPress = (coach: PublicCoach) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/coach/preview?coachId=${coach.id}`);
+    router.push(`/coach/profile?coachId=${coach.id}`);
   };
 
   // Handle share button

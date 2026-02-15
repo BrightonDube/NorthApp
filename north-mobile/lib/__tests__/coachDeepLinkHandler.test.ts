@@ -97,13 +97,13 @@ describe('CoachDeepLinkHandler', () => {
   });
 
   describe('handleDeepLink', () => {
-    it('should navigate to coach preview with valid coach ID', async () => {
+    it('should navigate to coach profile with valid coach ID', async () => {
       const url = 'northapp://coach/install/abc123';
       
       await handler.handleDeepLink(url);
       
       expect(router.push).toHaveBeenCalledWith({
-        pathname: '/coach/preview/[coachId]',
+        pathname: '/coach/profile',
         params: { coachId: 'abc123' },
       });
     });
@@ -115,7 +115,7 @@ describe('CoachDeepLinkHandler', () => {
       await handler.handleDeepLink(url);
       
       expect(router.push).toHaveBeenCalledWith({
-        pathname: '/coach/preview/[coachId]',
+        pathname: '/coach/profile',
         params: { coachId },
       });
     });
@@ -157,7 +157,7 @@ describe('CoachDeepLinkHandler', () => {
       });
       
       await expect(handler.handleDeepLink(url)).rejects.toThrow(
-        'Failed to navigate to coach preview'
+        'Failed to navigate to coach profile'
       );
     });
 
@@ -173,7 +173,7 @@ describe('CoachDeepLinkHandler', () => {
       await expect(handler.handleDeepLink(url)).rejects.toThrow();
       
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error navigating to coach preview:',
+        'Error navigating to coach profile:',
         mockError
       );
       
@@ -190,7 +190,7 @@ describe('CoachDeepLinkHandler', () => {
       
       expect(parseCoachIdSpy).toHaveBeenCalledWith(url);
       expect(router.push).toHaveBeenCalledWith({
-        pathname: '/coach/preview/[coachId]',
+        pathname: '/coach/profile',
         params: { coachId: 'test-coach-id' },
       });
     });

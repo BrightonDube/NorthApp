@@ -81,14 +81,14 @@ export class CoachDeepLinkHandler implements DeepLinkHandler {
     }
 
     try {
-      // Navigate to the coach preview screen with the coach ID
+      // Navigate to the coach profile screen with the coach ID
       router.push({
-        pathname: '/coach/preview/[coachId]' as any,
+        pathname: '/coach/profile' as any,
         params: { coachId },
       });
     } catch (error) {
-      console.error('Error navigating to coach preview:', error);
-      throw new Error('Failed to navigate to coach preview');
+      console.error('Error navigating to coach profile:', error);
+      throw new Error('Failed to navigate to coach profile');
     }
   }
 }

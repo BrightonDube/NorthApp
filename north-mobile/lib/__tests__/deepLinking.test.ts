@@ -138,7 +138,7 @@ describe('Deep Linking', () => {
       const result = parseDeepLink(url);
       
       expect(result).toEqual({
-        screen: '/coach/preview/[coachId]',
+        screen: '/coach/profile',
         params: { coachId: 'abc123' },
       });
     });
@@ -149,7 +149,7 @@ describe('Deep Linking', () => {
       const result = parseDeepLink(url);
       
       expect(result).toEqual({
-        screen: '/coach/preview/[coachId]',
+        screen: '/coach/profile',
         params: { coachId },
       });
     });
@@ -172,7 +172,7 @@ describe('Deep Linking', () => {
       const parsed = parseDeepLink(url);
       
       expect(parsed).toEqual({
-        screen: '/coach/preview/[coachId]',
+        screen: '/coach/profile',
         params: { coachId },
       });
     });
@@ -189,7 +189,7 @@ describe('Deep Linking', () => {
       const result = parseDeepLink(url);
       
       expect(result).toEqual({
-        screen: '/coach/preview/[coachId]',
+        screen: '/coach/profile',
         params: { coachId: 'coach-123_abc' },
       });
     });

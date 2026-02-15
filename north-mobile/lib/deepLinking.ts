@@ -30,7 +30,7 @@ export function parseDeepLink(url: string): DeepLinkRoute | null {
       const coachId = coachDeepLinkHandler.parseCoachId(url);
       if (coachId) {
         return {
-          screen: '/coach/preview/[coachId]',
+          screen: '/coach/profile',
           params: { coachId },
         };
       }

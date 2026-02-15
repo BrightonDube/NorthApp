@@ -88,11 +88,11 @@ export function ChatInput({
 
   // Handle submit editing (Enter key on iOS/Android)
   const handleSubmitEditing = useCallback(() => {
+    Keyboard.dismiss();
     handleSend();
   }, [handleSend]);
 
   const canSend = message.trim().length > 0 && !disabled && isOnline;
-  const focusColor = isDark ? '#60A5FA' : '#3B82F6';
 
   return (
     <View style={[
@@ -115,7 +115,7 @@ export function ChatInput({
             onSubmitEditing={handleSubmitEditing}
             returnKeyType="send"
             enablesReturnKeyAutomatically={true}
-            blurOnSubmit={false}
+            blurOnSubmit={true}
             style={[
               styles.input,
               isDark && styles.inputDark
@@ -129,16 +129,9 @@ export function ChatInput({
         <Pressable
           onPress={handleSend}
           disabled={!canSend}
-          style={({ pressed, focused }) => [
+          style={[
             styles.sendButton,
-            canSend
-              ? (isDark ? styles.sendButtonActiveDark : styles.sendButtonActive)
-              : (isDark ? styles.sendButtonDisabledDark : styles.sendButtonDisabled),
-            pressed && canSend && styles.sendButtonPressed,
-            focused && canSend && { 
-              borderWidth: 2, 
-              borderColor: focusColor,
-            },
+            { backgroundColor: canSend ? '#3B82F6' : (isDark ? '#292524' : '#D6D3D1') },
           ]}
           accessible
           accessibilityRole="button"
@@ -149,7 +142,7 @@ export function ChatInput({
           <Ionicons
             name="send"
             size={18}
-            color={canSend ? (isDark ? '#1C1917' : '#FFFFFF') : '#A1A1AA'}
+            color={canSend ? '#FFFFFF' : '#A1A1AA'}
             style={styles.sendIcon}
           />
         </Pressable>
@@ -200,27 +193,11 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     width: 48,
-    height: 48, // This matches the initial minHeight of inputContainer
+    height: 48,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0, // Prevent button from shrinking
-  },
-  sendButtonActive: {
-    backgroundColor: '#3B82F6',
-  },
-  sendButtonActiveDark: {
-    backgroundColor: '#60A5FA',
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#D6D3D1',
-  },
-  sendButtonDisabledDark: {
-    backgroundColor: '#292524',
-  },
-  sendButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.95 }],
+    flexShrink: 0,
   },
   sendIcon: {
     marginLeft: 2, // Slight offset to center the send icon visually
