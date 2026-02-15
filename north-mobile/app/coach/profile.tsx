@@ -231,14 +231,14 @@ export default function CoachProfileScreen() {
             onPress={handleBack}
             style={({ pressed }) => [
               styles.errorButton,
-              { backgroundColor: colors.text },
-              pressed && styles.buttonPressed,
+              { backgroundColor: '#3B82F6' },
+              pressed && { backgroundColor: '#2563EB' },
             ]}
             accessible
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Text style={[styles.errorButtonText, { color: colors.background }]}>
+            <Text style={[styles.errorButtonText, { color: '#FFFFFF' }]}>
               Go Back
             </Text>
           </Pressable>

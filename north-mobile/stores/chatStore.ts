@@ -562,41 +562,66 @@ export const useChatStore = create<ChatStore>()(
           }
 
           // Handle SSE stream
+          // React Native's fetch doesn't support ReadableStream (response.body is null),
+          // so we fall back to reading the full response as text and parsing SSE events.
           const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
 
-          if (!reader) {
-            throw new Error('No response body');
-          }
+          if (reader) {
+            // Web/environments with ReadableStream support
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-          let buffer = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              
+              if (done) break;
 
-          while (true) {
-            const { done, value } = await reader.read();
-            
-            if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6);
+                  
+                  if (data === '[DONE]') continue;
+
+                  try {
+                    const event = JSON.parse(data);
+
+                    if (event.type === 'token') {
+                      get().appendStreamingToken(event.data);
+                    } else if (event.type === 'done') {
+                      get().finalizeStreamingMessage(event.data.messageId);
+                    } else if (event.type === 'error') {
+                      throw new Error(event.data.message);
+                    }
+                  } catch (parseError) {
+                    if (parseError instanceof Error && parseError.message !== 'Error parsing SSE event') {
+                      // Re-throw non-parse errors (like event.type === 'error')
+                      if (data !== '[DONE]') console.error('Error parsing SSE event:', parseError);
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            // React Native fallback: read full response text and parse SSE
+            const text = await response.text();
+            const lines = text.split('\n');
 
             for (const line of lines) {
               if (line.startsWith('data: ')) {
-                const data = line.slice(6);
+                const data = line.slice(6).trim();
                 
-                if (data === '[DONE]') {
-                  // Stream complete
-                  continue;
-                }
+                if (data === '[DONE]') continue;
 
                 try {
                   const event = JSON.parse(data);
 
                   if (event.type === 'token') {
-                    // Append token to streaming message
                     get().appendStreamingToken(event.data);
                   } else if (event.type === 'done') {
-                    // Finalize streaming message
                     get().finalizeStreamingMessage(event.data.messageId);
                   } else if (event.type === 'error') {
                     throw new Error(event.data.message);

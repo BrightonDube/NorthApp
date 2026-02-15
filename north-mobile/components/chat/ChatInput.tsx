@@ -131,9 +131,9 @@ export function ChatInput({
           disabled={!canSend}
           style={({ pressed, focused }) => [
             styles.sendButton,
-            canSend ? styles.sendButtonActive : styles.sendButtonDisabled,
-            isDark && canSend && styles.sendButtonActiveDark,
-            isDark && !canSend && styles.sendButtonDisabledDark,
+            canSend
+              ? (isDark ? styles.sendButtonActiveDark : styles.sendButtonActive)
+              : (isDark ? styles.sendButtonDisabledDark : styles.sendButtonDisabled),
             pressed && canSend && styles.sendButtonPressed,
             focused && canSend && { 
               borderWidth: 2, 
@@ -149,7 +149,7 @@ export function ChatInput({
           <Ionicons
             name="send"
             size={18}
-            color={canSend ? '#FFFFFF' : '#A1A1AA'}
+            color={canSend ? (isDark ? '#1C1917' : '#FFFFFF') : '#A1A1AA'}
             style={styles.sendIcon}
           />
         </Pressable>
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   },
   inputRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end', // Changed from 'center' to 'flex-end' to align with multiline input
+    alignItems: 'center',
     gap: 12,
   },
   inputContainer: {
@@ -207,13 +207,13 @@ const styles = StyleSheet.create({
     flexShrink: 0, // Prevent button from shrinking
   },
   sendButtonActive: {
-    backgroundColor: '#292524',
+    backgroundColor: '#3B82F6',
   },
   sendButtonActiveDark: {
-    backgroundColor: '#FAFAF9',
+    backgroundColor: '#60A5FA',
   },
   sendButtonDisabled: {
-    backgroundColor: '#E7E5E4',
+    backgroundColor: '#D6D3D1',
   },
   sendButtonDisabledDark: {
     backgroundColor: '#292524',
