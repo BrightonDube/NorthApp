@@ -10,7 +10,6 @@
 import { useState, useCallback } from 'react';
 import { View, TextInput, Pressable, Platform, StyleSheet, Keyboard, Image, Text, ScrollView, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsOnline } from '@/stores/networkStore';
 import { useIsDark, useThemeColors } from '@/contexts/ThemeContext';
@@ -18,8 +17,10 @@ import { useIsDark, useThemeColors } from '@/contexts/ThemeContext';
 // Lazy imports for native modules that may not be available
 let ImagePicker: typeof import('expo-image-picker') | null = null;
 let FileSystem: typeof import('expo-file-system') | null = null;
+let DocumentPicker: typeof import('expo-document-picker') | null = null;
 try { ImagePicker = require('expo-image-picker'); } catch { /* not available */ }
 try { FileSystem = require('expo-file-system'); } catch { /* not available */ }
+try { DocumentPicker = require('expo-document-picker'); } catch { /* not available */ }
 
 export interface FileAttachment {
   uri: string;
@@ -101,6 +102,10 @@ export function ChatInput({
 
   const pickDocument = useCallback(async () => {
     setShowAttachMenu(false);
+    if (!DocumentPicker) {
+      Alert.alert('Not Available', 'Document picker requires a development build. Please rebuild the app.');
+      return;
+    }
     const result = await DocumentPicker.getDocumentAsync({
       type: ['application/pdf', 'text/plain', 'text/markdown', 'text/csv',
              'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],

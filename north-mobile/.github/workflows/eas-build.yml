@@ -1,11 +1,7 @@
 name: EAS Build & Submit
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+  # Manual trigger with profile selection
   workflow_dispatch:
     inputs:
       profile:
@@ -17,13 +13,22 @@ on:
           - preview
           - internal-testing
           - production
+      auto_submit:
+        description: 'Auto-submit to Google Play after build'
+        required: true
+        default: false
+        type: boolean
+  # Only build on version tags (e.g. v1.0.1, v2.0.0-beta)
+  push:
+    tags:
+      - 'v*'
 
 env:
   EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
 jobs:
   # =============================================================================
-  # Pre-flight Check - Validate Service Account JSON
+  # Pre-flight Check - Validate secrets and environment
   # =============================================================================
   preflight:
     name: Pre-flight Checks
@@ -32,6 +37,23 @@ jobs:
       project_id: ${{ steps.verify.outputs.project_id }}
       client_email: ${{ steps.verify.outputs.client_email }}
     steps:
+      - name: Check required secrets
+        run: |
+          echo "🔍 Checking required secrets..."
+          MISSING=""
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            MISSING="$MISSING EXPO_TOKEN"
+          fi
+          if [ -z "${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}" ]; then
+            MISSING="$MISSING ANDROID_SERVICE_ACCOUNT_JSON"
+          fi
+          if [ -n "$MISSING" ]; then
+            echo "❌ FAIL: Missing required secrets:$MISSING"
+            echo "   Set them in GitHub → Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          echo "✅ All required secrets are present"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -62,7 +84,7 @@ jobs:
           echo "   Client Email: ${{ steps.verify.outputs.client_email }}"
 
   # =============================================================================
-  # Release Guard - Pre-build validation checks
+  # Release Guard - Lint, validate, and check before building
   # =============================================================================
   release-guard:
     needs: preflight
@@ -80,6 +102,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint check (dry run)
+        run: |
+          echo "🔍 Running lint/type check..."
+          npx tsc --noEmit --skipLibCheck 2>&1 || {
+            echo "⚠️ TypeScript errors found (non-blocking for now)"
+          }
+          echo "✅ Lint check complete"
 
       - name: Validate app.json configuration
         run: |
@@ -111,9 +141,6 @@ jobs:
           fi
           echo "✅ Package name is valid: $PACKAGE"
           
-          # Check Hermes is enabled (Expo SDK 50+ uses Hermes by default)
-          echo "✅ Hermes is enabled by default in Expo SDK 50+"
-          
           echo "🎉 All Release Guard checks passed!"
 
       - name: Check for hardcoded secrets
@@ -129,59 +156,13 @@ jobs:
           echo "✅ No hardcoded secrets detected"
 
   # =============================================================================
-  # Internal Testing Build (on push to main)
-  # =============================================================================
-  build-preview:
-    name: Build & Submit to Internal Testing
-    needs: [preflight, release-guard]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Setup EAS CLI
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Display build info
-        run: |
-          echo "🚀 Building for Internal Testing"
-          echo "   GCP Project: ${{ needs.preflight.outputs.project_id }}"
-          echo "   Service Account: ${{ needs.preflight.outputs.client_email }}"
-
-      - name: Create service-account.json
-        run: |
-          echo '${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' > service-account.json
-
-      - name: Build and Submit to Internal Testing
-        run: |
-          eas build --platform android --profile preview --non-interactive --auto-submit
-
-      - name: Cleanup service account
-        if: always()
-        run: rm -f service-account.json
-
-  # =============================================================================
   # Production Build (on tag push v*)
   # =============================================================================
   build-production:
     name: Build & Submit to Production
     needs: [preflight, release-guard]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     
     steps:
       - name: Checkout repository
@@ -225,7 +206,7 @@ jobs:
   # Manual Build (workflow_dispatch)
   # =============================================================================
   build-manual:
-    name: Manual Build & Submit
+    name: Manual Build
     needs: [preflight, release-guard]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
@@ -253,6 +234,7 @@ jobs:
         run: |
           echo "🚀 Manual Build"
           echo "   Profile: ${{ github.event.inputs.profile }}"
+          echo "   Auto-submit: ${{ github.event.inputs.auto_submit }}"
           echo "   GCP Project: ${{ needs.preflight.outputs.project_id }}"
           echo "   Service Account: ${{ needs.preflight.outputs.client_email }}"
 
@@ -260,7 +242,13 @@ jobs:
         run: |
           echo '${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' > service-account.json
 
+      - name: Build
+        if: github.event.inputs.auto_submit != 'true'
+        run: |
+          eas build --platform android --profile ${{ github.event.inputs.profile }} --non-interactive
+
       - name: Build and Submit
+        if: github.event.inputs.auto_submit == 'true'
         run: |
           eas build --platform android --profile ${{ github.event.inputs.profile }} --non-interactive --auto-submit
 
