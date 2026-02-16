@@ -8,14 +8,18 @@
  */
 
 import { useState, useCallback } from 'react';
-import { View, TextInput, Pressable, Platform, StyleSheet, Keyboard, Image, Text, ScrollView } from 'react-native';
+import { View, TextInput, Pressable, Platform, StyleSheet, Keyboard, Image, Text, ScrollView, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsOnline } from '@/stores/networkStore';
 import { useIsDark, useThemeColors } from '@/contexts/ThemeContext';
+
+// Lazy imports for native modules that may not be available
+let ImagePicker: typeof import('expo-image-picker') | null = null;
+let FileSystem: typeof import('expo-file-system') | null = null;
+try { ImagePicker = require('expo-image-picker'); } catch { /* not available */ }
+try { FileSystem = require('expo-file-system'); } catch { /* not available */ }
 
 export interface FileAttachment {
   uri: string;
@@ -68,6 +72,10 @@ export function ChatInput({
 
   const pickImage = useCallback(async () => {
     setShowAttachMenu(false);
+    if (!ImagePicker) {
+      Alert.alert('Not Available', 'Image picker requires a development build. Please rebuild the app.');
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') return;
 
@@ -102,12 +110,14 @@ export function ChatInput({
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       let base64: string | undefined;
-      try {
-        base64 = await FileSystem.readAsStringAsync(asset.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-      } catch {
-        // If base64 read fails, send without it
+      if (FileSystem) {
+        try {
+          base64 = await FileSystem.readAsStringAsync(asset.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+        } catch {
+          // If base64 read fails, send without it
+        }
       }
 
       setAttachments(prev => [...prev, {
