@@ -96,7 +96,7 @@ describe('ChatInput', () => {
     const sendButton = getByLabelText('Send message');
     fireEvent.press(sendButton);
 
-    expect(mockOnSend).toHaveBeenCalledWith('Hello');
+    expect(mockOnSend).toHaveBeenCalledWith('Hello', undefined);
   });
 
   it('should disable send button when disabled prop is true', () => {

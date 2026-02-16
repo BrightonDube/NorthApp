@@ -34,7 +34,7 @@ interface ChatState {
 interface ChatActions {
   fetchOrCreateSession: (coachId: string) => Promise<ChatSession>;
   fetchMessages: (sessionId: string, limit?: number, offset?: number) => Promise<void>;
-  sendMessage: (sessionId: string, coachId: string, content: string) => Promise<void>;
+  sendMessage: (sessionId: string, coachId: string, content: string, attachments?: import('@/components/chat/ChatInput').FileAttachment[]) => Promise<void>;
   appendStreamingToken: (token: string) => void;
   finalizeStreamingMessage: (messageId: string) => void;
   retryLastMessage: (sessionId: string) => Promise<void>;
@@ -356,9 +356,10 @@ export const useChatStore = create<ChatStore>()(
        * await sendMessage('session-123', 'coach-456', 'Hello, coach!');
        * ```
        */
-      sendMessage: async (sessionId, coachId, content) => {
-        // Validate input - reject empty or whitespace-only messages
-        if (!content || content.trim().length === 0) {
+      sendMessage: async (sessionId, coachId, content, attachments) => {
+        // Validate input - reject empty messages (unless attachments provided)
+        const hasAttachments = attachments && attachments.length > 0;
+        if ((!content || content.trim().length === 0) && !hasAttachments) {
           const error = new Error('Message cannot be empty');
           set({ error: error.message });
           throw error;
@@ -513,6 +514,14 @@ export const useChatStore = create<ChatStore>()(
                   sessionId,
                   coachId,
                   message: content,
+                  ...(attachments && attachments.length > 0 ? {
+                    attachments: attachments.map(a => ({
+                      name: a.name,
+                      type: a.type,
+                      mimeType: a.mimeType,
+                      base64: a.base64,
+                    })),
+                  } : {}),
                 }),
                 signal: controller.signal,
               }

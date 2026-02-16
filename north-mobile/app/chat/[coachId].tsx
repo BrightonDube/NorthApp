@@ -30,7 +30,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useChatStore, useSessionMessages, useStreamingMessage, useIsSending } from '@/stores/chatStore';
 import { useCoachStore, useCoachById } from '@/stores/coachStore';
-import { ChatHeader, MessageList, ChatInput } from '@/components/chat';
+import { ChatHeader, MessageList, ChatInput, ContextUsageBar } from '@/components/chat';
+import type { FileAttachment } from '@/components/chat/ChatInput';
 import { SessionFileSelector } from '@/components/chat/SessionFileSelector';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ChatLoadingSkeleton } from '@/components/SkeletonLoader';
@@ -192,15 +193,41 @@ export default function ChatScreen() {
     router.back();
   }, [router]);
 
-  const handleSendMessage = useCallback(async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string, attachments?: FileAttachment[]) => {
     if (!sessionId || !coachId) return;
     
     try {
-      await sendMessage(sessionId, coachId, content);
+      await sendMessage(sessionId, coachId, content, attachments);
     } catch (err) {
       console.error('Failed to send message:', err);
     }
   }, [sessionId, coachId, sendMessage]);
+
+  const handleNewChat = useCallback(async () => {
+    if (!coachId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    try {
+      // Create a new session (force new by clearing current)
+      const { sessions } = useChatStore.getState();
+      if (sessionId && sessions[sessionId]) {
+        // Clear messages for old session from local state
+        useChatStore.setState((state) => {
+          const newMessages = { ...state.messages };
+          delete newMessages[sessionId];
+          const newSessions = { ...state.sessions };
+          delete newSessions[sessionId];
+          return { messages: newMessages, sessions: newSessions };
+        });
+      }
+      const session = await fetchOrCreateSession(coachId);
+      setSessionId(session.id);
+      setTotalLoaded(0);
+      setHasMore(false);
+    } catch (err) {
+      console.error('Failed to create new chat:', err);
+    }
+  }, [coachId, sessionId, fetchOrCreateSession]);
 
   const handleOpenFileSelector = useCallback(() => {
     if (Platform.OS === 'ios') {
@@ -278,6 +305,11 @@ export default function ChatScreen() {
         coach={coach} 
         onBack={handleBack}
         onOpenFileSelector={sessionId ? handleOpenFileSelector : undefined}
+      />
+      <ContextUsageBar
+        messages={messages}
+        streamingMessage={streamingMessage}
+        onNewChat={handleNewChat}
       />
       
       <KeyboardAvoidingView 

@@ -16,10 +16,12 @@ export { MessageList } from './MessageList';
 export type { MessageListProps } from './MessageList';
 
 export { ChatInput } from './ChatInput';
-export type { ChatInputProps } from './ChatInput';
+export type { ChatInputProps, FileAttachment } from './ChatInput';
 
 export { ChatHeader } from './ChatHeader';
 export type { ChatHeaderProps } from './ChatHeader';
+
+export { ContextUsageBar } from './ContextUsageBar';
 
 export { StreamingIndicator } from './StreamingIndicator';
 

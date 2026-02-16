@@ -325,3 +325,23 @@ global.console = {
 
 // Set up global test timeout
 jest.setTimeout(10000);
+
+// Mock expo-image-picker
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  launchImageLibraryAsync: jest.fn(() => Promise.resolve({ canceled: true, assets: [] })),
+  MediaTypeOptions: { Images: 'Images', Videos: 'Videos', All: 'All' },
+}));
+
+// Mock expo-file-system
+jest.mock('expo-file-system', () => ({
+  readAsStringAsync: jest.fn(() => Promise.resolve('base64data')),
+  EncodingType: { Base64: 'base64', UTF8: 'utf8' },
+  documentDirectory: '/mock/documents/',
+  cacheDirectory: '/mock/cache/',
+}));
+
+// Mock expo-document-picker
+jest.mock('expo-document-picker', () => ({
+  getDocumentAsync: jest.fn(() => Promise.resolve({ canceled: true, assets: [] })),
+}));

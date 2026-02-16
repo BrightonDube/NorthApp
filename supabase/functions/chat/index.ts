@@ -26,10 +26,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface InlineAttachment {
+  name: string;
+  type: 'image' | 'document';
+  mimeType: string;
+  base64?: string;
+}
+
 interface ChatRequest {
   sessionId: string;
   coachId: string;
   message: string;
+  attachments?: InlineAttachment[];
 }
 
 interface LLMConfig {
@@ -288,7 +296,7 @@ serve(async (req) => {
     }
 
     // ── Parse & Validate Request ─────────────────────────────────────────
-    const { sessionId, coachId, message }: ChatRequest = await req.json();
+    const { sessionId, coachId, message, attachments }: ChatRequest = await req.json();
 
     if (!sessionId || !coachId || !message) {
       return new Response(
@@ -399,18 +407,41 @@ serve(async (req) => {
       content: m.content,
     }));
 
+    // ── Build Augmented User Message ────────────────────────────────────
+    let augmentedMessage = message;
+    if (attachments && attachments.length > 0) {
+      const attachmentDescriptions = attachments.map((att) => {
+        if (att.type === 'image') {
+          return `[Attached image: ${att.name}]`;
+        }
+        // For documents, include extracted text content if available via base64
+        if (att.base64 && att.mimeType?.startsWith('text/')) {
+          try {
+            const decoded = atob(att.base64);
+            const preview = decoded.length > 3000 ? decoded.substring(0, 3000) + '...(truncated)' : decoded;
+            return `[Attached document: ${att.name}]\n\`\`\`\n${preview}\n\`\`\``;
+          } catch {
+            return `[Attached document: ${att.name}]`;
+          }
+        }
+        return `[Attached document: ${att.name}]`;
+      }).join('\n\n');
+
+      augmentedMessage = `${message}\n\n--- Attachments ---\n${attachmentDescriptions}`;
+    }
+
     // ── Call LLM Provider ────────────────────────────────────────────────
     let providerStream: ReadableStream<Uint8Array>;
     let parseStream: (body: ReadableStream<Uint8Array>) => AsyncGenerator<string>;
 
     if (llmConfig.provider === 'gemini') {
-      providerStream = await streamGemini(systemPrompt, history, message, llmConfig);
+      providerStream = await streamGemini(systemPrompt, history, augmentedMessage, llmConfig);
       parseStream = parseGeminiStream;
     } else if (llmConfig.provider === 'xai') {
-      providerStream = await streamXai(systemPrompt, history, message, llmConfig);
+      providerStream = await streamXai(systemPrompt, history, augmentedMessage, llmConfig);
       parseStream = parseGroqStream; // X.AI uses OpenAI-compatible format
     } else {
-      providerStream = await streamGroq(systemPrompt, history, message, llmConfig);
+      providerStream = await streamGroq(systemPrompt, history, augmentedMessage, llmConfig);
       parseStream = parseGroqStream;
     }
 
