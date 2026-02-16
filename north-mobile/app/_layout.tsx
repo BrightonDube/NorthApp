@@ -409,6 +409,7 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
     const inAuthCallback = segments[0] === 'auth';
     const inTabs = segments[0] === '(tabs)';
+    const inAppContent = segments[0] === 'chat' || segments[0] === 'coach' || segments[0] === 'legal' || segments[0] === 'report';
 
     // Small delay to ensure navigation is fully ready
     const timer = setTimeout(() => {
@@ -416,7 +417,7 @@ function RootLayoutNav() {
         // Not authenticated, redirect to login
         setHasNavigated(true);
         router.replace('/(auth)/login');
-      } else if (user && (inAuthGroup || (!inTabs && !inAuthCallback))) {
+      } else if (user && (inAuthGroup || (!inTabs && !inAuthCallback && !inAppContent))) {
         // Authenticated, redirect to main app
         setHasNavigated(true);
         if (!user.name || user.name.trim().length < 2) {
