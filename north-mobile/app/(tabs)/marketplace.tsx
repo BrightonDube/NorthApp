@@ -27,7 +27,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { CoachCard, CategoryFilter } from '@/components/coach';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { CoachGridSkeleton } from '@/components/SkeletonLoader';
-import { Logo } from '@/components/Logo';
 import { useDebounce } from '@/hooks/useDebounce';
 import { supabase } from '@/lib/supabase';
 import { searchEngine } from '@/lib/searchEngine';
@@ -37,13 +36,22 @@ import { useThemeColors } from '@/contexts/ThemeContext';
 import type { PublicCoach, CoachCategory } from '@/types';
 
 /**
- * App Logo Component
+ * Back Button Component for header
  */
-function AppLogo() {
+function HeaderBackButton() {
+  const router = useRouter();
   const colors = useThemeColors();
   return (
-    <View style={styles.logoContainer}>
-      <Logo size={40} />
+    <View style={styles.headerBackRow}>
+      <Pressable
+        onPress={() => router.back()}
+        style={styles.headerBackButton}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+      >
+        <Ionicons name="arrow-back" size={24} color={colors.text} />
+      </Pressable>
       <Text style={[styles.logoText, { color: colors.text }]}>Marketplace</Text>
     </View>
   );
@@ -362,7 +370,7 @@ export default function MarketplaceScreen() {
         edges={['top']}
       >
         <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          <AppLogo />
+          <HeaderBackButton />
         </View>
         <View style={styles.content}>
           <View style={styles.searchSection}>
@@ -387,7 +395,7 @@ export default function MarketplaceScreen() {
       
       {/* Fixed Header */}
       <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <AppLogo />
+        <HeaderBackButton />
       </View>
 
       <ScrollView
@@ -488,10 +496,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  headerBackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerBackButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+  },
   logoText: {
     fontSize: 20,
     fontWeight: '700',
-    marginLeft: 12,
+    marginLeft: 8,
   },
   scrollView: {
     flex: 1,

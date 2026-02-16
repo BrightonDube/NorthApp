@@ -35,18 +35,25 @@ import { CoachGrid, CoachCreateModal, CoachEditModal } from '@/components/coach'
 import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { CoachGridSkeleton } from '@/components/SkeletonLoader';
-import { Logo } from '@/components/Logo';
 import { useTheme, useIsDark, useThemeColors } from '@/contexts/ThemeContext';
 import type { Coach } from '@/types';
 
 /**
- * App Logo Component
+ * Back Button Component for header
  */
-function AppLogo() {
+function HeaderBackButton() {
+  const router = useRouter();
+  const colors = useThemeColors();
   return (
-    <View style={styles.logoContainer}>
-      <Logo size={40} />
-    </View>
+    <Pressable
+      onPress={() => router.back()}
+      style={styles.headerBackButton}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+    >
+      <Ionicons name="arrow-back" size={24} color={colors.text} />
+    </Pressable>
   );
 }
 
@@ -327,7 +334,7 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.borderSecondary }]}>
-          <AppLogo />
+          <HeaderBackButton />
           {isProUser && <ProBadge />}
         </View>
         <View style={styles.headerSection}>
@@ -353,7 +360,7 @@ export default function HomeScreen() {
       
       {/* Fixed Header */}
       <View style={[styles.header, { borderBottomColor: colors.borderSecondary }]}>
-        <AppLogo />
+        <HeaderBackButton />
         {isProUser && <ProBadge />}
       </View>
 
@@ -474,6 +481,13 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  headerBackButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
   },
   proBadge: {
     flexDirection: 'row',

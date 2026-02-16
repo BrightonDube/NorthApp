@@ -487,6 +487,14 @@ function RootLayoutNav() {
         }} 
       />
       <Stack.Screen 
+        name="coach/profile" 
+        options={{ 
+          headerShown: false,
+          animation: prefersReducedMotion ? 'none' : 'slide_from_right',
+          animationDuration: 180,
+        }} 
+      />
+      <Stack.Screen 
         name="coach/create" 
         options={{ 
           headerShown: false,
