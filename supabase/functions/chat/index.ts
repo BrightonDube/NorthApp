@@ -51,21 +51,56 @@ interface LLMConfig {
 
 /**
  * Stream chat completion from Groq (OpenAI-compatible API)
+ * Supports multimodal input (text + images) via content parts
+ * when using a vision-capable model like Llama 4 Scout.
  */
 async function streamGroq(
   systemPrompt: string,
   history: Array<{ role: string; content: string }>,
   userMessage: string,
   config: LLMConfig,
+  inlineAttachments?: InlineAttachment[],
 ): Promise<ReadableStream<Uint8Array>> {
   const apiKey = Deno.env.get('GROQ_API_KEY');
   if (!apiKey) throw new Error('GROQ_API_KEY not configured');
 
+  // Check if we have image attachments
+  const imageAttachments = inlineAttachments?.filter(
+    (a) => a.type === 'image' && a.base64,
+  ) || [];
+  const hasImages = imageAttachments.length > 0;
+
+  // Build the user message content (multimodal parts or plain text)
+  let userContent: string | Array<Record<string, unknown>>;
+  if (hasImages) {
+    const parts: Array<Record<string, unknown>> = [
+      { type: 'text', text: userMessage },
+    ];
+    for (const img of imageAttachments) {
+      parts.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:${img.mimeType || 'image/jpeg'};base64,${img.base64}`,
+        },
+      });
+    }
+    userContent = parts;
+  } else {
+    userContent = userMessage;
+  }
+
+  // Use vision-capable model when images are present
+  const model = hasImages
+    ? 'meta-llama/llama-4-scout-17b-16e-instruct'
+    : config.model;
+
   const messages = [
     { role: 'system', content: systemPrompt },
     ...history,
-    { role: 'user', content: userMessage },
+    { role: 'user', content: userContent },
   ];
+
+  console.log(`[chat] Groq model: ${model}, images: ${imageAttachments.length}`);
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -74,7 +109,7 @@ async function streamGroq(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: config.model,
+      model,
       messages,
       temperature: config.temperature,
       max_tokens: config.max_tokens,
@@ -408,38 +443,53 @@ serve(async (req) => {
     }));
 
     // ── Build Augmented User Message ────────────────────────────────────
+    // Document text is always inlined into the message for all providers.
+    // Images are sent as multimodal parts to Groq's vision model.
     let augmentedMessage = message;
-    if (attachments && attachments.length > 0) {
-      const attachmentDescriptions = attachments.map((att) => {
+    const hasInlineAttachments = attachments && attachments.length > 0;
+    const hasImages = attachments?.some((a) => a.type === 'image' && a.base64) ?? false;
+
+    if (hasInlineAttachments) {
+      const textDescriptions: string[] = [];
+
+      for (const att of attachments!) {
         if (att.type === 'image') {
-          return `[Attached image: ${att.name}]`;
-        }
-        // For documents, include extracted text content if available via base64
-        if (att.base64 && att.mimeType?.startsWith('text/')) {
+          // Images are handled as multimodal parts via Groq vision — no text fallback needed
+        } else if (att.base64) {
+          // Documents: decode base64 and include text content inline
           try {
             const decoded = atob(att.base64);
-            const preview = decoded.length > 3000 ? decoded.substring(0, 3000) + '...(truncated)' : decoded;
-            return `[Attached document: ${att.name}]\n\`\`\`\n${preview}\n\`\`\``;
+            const preview = decoded.length > 5000 ? decoded.substring(0, 5000) + '\n...(truncated)' : decoded;
+            textDescriptions.push(`[Attached document: ${att.name}]\n\`\`\`\n${preview}\n\`\`\``);
           } catch {
-            return `[Attached document: ${att.name}]`;
+            textDescriptions.push(`[Attached document: ${att.name} — could not read content]`);
           }
+        } else {
+          textDescriptions.push(`[Attached document: ${att.name} — no content available]`);
         }
-        return `[Attached document: ${att.name}]`;
-      }).join('\n\n');
+      }
 
-      augmentedMessage = `${message}\n\n--- Attachments ---\n${attachmentDescriptions}`;
+      if (textDescriptions.length > 0) {
+        augmentedMessage = `${message}\n\n--- Attachments ---\n${textDescriptions.join('\n\n')}`;
+      }
     }
 
     // ── Call LLM Provider ────────────────────────────────────────────────
+    // When images are attached, always route through Groq (Llama 4 Scout vision model)
+    // regardless of configured provider, since it supports multimodal input.
     let providerStream: ReadableStream<Uint8Array>;
     let parseStream: (body: ReadableStream<Uint8Array>) => AsyncGenerator<string>;
 
-    if (llmConfig.provider === 'gemini') {
+    if (hasImages) {
+      // Force Groq with vision model for image attachments
+      providerStream = await streamGroq(systemPrompt, history, augmentedMessage, llmConfig, attachments ?? undefined);
+      parseStream = parseGroqStream;
+    } else if (llmConfig.provider === 'gemini') {
       providerStream = await streamGemini(systemPrompt, history, augmentedMessage, llmConfig);
       parseStream = parseGeminiStream;
     } else if (llmConfig.provider === 'xai') {
       providerStream = await streamXai(systemPrompt, history, augmentedMessage, llmConfig);
-      parseStream = parseGroqStream; // X.AI uses OpenAI-compatible format
+      parseStream = parseGroqStream;
     } else {
       providerStream = await streamGroq(systemPrompt, history, augmentedMessage, llmConfig);
       parseStream = parseGroqStream;
