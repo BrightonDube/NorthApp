@@ -48,18 +48,31 @@ const FEATURE_DESCRIPTIONS: Record<string, { title: string; description: string 
     title: 'Unlimited Messages',
     description: 'Chat without limits and get the guidance you need, when you need it.',
   },
+  unlimited_checkins: {
+    title: 'Unlimited Check-Ins',
+    description: 'Track your mood, energy, and progress every day. Free users get 3 check-ins per week.',
+  },
+  voice_coaching: {
+    title: 'Voice Coaching',
+    description: 'Speak naturally with your AI coaches using voice input. Hands-free coaching on the go.',
+  },
+  conversation_export: {
+    title: 'Export Conversations',
+    description: 'Export your coaching sessions as text to review, share, or keep for your records.',
+  },
   default: {
     title: 'Unlock North Pro',
     description: 'Get the most out of your AI coaching experience.',
   },
 };
 
-// Pro benefits list - reduced to 4 key benefits for cleaner design
 const PRO_BENEFITS = [
-  'Create unlimited custom coaches',
-  'Unlimited personal context',
   'Unlimited AI conversations',
-  'Priority AI responses',
+  'Daily check-ins & mood tracking',
+  'Full progress dashboard & insights',
+  'Voice coaching input',
+  'Create custom coaches',
+  'Conversation export',
 ];
 
 interface PaywallModalProps {

@@ -18,6 +18,7 @@ export interface ChatHeaderProps {
   coach: Coach;
   onBack: () => void;
   onOpenFileSelector?: () => void;
+  onExport?: () => void;
 }
 
 /**
@@ -43,7 +44,7 @@ export interface ChatHeaderProps {
  * />
  * ```
  */
-export function ChatHeader({ coach, onBack, onOpenFileSelector }: ChatHeaderProps) {
+export function ChatHeader({ coach, onBack, onOpenFileSelector, onExport }: ChatHeaderProps) {
   const colors = useThemeColors();
   
   const handleBack = () => {
@@ -103,6 +104,27 @@ export function ChatHeader({ coach, onBack, onOpenFileSelector }: ChatHeaderProp
             </Text>
           </View>
         </View>
+
+        {/* Export Button */}
+        {onExport && (
+          <TouchableOpacity
+            onPress={() => {
+              if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onExport();
+            }}
+            className="ml-1 items-center justify-center"
+            style={{ width: 44, height: 44 }}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Export conversation"
+          >
+            <Ionicons
+              name="share-outline"
+              size={22}
+              color={colors.text}
+            />
+          </TouchableOpacity>
+        )}
 
         {/* File Selector Button */}
         {onOpenFileSelector && (

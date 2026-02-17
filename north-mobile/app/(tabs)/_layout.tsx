@@ -104,6 +104,24 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="checkin"
+        options={{
+          title: 'Check-In',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="✅" label="Check-In" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="progress"
+        options={{
+          title: 'Progress',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="📊" label="Progress" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

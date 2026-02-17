@@ -30,12 +30,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useChatStore, useSessionMessages, useStreamingMessage, useIsSending } from '@/stores/chatStore';
 import { useCoachStore, useCoachById } from '@/stores/coachStore';
+import { useBillingStore } from '@/stores/billingStore';
 import { ChatHeader, MessageList, ChatInput, ContextUsageBar } from '@/components/chat';
 import type { FileAttachment } from '@/components/chat/ChatInput';
 import { SessionFileSelector } from '@/components/chat/SessionFileSelector';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { ChatLoadingSkeleton } from '@/components/SkeletonLoader';
 import { useThemeColors } from '@/contexts/ThemeContext';
+import { canSendMessage, incrementDailyMessageCount, getDailyMessageCount, getFreeDailyLimit } from '@/lib/messageLimit';
+import { Analytics } from '@/lib/analytics';
+import { shareConversation } from '@/lib/conversationExport';
 import type { Coach } from '@/types';
 
 
@@ -106,12 +110,15 @@ export default function ChatScreen() {
     clearError,
   } = useChatStore();
   
+  const { isProUser, showPaywall } = useBillingStore();
+  
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalLoaded, setTotalLoaded] = useState(0);
   const [showFileSelector, setShowFileSelector] = useState(false);
+  const [dailyRemaining, setDailyRemaining] = useState<number | null>(null);
   
   // Get messages for current session
   const messages = useSessionMessages(sessionId || '');
@@ -196,12 +203,22 @@ export default function ChatScreen() {
   const handleSendMessage = useCallback(async (content: string, attachments?: FileAttachment[]) => {
     if (!sessionId || !coachId) return;
     
+    // Check message limit for free users
+    const limitCheck = await canSendMessage(isProUser);
+    if (!limitCheck.allowed) {
+      showPaywall('unlimited_messages');
+      return;
+    }
+    
     try {
       await sendMessage(sessionId, coachId, content, attachments);
+      await incrementDailyMessageCount();
+      setDailyRemaining(limitCheck.remaining - 1);
+      Analytics.messageSent(coachId, content.length);
     } catch (err) {
       console.error('Failed to send message:', err);
     }
-  }, [sessionId, coachId, sendMessage]);
+  }, [sessionId, coachId, sendMessage, isProUser, showPaywall]);
 
   const handleNewChat = useCallback(async () => {
     if (!coachId) return;
@@ -242,6 +259,15 @@ export default function ChatScreen() {
     }
     setShowFileSelector(false);
   }, []);
+
+  const handleExport = useCallback(() => {
+    if (!isProUser) {
+      showPaywall('conversation_export');
+      return;
+    }
+    shareConversation(messages, coach || undefined, sessionId ? useChatStore.getState().sessions[sessionId]?.createdAt : undefined);
+    Analytics.conversationExported('markdown');
+  }, [messages, coach, sessionId, isProUser, showPaywall]);
 
   // Loading state
   if (isInitializing) {
@@ -304,6 +330,7 @@ export default function ChatScreen() {
       <ChatHeader 
         coach={coach} 
         onBack={handleBack}
+        onExport={messages.length > 0 ? handleExport : undefined}
         onOpenFileSelector={sessionId ? handleOpenFileSelector : undefined}
       />
       <ContextUsageBar

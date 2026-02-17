@@ -320,11 +320,11 @@ describe('PaywallModal - Pro Upgrade Prompt', () => {
         />
       );
 
-      // Assert: All 4 benefits should be visible
-      expect(getByText('Create unlimited custom coaches')).toBeTruthy();
-      expect(getByText('Unlimited personal context')).toBeTruthy();
+      // Assert: Benefits should be visible
       expect(getByText('Unlimited AI conversations')).toBeTruthy();
-      expect(getByText('Priority AI responses')).toBeTruthy();
+      expect(getByText('Daily check-ins & mood tracking')).toBeTruthy();
+      expect(getByText('Create custom coaches')).toBeTruthy();
+      expect(getByText('Conversation export')).toBeTruthy();
     });
   });
 
@@ -424,7 +424,7 @@ describe('PaywallModal - Pro Upgrade Prompt', () => {
       );
 
       // Assert: Error message should be visible
-      expect(getByText(/Subscription plans are not available/)).toBeTruthy();
+      expect(getByText(/Pro subscription plans are being set up/)).toBeTruthy();
     });
   });
 

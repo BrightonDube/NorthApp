@@ -1,11 +1,13 @@
 /**
  * Error Logger
  * 
- * Centralized error logging utility for file attachment operations.
+ * Centralized error logging utility with Sentry integration.
  * Logs errors for debugging and monitoring purposes.
  * 
  * Validates: Requirement 8.5
  */
+
+import { captureException, addBreadcrumb } from '@/lib/sentry';
 
 /**
  * Error context for detailed logging
@@ -27,28 +29,6 @@ export type ErrorSeverity = 'error' | 'warning' | 'info';
 
 /**
  * Log an error with context
- * 
- * In production, this should integrate with a monitoring service
- * like Sentry, DataDog, or LogRocket.
- * 
- * @param error - The error object or message
- * @param context - Additional context about the error
- * @param severity - Error severity level
- * 
- * @example
- * ```typescript
- * logError(
- *   new Error('File upload failed'),
- *   {
- *     operation: 'uploadFile',
- *     userId: 'user-123',
- *     filename: 'document.pdf',
- *     fileSize: 1024000,
- *     component: 'FileUploadComponent',
- *   },
- *   'error'
- * );
- * ```
  */
 export function logError(
   error: Error | string,
@@ -66,66 +46,50 @@ export function logError(
     context,
   };
   
-  // Log to console with appropriate level
+  // Log to console
   switch (severity) {
     case 'error':
-      console.error('[FileAttachments Error]', logEntry);
+      console.error('[Error]', logEntry);
       break;
     case 'warning':
-      console.warn('[FileAttachments Warning]', logEntry);
+      console.warn('[Warning]', logEntry);
       break;
     case 'info':
-      console.info('[FileAttachments Info]', logEntry);
+      console.info('[Info]', logEntry);
       break;
   }
   
-  // TODO: In production, send to monitoring service
-  // Example with Sentry:
-  // if (severity === 'error') {
-  //   Sentry.captureException(error instanceof Error ? error : new Error(errorMessage), {
-  //     tags: {
-  //       operation: context.operation,
-  //       component: context.component,
-  //     },
-  //     extra: context,
-  //   });
-  // }
-  
-  // Example with custom analytics:
-  // analytics.track('file_attachment_error', {
-  //   error: errorMessage,
-  //   ...context,
-  // });
+  // Send to Sentry in production
+  if (severity === 'error') {
+    captureException(
+      error instanceof Error ? error : new Error(errorMessage),
+      {
+        operation: context.operation,
+        component: context.component,
+        ...context.additionalInfo,
+      }
+    );
+  } else {
+    addBreadcrumb(context.operation, errorMessage, {
+      severity,
+      component: context.component,
+      ...context.additionalInfo,
+    });
+  }
 }
 
 /**
- * Log a successful operation (for debugging and monitoring)
- * 
- * @param operation - The operation that succeeded
- * @param context - Additional context
- * 
- * @example
- * ```typescript
- * logSuccess('uploadFile', {
- *   operation: 'uploadFile',
- *   userId: 'user-123',
- *   filename: 'document.pdf',
- *   fileSize: 1024000,
- * });
- * ```
+ * Log a successful operation
  */
 export function logSuccess(operation: string, context: Partial<ErrorContext>): void {
-  console.log('[FileAttachments Success]', {
-    timestamp: new Date().toISOString(),
-    operation,
-    context,
-  });
+  if (__DEV__) {
+    console.log('[Success]', { timestamp: new Date().toISOString(), operation, context });
+  }
   
-  // TODO: In production, track successful operations for analytics
-  // analytics.track('file_attachment_success', {
-  //   operation,
-  //   ...context,
-  // });
+  addBreadcrumb(operation, 'Operation succeeded', {
+    component: context.component,
+    ...context.additionalInfo,
+  });
 }
 
 /**

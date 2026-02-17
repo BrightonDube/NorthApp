@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { useNotificationStore } from '@/stores/notificationStore';
 
 /**
@@ -86,7 +87,7 @@ export async function cancelAllNotifications(): Promise<void> {
 }
 
 /**
- * Send push token to backend (for remote notifications)
+ * Send push token to backend for remote notifications
  * @param token - Expo push token
  * @param userId - User ID
  */
@@ -94,14 +95,30 @@ export async function registerPushTokenWithBackend(
   token: string,
   userId: string
 ): Promise<void> {
-  // TODO: Implement backend API call to store push token
-  // This would typically be a Supabase function or direct database insert
-  console.log('Registering push token with backend:', { token, userId });
-  
-  // Example implementation:
-  // await supabase
-  //   .from('push_tokens')
-  //   .upsert({ user_id: userId, token, updated_at: new Date().toISOString() });
+  try {
+    const { supabase } = await import('@/lib/supabase');
+    
+    const { error } = await supabase
+      .from('push_tokens')
+      .upsert(
+        {
+          user_id: userId,
+          token,
+          platform: Platform.OS,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      );
+
+    if (error) {
+      // Table may not exist yet - log but don't crash
+      console.warn('[Notifications] Could not store push token:', error.message);
+    } else {
+      console.log('[Notifications] Push token registered with backend');
+    }
+  } catch (err) {
+    console.warn('[Notifications] Failed to register push token:', err);
+  }
 }
 
 /**

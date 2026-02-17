@@ -35,12 +35,16 @@ export interface ChatInputProps {
   onSend: (message: string, attachments?: FileAttachment[]) => void;
   disabled?: boolean;
   placeholder?: string;
+  isProUser?: boolean;
+  onShowPaywall?: (feature: string) => void;
 }
 
 export function ChatInput({
   onSend,
   disabled = false,
   placeholder = 'Type a message...',
+  isProUser = false,
+  onShowPaywall,
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
