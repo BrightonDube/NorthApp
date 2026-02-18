@@ -7,7 +7,7 @@
  * Validates: Requirements 10.3, 11.3, 11.4, 23.7
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { View, TextInput, Pressable, Platform, StyleSheet, Keyboard, Image, Text, ScrollView, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +49,7 @@ export function ChatInput({
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [sendFocused, setSendFocused] = useState(false);
   const isOnline = useIsOnline();
   const isDark = useIsDark();
 
@@ -72,7 +73,10 @@ export function ChatInput({
 
   const handleSubmitEditing = useCallback(() => {
     Keyboard.dismiss();
+    // briefly highlight send button to indicate focus
+    setSendFocused(true);
     handleSend();
+    setTimeout(() => setSendFocused(false), 300);
   }, [handleSend]);
 
   const pickImage = useCallback(async () => {
@@ -226,6 +230,7 @@ export function ChatInput({
           style={[
             styles.sendButton,
             { backgroundColor: canSend ? '#3B82F6' : (isDark ? '#292524' : '#D6D3D1') },
+            sendFocused && { borderWidth: 2, borderColor: '#60A5FA' },
           ]}
           accessible
           accessibilityRole="button"

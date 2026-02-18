@@ -149,8 +149,8 @@ export function CoachCard({
         onLongPress={handleLongPress}
         accessible
         accessibilityRole="button"
-        accessibilityLabel={`${isMarketplaceMode ? 'Preview' : 'Chat with'} ${coach.name}. ${coachDescription}`}
-        accessibilityHint={onLongPress ? "Long press to edit" : isMarketplaceMode ? "Opens coach preview" : "Opens chat conversation with this coach"}
+        accessibilityLabel={`${isMarketplaceMode ? 'Open' : 'Chat with'} ${coach.name}. ${coachDescription}`}
+        accessibilityHint={onLongPress ? "Long press to edit" : isMarketplaceMode ? "Opens coach profile" : "Opens chat conversation with this coach"}
         testID={testID}
         style={({ pressed, focused }) => [
           styles.card,

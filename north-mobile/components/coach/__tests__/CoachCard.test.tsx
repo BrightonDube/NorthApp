@@ -207,7 +207,7 @@ describe('CoachCard', () => {
         />
       );
 
-      expect(getByLabelText('Preview Public Strategy Coach. You are a strategic thinking coach')).toBeTruthy();
+      expect(getByLabelText('Open Public Strategy Coach. You are a strategic thinking coach')).toBeTruthy();
     });
 
     it('truncates long descriptions to 2 lines', () => {

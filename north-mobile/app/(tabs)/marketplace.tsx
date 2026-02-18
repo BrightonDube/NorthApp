@@ -10,7 +10,7 @@
  * - Featured section (horizontal scroll, max 5 coaches)
  * - Grid layout for all public coaches
  * - Pull-to-refresh functionality
- * - Tap to preview coach before installing
+ * - Tap to view coach profile before installing
  * - Share button on coach cards
  * - Empty states and loading skeletons
  * 
