@@ -1,3 +1,7 @@
+[project]
+id = "6f8dc722-17cf-4189-9e28-36add81db450"
+service = "2c555a37-5e4c-4a8d-b8e8-eae8734d90fb"
+
 [build]
 builder = "NIXPACKS"
 buildCommand = "pip install -r requirements.txt"
