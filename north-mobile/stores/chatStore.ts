@@ -474,22 +474,17 @@ export const useChatStore = create<ChatStore>()(
             streamingSessionId: sessionId,
           });
 
-          // Call Edge Function with SSE streaming
-          const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-          const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+          // Call Python backend (Railway) with SSE streaming
+          const apiUrl = process.env.EXPO_PUBLIC_API_URL;
           
-          // Validate env vars are available (prevents crash if misconfigured)
-          if (!supabaseUrl || !supabaseAnonKey) {
-            console.error('[ChatStore] Missing environment variables:', {
-              hasUrl: !!supabaseUrl,
-              hasKey: !!supabaseAnonKey,
-            });
+          if (!apiUrl) {
+            console.error('[ChatStore] EXPO_PUBLIC_API_URL is not set');
             throw new Error('App configuration error. Please restart the app.');
           }
           
           if (__DEV__) {
-            console.log('[ChatStore] Calling Edge Function:', {
-              url: `${supabaseUrl}/functions/v1/chat`,
+            console.log('[ChatStore] Calling Python backend:', {
+              url: `${apiUrl}/v1/chat/stream`,
               sessionId,
               coachId,
             });
@@ -502,23 +497,22 @@ export const useChatStore = create<ChatStore>()(
           let response: Response;
           try {
             response = await fetch(
-              `${supabaseUrl}/functions/v1/chat`,
+              `${apiUrl}/v1/chat/stream`,
               {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${session.access_token}`,
-                  'apikey': supabaseAnonKey,
                 },
                 body: JSON.stringify({
-                  sessionId,
-                  coachId,
+                  session_id: sessionId,
+                  coach_id: coachId,
                   message: content,
                   ...(attachments && attachments.length > 0 ? {
                     attachments: attachments.map(a => ({
                       name: a.name,
                       type: a.type,
-                      mimeType: a.mimeType,
+                      mime_type: a.mimeType,
                       base64: a.base64,
                     })),
                   } : {}),
