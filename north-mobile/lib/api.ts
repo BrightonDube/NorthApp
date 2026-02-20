@@ -41,6 +41,10 @@ export const api = {
   // Integrations
   calendarAuth: `${API_BASE}/v1/integrations/calendar/auth`,
   calendarEvents: `${API_BASE}/v1/integrations/calendar/events`,
+
+  // XP / Gamification
+  xp: `${API_BASE}/v1/xp`,
+  xpAward: `${API_BASE}/v1/xp/award`,
 };
 
 /**

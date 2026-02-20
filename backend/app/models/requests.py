@@ -60,3 +60,7 @@ class GoalPlanRequest(BaseModel):
 
 class PanicRequest(BaseModel):
     initial_message: str | None = None
+
+
+class AwardXPRequest(BaseModel):
+    event_type: Literal["task_complete", "check_in", "goal_complete", "streak_bonus", "first_message", "session_report"]

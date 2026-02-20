@@ -197,6 +197,26 @@ export const useCheckInStore = create<CheckInStore>()(
             isLoading: false,
           }));
           get().calculateStreak();
+
+          // Award XP for check-in (fire-and-forget, non-blocking)
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) {
+              const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+              if (apiUrl) {
+                fetch(`${apiUrl}/v1/xp/award`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session.access_token}`,
+                  },
+                  body: JSON.stringify({ event_type: 'check_in' }),
+                }).catch(() => {});
+              }
+            }
+          } catch {
+            // XP award failure is non-critical
+          }
         } catch (err: any) {
           console.error('[CheckInStore] Submit error:', err);
           set({ error: err.message, isLoading: false });
