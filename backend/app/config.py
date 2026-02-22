@@ -6,11 +6,11 @@ class Settings(BaseSettings):
     # Supabase
     supabase_url: str
     supabase_service_key: str
-    supabase_jwt_secret: str
+    supabase_jwt_secret: str = ""  # Legacy — no longer required; auth uses /auth/v1/user
 
     # LLM
     groq_api_key: str
-    openai_api_key: str
+    openai_api_key: str = ""
 
     # Push Notifications
     onesignal_app_id: str = ""
