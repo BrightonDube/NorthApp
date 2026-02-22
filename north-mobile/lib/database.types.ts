@@ -1,13 +1,3 @@
-/**
- * Database Type Definitions
- * 
- * This file contains TypeScript type definitions for the Supabase database schema.
- * These types provide compile-time type safety for all database operations.
- * 
- * Generated based on the database schema defined in DATABASE_SCHEMA.md
- * Validates: Requirements 3.1, 6.1, 8.1, 8.2
- */
-
 export type Json =
   | string
   | number
@@ -16,478 +6,687 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-/**
- * Database schema type definition
- * 
- * This type represents the complete database schema including all tables,
- * views, functions, and enums.
- */
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string
-          name: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          name: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      user_context: {
+      check_ins: {
         Row: {
           id: string
           user_id: string
-          category: 'values' | 'goals' | 'projects' | 'constraints'
-          content: string
+          mood: number
+          energy: number
+          priorities: string[]
+          reflection: string
+          gratitude: string
+          type: string
           created_at: string
-          updated_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          category: 'values' | 'goals' | 'projects' | 'constraints'
-          content: string
+          mood: number
+          energy: number
+          priorities?: string[]
+          reflection?: string
+          gratitude?: string
+          type: string
           created_at?: string
-          updated_at?: string
         }
         Update: {
           id?: string
           user_id?: string
-          category?: 'values' | 'goals' | 'projects' | 'constraints'
-          content?: string
+          mood?: number
+          energy?: number
+          priorities?: string[]
+          reflection?: string
+          gratitude?: string
+          type?: string
           created_at?: string
-          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_context_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
-      coaches: {
+      action_items: {
         Row: {
-          id: string
-          name: string
-          icon: string
-          system_prompt: string
-          creator_id: string | null
-          is_public: boolean
-          category: string
-          is_featured: boolean
-          source_coach_id: string | null
+          completed_at: string | null
           created_at: string
-          updated_at: string
-          theme_color: string | null
-          about: string | null
-          expectations: string[] | null
-          tags: string[] | null
+          id: string
+          linked_action_item_id: string | null
+          report_id: string
+          status: string
+          text: string
+          text_search: unknown
+          user_id: string
         }
         Insert: {
-          id?: string
-          name: string
-          icon: string
-          system_prompt: string
-          creator_id?: string | null
-          is_public?: boolean
-          category?: string
-          is_featured?: boolean
-          source_coach_id?: string | null
+          completed_at?: string | null
           created_at?: string
-          updated_at?: string
-          theme_color?: string | null
-          about?: string | null
-          expectations?: string[] | null
-          tags?: string[] | null
+          id?: string
+          linked_action_item_id?: string | null
+          report_id: string
+          status?: string
+          text: string
+          text_search?: unknown
+          user_id: string
         }
         Update: {
-          id?: string
-          name?: string
-          icon?: string
-          system_prompt?: string
-          creator_id?: string | null
-          is_public?: boolean
-          category?: string
-          is_featured?: boolean
-          source_coach_id?: string | null
+          completed_at?: string | null
           created_at?: string
-          updated_at?: string
-          theme_color?: string | null
-          about?: string | null
-          expectations?: string[] | null
-          tags?: string[] | null
+          id?: string
+          linked_action_item_id?: string | null
+          report_id?: string
+          status?: string
+          text?: string
+          text_search?: unknown
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "coaches_creator_id_fkey"
-            columns: ["creator_id"]
-            referencedRelation: "users"
+            foreignKeyName: "action_items_linked_action_item_id_fkey"
+            columns: ["linked_action_item_id"]
+            isOneToOne: false
+            referencedRelation: "action_items"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "coaches_source_coach_id_fkey"
-            columns: ["source_coach_id"]
-            referencedRelation: "coaches"
+            foreignKeyName: "action_items_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "session_reports"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       chat_sessions: {
         Row: {
-          id: string
-          user_id: string
           coach_id: string
           created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coaches: {
+        Row: {
+          about: string | null
+          category: string | null
+          created_at: string
+          creator_id: string | null
+          expectations: string[] | null
+          icon: string
+          id: string
+          is_featured: boolean | null
+          is_public: boolean
+          name: string
+          source_coach_id: string | null
+          system_prompt: string
+          tags: string[] | null
+          theme_color: string | null
           updated_at: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          coach_id: string
+          about?: string | null
+          category?: string | null
           created_at?: string
+          creator_id?: string | null
+          expectations?: string[] | null
+          icon: string
+          id?: string
+          is_featured?: boolean | null
+          is_public?: boolean
+          name: string
+          source_coach_id?: string | null
+          system_prompt: string
+          tags?: string[] | null
+          theme_color?: string | null
           updated_at?: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          coach_id?: string
+          about?: string | null
+          category?: string | null
           created_at?: string
+          creator_id?: string | null
+          expectations?: string[] | null
+          icon?: string
+          id?: string
+          is_featured?: boolean | null
+          is_public?: boolean
+          name?: string
+          source_coach_id?: string | null
+          system_prompt?: string
+          tags?: string[] | null
+          theme_color?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "chat_sessions_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chat_sessions_coach_id_fkey"
-            columns: ["coach_id"]
+            foreignKeyName: "coaches_source_coach_id_fkey"
+            columns: ["source_coach_id"]
+            isOneToOne: false
             referencedRelation: "coaches"
             referencedColumns: ["id"]
-          }
+          },
+        ]
+      }
+      coaching_sessions: {
+        Row: {
+          coach_id: string
+          created_at: string
+          end_time: string | null
+          id: string
+          message_count: number
+          start_time: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          message_count?: number
+          start_time?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          message_count?: number
+          start_time?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaching_sessions_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          category: string
+          coach_id: string | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          difficulty: string
+          id: string
+          progress: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          coach_id?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          difficulty?: string
+          id?: string
+          progress?: number
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          coach_id?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          difficulty?: string
+          id?: string
+          progress?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      llm_config: {
+        Row: {
+          id: string
+          is_active: boolean
+          max_tokens: number
+          model: string
+          provider: string
+          temperature: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean
+          max_tokens?: number
+          model?: string
+          provider?: string
+          temperature?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          max_tokens?: number
+          model?: string
+          provider?: string
+          temperature?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      memories: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          embedding: string | null
+          id: string
+          importance: string
+          source_message_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          importance?: string
+          source_message_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          importance?: string
+          source_message_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memories_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
         ]
       }
       messages: {
         Row: {
-          id: string
           chat_session_id: string
-          role: 'user' | 'assistant'
           content: string
           created_at: string
+          id: string
+          role: string
         }
         Insert: {
-          id?: string
           chat_session_id: string
-          role: 'user' | 'assistant'
           content: string
           created_at?: string
+          id?: string
+          role: string
         }
         Update: {
-          id?: string
           chat_session_id?: string
-          role?: 'user' | 'assistant'
           content?: string
           created_at?: string
+          id?: string
+          role?: string
         }
         Relationships: [
           {
             foreignKeyName: "messages_chat_session_id_fkey"
             columns: ["chat_session_id"]
+            isOneToOne: false
             referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
-          }
-        ]
-      }
-      file_attachments: {
-        Row: {
-          id: string
-          user_id: string
-          filename: string
-          file_type: 'pdf' | 'txt' | 'md'
-          file_size: number
-          upload_date: string
-          storage_path: string
-          storage_url: string
-          extracted_content: string | null
-          extraction_success: boolean
-          extraction_error: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          filename: string
-          file_type: 'pdf' | 'txt' | 'md'
-          file_size: number
-          upload_date?: string
-          storage_path: string
-          storage_url: string
-          extracted_content?: string | null
-          extraction_success?: boolean
-          extraction_error?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          filename?: string
-          file_type?: 'pdf' | 'txt' | 'md'
-          file_size?: number
-          upload_date?: string
-          storage_path?: string
-          storage_url?: string
-          extracted_content?: string | null
-          extraction_success?: boolean
-          extraction_error?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "file_attachments_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      session_file_selections: {
-        Row: {
-          id: string
-          session_id: string
-          file_id: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          session_id: string
-          file_id: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          session_id?: string
-          file_id?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "session_file_selections_file_id_fkey"
-            columns: ["file_id"]
-            referencedRelation: "file_attachments"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      coaching_sessions: {
-        Row: {
-          id: string
-          user_id: string
-          coach_id: string
-          start_time: string
-          end_time: string | null
-          message_count: number
-          status: 'active' | 'ended'
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          coach_id: string
-          start_time?: string
-          end_time?: string | null
-          message_count?: number
-          status?: 'active' | 'ended'
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          coach_id?: string
-          start_time?: string
-          end_time?: string | null
-          message_count?: number
-          status?: 'active' | 'ended'
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coaching_sessions_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "coaching_sessions_coach_id_fkey"
-            columns: ["coach_id"]
-            referencedRelation: "coaches"
-            referencedColumns: ["id"]
-          }
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          firmness_level: number
+          google_calendar_tokens: Json | null
+          id: string
+          is_admin: boolean | null
+          is_pro: boolean
+          name: string
+          updated_at: string
+          voice_enabled: boolean
+        }
+        Insert: {
+          created_at?: string
+          firmness_level?: number
+          google_calendar_tokens?: Json | null
+          id: string
+          is_admin?: boolean | null
+          is_pro?: boolean
+          name: string
+          updated_at?: string
+          voice_enabled?: boolean
+        }
+        Update: {
+          created_at?: string
+          firmness_level?: number
+          google_calendar_tokens?: Json | null
+          id?: string
+          is_admin?: boolean | null
+          is_pro?: boolean
+          name?: string
+          updated_at?: string
+          voice_enabled?: boolean
+        }
+        Relationships: []
       }
       session_reports: {
         Row: {
-          id: string
-          session_id: string
-          user_id: string
           coach_id: string
-          summary: string
-          key_insights: Json
+          confidence: string
+          created_at: string
           decisions: Json
-          topics: string[]
+          generated_at: string
+          generation_attempts: number
+          id: string
+          key_insights: Json
+          message_count: number
           session_date: string
           session_duration: number
-          message_count: number
-          generated_at: string
-          confidence: 'high' | 'medium' | 'low'
-          generation_attempts: number
-          created_at: string
+          session_id: string
+          summary: string
+          topics: string[]
           updated_at: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          session_id: string
-          user_id: string
           coach_id: string
-          summary: string
-          key_insights?: Json
+          confidence?: string
+          created_at?: string
           decisions?: Json
-          topics?: string[]
+          generated_at?: string
+          generation_attempts?: number
+          id?: string
+          key_insights?: Json
+          message_count: number
           session_date: string
           session_duration: number
-          message_count: number
-          generated_at?: string
-          confidence?: 'high' | 'medium' | 'low'
-          generation_attempts?: number
-          created_at?: string
+          session_id: string
+          summary: string
+          topics?: string[]
           updated_at?: string
+          user_id: string
         }
         Update: {
-          id?: string
-          session_id?: string
-          user_id?: string
           coach_id?: string
-          summary?: string
-          key_insights?: Json
+          confidence?: string
+          created_at?: string
           decisions?: Json
-          topics?: string[]
+          generated_at?: string
+          generation_attempts?: number
+          id?: string
+          key_insights?: Json
+          message_count?: number
           session_date?: string
           session_duration?: number
-          message_count?: number
-          generated_at?: string
-          confidence?: 'high' | 'medium' | 'low'
-          generation_attempts?: number
-          created_at?: string
+          session_id?: string
+          summary?: string
+          topics?: string[]
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "session_reports_session_id_fkey"
-            columns: ["session_id"]
-            referencedRelation: "coaching_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "session_reports_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "session_reports_coach_id_fkey"
             columns: ["coach_id"]
+            isOneToOne: false
             referencedRelation: "coaches"
             referencedColumns: ["id"]
-          }
+          },
+          {
+            foreignKeyName: "session_reports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      action_items: {
+      subtasks: {
         Row: {
-          id: string
-          report_id: string
-          user_id: string
-          text: string
-          status: 'pending' | 'completed' | 'cancelled'
-          created_at: string
           completed_at: string | null
-          linked_action_item_id: string | null
+          created_at: string
+          due_date: string | null
+          goal_id: string
+          id: string
+          order_index: number
+          status: string
+          title: string
+          user_id: string
         }
         Insert: {
-          id?: string
-          report_id: string
-          user_id: string
-          text: string
-          status?: 'pending' | 'completed' | 'cancelled'
-          created_at?: string
           completed_at?: string | null
-          linked_action_item_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          goal_id: string
+          id?: string
+          order_index?: number
+          status?: string
+          title: string
+          user_id: string
         }
         Update: {
-          id?: string
-          report_id?: string
-          user_id?: string
-          text?: string
-          status?: 'pending' | 'completed' | 'cancelled'
-          created_at?: string
           completed_at?: string | null
-          linked_action_item_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          goal_id?: string
+          id?: string
+          order_index?: number
+          status?: string
+          title?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "action_items_report_id_fkey"
-            columns: ["report_id"]
-            referencedRelation: "session_reports"
+            foreignKeyName: "subtasks_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "action_items_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "action_items_linked_action_item_id_fkey"
-            columns: ["linked_action_item_id"]
-            referencedRelation: "action_items"
-            referencedColumns: ["id"]
-          }
         ]
+      }
+      user_context: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_xp: {
+        Row: {
+          current_streak: number
+          level: number
+          longest_streak: number
+          total_xp: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          level?: number
+          longest_streak?: number
+          total_xp?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          level?: number
+          longest_streak?: number
+          total_xp?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      xp_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          user_id: string
+          xp_amount: number
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          user_id: string
+          xp_amount: number
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          user_id?: string
+          xp_amount?: number
+        }
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_inactive_users: {
+        Args: { hours_threshold?: number }
+        Returns: {
+          user_id: string
+        }[]
+      }
+      get_pending_action_items: {
+        Args: { p_user_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          report_id: string
+          text: string
+        }[]
+      }
+      get_recent_session_reports: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: {
+          id: string
+          key_insights: Json
+          session_date: string
+          summary: string
+          topics: string[]
+        }[]
+      }
+      match_memories: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          match_user_id: string
+          query_embedding: string
+        }
+        Returns: {
+          category: string
+          content: string
+          id: string
+          importance: string
+          similarity: number
+        }[]
+      }
+      search_session_reports: {
+        Args: { p_limit?: number; p_query: string; p_user_id: string }
+        Returns: {
+          id: string
+          key_insights: Json
+          rank: number
+          session_date: string
+          summary: string
+          topics: string[]
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -498,58 +697,126 @@ export interface Database {
   }
 }
 
-/**
- * Helper types for easier access to table types
- */
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
-export type Inserts<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
-export type Updates<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update']
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-/**
- * Specific table row types for convenience
- */
-export type Profile = Tables<'profiles'>
-export type UserContext = Tables<'user_context'>
-export type Coach = Tables<'coaches'>
-export type ChatSession = Tables<'chat_sessions'>
-export type Message = Tables<'messages'>
-export type FileAttachment = Tables<'file_attachments'>
-export type SessionFileSelection = Tables<'session_file_selections'>
-export type CoachingSession = Tables<'coaching_sessions'>
-export type SessionReport = Tables<'session_reports'>
-export type ActionItem = Tables<'action_items'>
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-/**
- * Specific table insert types for convenience
- */
-export type ProfileInsert = Inserts<'profiles'>
-export type UserContextInsert = Inserts<'user_context'>
-export type CoachInsert = Inserts<'coaches'>
-export type FileAttachmentInsert = Inserts<'file_attachments'>
-export type SessionFileSelectionInsert = Inserts<'session_file_selections'>
-export type ChatSessionInsert = Inserts<'chat_sessions'>
-export type MessageInsert = Inserts<'messages'>
-export type CoachingSessionInsert = Inserts<'coaching_sessions'>
-export type SessionReportInsert = Inserts<'session_reports'>
-export type ActionItemInsert = Inserts<'action_items'>
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-/**
- * Specific table update types for convenience
- */
-export type ProfileUpdate = Updates<'profiles'>
-export type UserContextUpdate = Updates<'user_context'>
-export type CoachUpdate = Updates<'coaches'>
-export type ChatSessionUpdate = Updates<'chat_sessions'>
-export type MessageUpdate = Updates<'messages'>
-export type CoachingSessionUpdate = Updates<'coaching_sessions'>
-export type SessionReportUpdate = Updates<'session_reports'>
-export type ActionItemUpdate = Updates<'action_items'>
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-/**
- * Enum types for type-safe category and role values
- */
-export type ContextCategory = Database['public']['Tables']['user_context']['Row']['category']
-export type MessageRole = Database['public']['Tables']['messages']['Row']['role']
-export type SessionStatus = Database['public']['Tables']['coaching_sessions']['Row']['status']
-export type ActionItemStatus = Database['public']['Tables']['action_items']['Row']['status']
-export type ReportConfidence = Database['public']['Tables']['session_reports']['Row']['confidence']
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
+
