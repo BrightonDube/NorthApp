@@ -1,13 +1,28 @@
-from openai import AsyncOpenAI
-from app.services.embeddings import get_openai_client
+import httpx
+from app.config import get_settings
+
+STT_MODEL = "whisper-large-v3-turbo"
+GROQ_STT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 
 
 async def transcribe_audio(audio_bytes: bytes, filename: str = "audio.webm") -> str:
-    client = get_openai_client()
+    settings = get_settings()
 
-    transcript = await client.audio.transcriptions.create(
-        model="whisper-1",
-        file=(filename, audio_bytes, "audio/webm"),
-    )
+    mime = "audio/webm"
+    if filename.endswith(".m4a"):
+        mime = "audio/mp4"
+    elif filename.endswith(".mp3"):
+        mime = "audio/mpeg"
+    elif filename.endswith(".wav"):
+        mime = "audio/wav"
 
-    return transcript.text
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            GROQ_STT_URL,
+            headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+            files={"file": (filename, audio_bytes, mime)},
+            data={"model": STT_MODEL, "response_format": "json"},
+        )
+
+    resp.raise_for_status()
+    return resp.json().get("text", "")

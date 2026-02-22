@@ -3,6 +3,7 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from '@/lib/supabase';
 import { api } from '@/lib/api';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 interface VoiceState {
   isRecording: boolean;
@@ -21,9 +22,14 @@ export function useVoice() {
     error: null,
   });
 
+  const voiceEnabled = useSettingsStore(s => s.voiceEnabled);
   const recordingRef = { current: null as Audio.Recording | null };
 
   const startRecording = useCallback(async () => {
+    if (!voiceEnabled) {
+      setState(s => ({ ...s, error: 'Voice is a Pro feature. Enable it in Settings.' }));
+      return;
+    }
     try {
       const { granted } = await Audio.requestPermissionsAsync();
       if (!granted) throw new Error('Microphone permission denied');
@@ -88,7 +94,11 @@ export function useVoice() {
     }
   }, []);
 
-  const synthesizeSpeech = useCallback(async (text: string, voice = 'nova'): Promise<void> => {
+  const synthesizeSpeech = useCallback(async (text: string, voice = 'leah'): Promise<void> => {
+    if (!voiceEnabled) {
+      setState(s => ({ ...s, error: 'Voice is a Pro feature. Enable it in Settings.' }));
+      return;
+    }
     setState(s => ({ ...s, isSynthesizing: true, error: null }));
     try {
       const { data: { session } } = await supabase.auth.getSession();

@@ -51,6 +51,7 @@ class UpdateSubtaskRequest(BaseModel):
 
 class UpdateSettingsRequest(BaseModel):
     firmness_level: int | None = Field(default=None, ge=0, le=10)
+    voice_enabled: bool | None = None
 
 
 class GoalPlanRequest(BaseModel):

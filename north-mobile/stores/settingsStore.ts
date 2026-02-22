@@ -6,6 +6,7 @@ import { api, buildAuthHeaders } from '@/lib/api';
 
 interface SettingsState {
   firmnessLevel: number;
+  voiceEnabled: boolean;
   isLoading: boolean;
   error: string | null;
 }
@@ -13,6 +14,7 @@ interface SettingsState {
 interface SettingsActions {
   fetchSettings: () => Promise<void>;
   updateFirmness: (level: number) => Promise<boolean>;
+  setVoiceEnabled: (enabled: boolean) => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -25,6 +27,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
   persist(
     (set) => ({
       firmnessLevel: 5,
+      voiceEnabled: false,
       isLoading: false,
       error: null,
 
@@ -41,10 +44,40 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           if (!response.ok) throw new Error(`Failed to fetch settings: ${response.status}`);
 
           const data = await response.json();
-          set({ firmnessLevel: data.firmness_level ?? 5, isLoading: false });
+          set({
+            firmnessLevel: data.firmness_level ?? 5,
+            voiceEnabled: data.voice_enabled ?? false,
+            isLoading: false,
+          });
         } catch (e) {
           const msg = e instanceof Error ? e.message : 'Failed to fetch settings';
           set({ error: msg, isLoading: false });
+        }
+      },
+
+      setVoiceEnabled: async (enabled: boolean) => {
+        try {
+          const token = await getAccessToken();
+          if (!token) throw new Error('Not authenticated');
+
+          const response = await fetch(api.settings, {
+            method: 'PATCH',
+            headers: buildAuthHeaders(token),
+            body: JSON.stringify({ voice_enabled: enabled }),
+          });
+
+          if (response.status === 403) {
+            set({ error: 'Voice features require a Pro subscription' });
+            return false;
+          }
+          if (!response.ok) throw new Error(`Failed to update voice setting: ${response.status}`);
+
+          set({ voiceEnabled: enabled });
+          return true;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Failed to update voice setting';
+          set({ error: msg });
+          return false;
         }
       },
 
@@ -76,7 +109,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
     {
       name: 'settings-store',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: state => ({ firmnessLevel: state.firmnessLevel }),
+      partialize: state => ({ firmnessLevel: state.firmnessLevel, voiceEnabled: state.voiceEnabled }),
     }
   )
 );

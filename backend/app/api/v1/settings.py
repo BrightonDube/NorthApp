@@ -12,7 +12,7 @@ async def get_settings_endpoint(user: AuthUser = Depends(get_current_user)):
     supabase = get_supabase_client()
     result = (
         supabase.from_("profiles")
-        .select("id, firmness_level")
+        .select("id, firmness_level, voice_enabled")
         .eq("id", user.id)
         .single()
         .execute()
@@ -23,6 +23,7 @@ async def get_settings_endpoint(user: AuthUser = Depends(get_current_user)):
     return SettingsResponse(
         user_id=result.data["id"],
         firmness_level=result.data.get("firmness_level") or 5,
+        voice_enabled=result.data.get("voice_enabled") or False,
     )
 
 
@@ -37,11 +38,26 @@ async def update_settings_endpoint(
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
+    # Only pro users can enable voice
+    if update_data.get("voice_enabled") is True:
+        profile = (
+            supabase.from_("profiles")
+            .select("is_pro")
+            .eq("id", user.id)
+            .single()
+            .execute()
+        )
+        if not profile.data or not profile.data.get("is_pro"):
+            raise HTTPException(
+                status_code=403,
+                detail="Voice features require a Pro subscription",
+            )
+
     result = (
         supabase.from_("profiles")
         .update(update_data)
         .eq("id", user.id)
-        .select("id, firmness_level")
+        .select("id, firmness_level, voice_enabled")
         .single()
         .execute()
     )
@@ -51,4 +67,5 @@ async def update_settings_endpoint(
     return SettingsResponse(
         user_id=result.data["id"],
         firmness_level=result.data.get("firmness_level") or 5,
+        voice_enabled=result.data.get("voice_enabled") or False,
     )

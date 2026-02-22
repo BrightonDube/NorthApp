@@ -47,6 +47,7 @@ class XPResponse(BaseModel):
 class SettingsResponse(BaseModel):
     firmness_level: int
     user_id: str
+    voice_enabled: bool = False
 
 
 class TranscriptResponse(BaseModel):
