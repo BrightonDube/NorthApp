@@ -1,0 +1,37 @@
+# Deta Space configuration
+v: 0
+micros:
+  - name: north-backend
+    src: .
+    engine: python3.9
+    primary: true
+    run: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    presets:
+      env:
+        - name: ENVIRONMENT
+          description: Environment (production/development)
+          default: production
+        - name: SUPABASE_URL
+          description: Supabase project URL
+        - name: SUPABASE_SERVICE_KEY
+          description: Supabase service role key
+        - name: SUPABASE_JWT_SECRET
+          description: Supabase JWT secret
+        - name: GROQ_API_KEY
+          description: Groq API key
+        - name: OPENAI_API_KEY
+          description: OpenAI API key (optional)
+        - name: ONESIGNAL_APP_ID
+          description: OneSignal app ID
+        - name: ONESIGNAL_API_KEY
+          description: OneSignal REST API key
+        - name: TAVILY_API_KEY
+          description: Tavily API key
+        - name: GOOGLE_CLIENT_ID
+          description: Google OAuth client ID
+        - name: GOOGLE_CLIENT_SECRET
+          description: Google OAuth client secret
+        - name: GOOGLE_REDIRECT_URI
+          description: Google OAuth redirect URI
+        - name: ALLOWED_ORIGINS
+          description: Comma-separated allowed CORS origins

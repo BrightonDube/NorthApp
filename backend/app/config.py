@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     # Supabase
     supabase_url: str
     supabase_service_key: str
-    supabase_jwt_secret: str = ""  # Legacy — no longer required; auth uses /auth/v1/user
+    # JWT_SECRET removed - now using JWKS endpoint with ES256 algorithm
 
     # LLM
     groq_api_key: str

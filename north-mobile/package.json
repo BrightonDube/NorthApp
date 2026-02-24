@@ -22,6 +22,7 @@
     "presubmit": "npm run setup:service-account"
   },
   "dependencies": {
+    "@expo/ngrok": "^4.1.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/netinfo": "^11.5.0",
     "@react-navigation/native": "^7.1.8",
