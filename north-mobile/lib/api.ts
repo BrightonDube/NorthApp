@@ -48,6 +48,9 @@ export const api = {
 
   // Check-ins
   checkIns: `${API_BASE}/v1/check-ins`,
+
+  // GROW
+  growState: (sessionId: string) => `${API_BASE}/v1/sessions/${sessionId}/grow`,
 };
 
 /**

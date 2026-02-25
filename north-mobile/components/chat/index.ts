@@ -27,3 +27,5 @@ export { StreamingIndicator } from './StreamingIndicator';
 
 export { SessionFileSelector } from './SessionFileSelector';
 export type { SessionFileSelectorProps } from './SessionFileSelector';
+
+export { GrowIndicator } from './GrowIndicator';

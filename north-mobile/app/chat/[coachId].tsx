@@ -31,7 +31,7 @@ import * as Haptics from 'expo-haptics';
 import { useChatStore, useSessionMessages, useStreamingMessage, useIsSending } from '@/stores/chatStore';
 import { useCoachStore, useCoachById } from '@/stores/coachStore';
 import { useBillingStore } from '@/stores/billingStore';
-import { ChatHeader, MessageList, ChatInput, ContextUsageBar } from '@/components/chat';
+import { ChatHeader, MessageList, ChatInput, ContextUsageBar, GrowIndicator } from '@/components/chat';
 import type { FileAttachment } from '@/components/chat/ChatInput';
 import { SessionFileSelector } from '@/components/chat/SessionFileSelector';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
@@ -41,6 +41,8 @@ import { canSendMessage, incrementDailyMessageCount, getDailyMessageCount, getFr
 import { Analytics } from '@/lib/analytics';
 import { shareConversation } from '@/lib/conversationExport';
 import type { Coach } from '@/types';
+import { supabase } from '@/lib/supabase';
+import { api, buildAuthHeaders } from '@/lib/api';
 
 
 /**
@@ -119,6 +121,7 @@ export default function ChatScreen() {
   const [totalLoaded, setTotalLoaded] = useState(0);
   const [showFileSelector, setShowFileSelector] = useState(false);
   const [dailyRemaining, setDailyRemaining] = useState<number | null>(null);
+  const [growState, setGrowState] = useState<'goal' | 'reality' | 'options' | 'way_forward' | 'complete'>('goal');
   
   // Get messages for current session
   const messages = useSessionMessages(sessionId || '');
@@ -127,6 +130,27 @@ export default function ChatScreen() {
 
   // Pagination constants
   const PAGE_SIZE = 50;
+
+  const refreshGrowState = useCallback(async (currentSessionId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) return;
+
+      const response = await fetch(api.growState(currentSessionId), {
+        method: 'GET',
+        headers: buildAuthHeaders(accessToken),
+      });
+      if (!response.ok) return;
+
+      const payload = await response.json();
+      if (payload?.state) {
+        setGrowState(payload.state);
+      }
+    } catch (err) {
+      console.warn('[ChatScreen] Failed to fetch GROW state:', err);
+    }
+  }, []);
 
   // Initialize session on mount
   useEffect(() => {
@@ -141,6 +165,7 @@ export default function ChatScreen() {
         // Get or create session
         const session = await fetchOrCreateSession(coachId);
         setSessionId(session.id);
+        await refreshGrowState(session.id);
         
         // Fetch initial messages (first page)
         await fetchMessages(session.id, PAGE_SIZE, 0);
@@ -157,7 +182,12 @@ export default function ChatScreen() {
     };
 
     initializeChat();
-  }, [coachId]);
+  }, [coachId, refreshGrowState]);
+
+  useEffect(() => {
+    if (!sessionId || isSending) return;
+    refreshGrowState(sessionId);
+  }, [sessionId, isSending, messages.length, refreshGrowState]);
 
   // Update hasMore based on messages loaded
   useEffect(() => {
@@ -333,6 +363,7 @@ export default function ChatScreen() {
         onExport={messages.length > 0 ? handleExport : undefined}
         onOpenFileSelector={sessionId ? handleOpenFileSelector : undefined}
       />
+      <GrowIndicator state={growState} />
       <ContextUsageBar
         messages={messages}
         streamingMessage={streamingMessage}
