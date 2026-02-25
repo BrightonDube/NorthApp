@@ -589,21 +589,20 @@ export const useChatStore = create<ChatStore>()(
                   
                   if (data === '[DONE]') continue;
 
+                  let event: any;
                   try {
-                    const event = JSON.parse(data);
-
-                    if (event.type === 'token') {
-                      get().appendStreamingToken(event.data);
-                    } else if (event.type === 'done') {
-                      get().finalizeStreamingMessage(event.data.messageId);
-                    } else if (event.type === 'error') {
-                      throw new Error(event.data.message);
-                    }
+                    event = JSON.parse(data);
                   } catch (parseError) {
-                    if (parseError instanceof Error && parseError.message !== 'Error parsing SSE event') {
-                      // Re-throw non-parse errors (like event.type === 'error')
-                      if (data !== '[DONE]') console.error('Error parsing SSE event:', parseError);
-                    }
+                    console.error('Error parsing SSE event:', parseError);
+                    continue;
+                  }
+
+                  if (event.type === 'token') {
+                    get().appendStreamingToken(event.data);
+                  } else if (event.type === 'done') {
+                    get().finalizeStreamingMessage(event.data.messageId);
+                  } else if (event.type === 'error') {
+                    throw new Error(event.data?.message || 'The coaching service is temporarily unavailable. Please try again in a moment.');
                   }
                 }
               }
@@ -619,18 +618,20 @@ export const useChatStore = create<ChatStore>()(
                 
                 if (data === '[DONE]') continue;
 
+                let event: any;
                 try {
-                  const event = JSON.parse(data);
-
-                  if (event.type === 'token') {
-                    get().appendStreamingToken(event.data);
-                  } else if (event.type === 'done') {
-                    get().finalizeStreamingMessage(event.data.messageId);
-                  } else if (event.type === 'error') {
-                    throw new Error(event.data.message);
-                  }
+                  event = JSON.parse(data);
                 } catch (parseError) {
                   console.error('Error parsing SSE event:', parseError);
+                  continue;
+                }
+
+                if (event.type === 'token') {
+                  get().appendStreamingToken(event.data);
+                } else if (event.type === 'done') {
+                  get().finalizeStreamingMessage(event.data.messageId);
+                } else if (event.type === 'error') {
+                  throw new Error(event.data?.message || 'The coaching service is temporarily unavailable. Please try again in a moment.');
                 }
               }
             }

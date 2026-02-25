@@ -104,8 +104,8 @@ export const useCheckInStore = create<CheckInStore>()(
             .limit(limit);
 
           if (error) {
-            // Table may not exist yet
-            if (error.code === '42P01') {
+            // Table may not exist yet (PostgREST schema cache miss or SQL relation missing)
+            if (error.code === '42P01' || error.code === 'PGRST205') {
               set({ isLoading: false });
               return;
             }
@@ -155,7 +155,7 @@ export const useCheckInStore = create<CheckInStore>()(
 
           if (error) {
             // If table doesn't exist, store locally
-            if (error.code === '42P01') {
+            if (error.code === '42P01' || error.code === 'PGRST205') {
               const localCheckIn: CheckIn = {
                 id: `local-${Date.now()}`,
                 userId: user.id,
@@ -219,7 +219,9 @@ export const useCheckInStore = create<CheckInStore>()(
           }
         } catch (err: any) {
           console.error('[CheckInStore] Submit error:', err);
-          set({ error: err.message, isLoading: false });
+          const message = err?.message || 'Failed to submit check-in';
+          set({ error: message, isLoading: false });
+          throw new Error(message);
         }
       },
 
