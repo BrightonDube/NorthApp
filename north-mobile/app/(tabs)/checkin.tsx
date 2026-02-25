@@ -97,8 +97,9 @@ export default function CheckInScreen() {
       setPriorities('');
       setReflection('');
       setGratitude('');
-      
-      Alert.alert('✅ Check-in Complete!', `Your streak: ${currentStreak + 1} days 🔥`);
+
+      const updatedStreak = useCheckInStore.getState().currentStreak;
+      Alert.alert('✅ Check-in Complete!', `Your streak: ${updatedStreak} days 🔥`);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to submit check-in');
     }

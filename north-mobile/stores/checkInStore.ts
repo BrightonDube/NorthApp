@@ -57,6 +57,20 @@ type CheckInStore = CheckInState & CheckInActions;
 
 const FREE_WEEKLY_LIMIT = 3;
 
+function normalizeDateString(value?: string | null): string {
+  if (!value) return new Date().toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
+function computeWeeklyCount(checkIns: CheckIn[]): number {
+  const weekStart = getStartOfWeek();
+  return checkIns.filter(c => {
+    const createdAt = new Date(normalizeDateString(c.createdAt));
+    return createdAt >= weekStart;
+  }).length;
+}
+
 function getStartOfWeek(): Date {
   const now = new Date();
   const day = now.getDay();
@@ -121,7 +135,7 @@ export const useCheckInStore = create<CheckInStore>()(
             reflection: row.reflection || '',
             gratitude: row.gratitude || '',
             type: row.type || 'morning',
-            createdAt: row.created_at,
+            createdAt: normalizeDateString(row.created_at),
           }));
 
           set({ checkIns, isLoading: false });
@@ -165,7 +179,7 @@ export const useCheckInStore = create<CheckInStore>()(
                 reflection: data.reflection || '',
                 gratitude: data.gratitude || '',
                 type: data.type,
-                createdAt: new Date().toISOString(),
+                createdAt: normalizeDateString(new Date().toISOString()),
               };
 
               set(state => ({
@@ -188,7 +202,7 @@ export const useCheckInStore = create<CheckInStore>()(
             reflection: inserted.reflection || '',
             gratitude: inserted.gratitude || '',
             type: inserted.type || data.type,
-            createdAt: inserted.created_at,
+            createdAt: normalizeDateString(inserted.created_at),
           };
 
           set(state => ({
@@ -197,6 +211,7 @@ export const useCheckInStore = create<CheckInStore>()(
             isLoading: false,
           }));
           get().calculateStreak();
+          await get().fetchCheckIns();
 
           // Award XP for check-in (fire-and-forget, non-blocking)
           try {
@@ -233,7 +248,7 @@ export const useCheckInStore = create<CheckInStore>()(
 
       getWeeklyCheckIns: () => {
         const weekStart = getStartOfWeek();
-        return get().checkIns.filter(c => new Date(c.createdAt) >= weekStart);
+        return get().checkIns.filter(c => new Date(normalizeDateString(c.createdAt)) >= weekStart);
       },
 
       getMoodTrend: (days = 14) => {
@@ -270,7 +285,7 @@ export const useCheckInStore = create<CheckInStore>()(
 
         // Get unique days with check-ins
         const uniqueDays = [...new Set(
-          checkIns.map(c => c.createdAt.split('T')[0])
+          checkIns.map(c => normalizeDateString(c.createdAt).split('T')[0])
         )].sort().reverse();
 
         // Calculate current streak
@@ -309,7 +324,7 @@ export const useCheckInStore = create<CheckInStore>()(
         set({
           currentStreak: streak,
           longestStreak: Math.max(longest, streak),
-          weeklyCount: get().getWeeklyCheckIns().length,
+          weeklyCount: computeWeeklyCount(checkIns),
         });
       },
 

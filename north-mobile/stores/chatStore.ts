@@ -494,147 +494,172 @@ export const useChatStore = create<ChatStore>()(
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
           
-          let response: Response;
-          try {
-            response = await fetch(
-              `${apiUrl}/v1/chat/stream`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({
-                  session_id: sessionId,
-                  coach_id: coachId,
-                  message: content,
-                  ...(attachments && attachments.length > 0 ? {
-                    attachments: attachments.map(a => ({
-                      name: a.name,
-                      type: a.type,
-                      mime_type: a.mimeType,
-                      base64: a.base64,
-                    })),
-                  } : {}),
-                }),
-                signal: controller.signal,
-              }
-            );
-          } catch (fetchError) {
-            clearTimeout(timeoutId);
-            if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-              throw new Error('The coach is taking too long to respond. Please try again.');
-            }
-            throw fetchError;
-          }
-          clearTimeout(timeoutId);
+          const parseSsePayload = (event: any): { token?: string; messageId?: string; error?: string } => {
+            if (!event || typeof event !== 'object') return {};
+            const payload = event.data ?? {};
+            const token = typeof payload === 'string'
+              ? payload
+              : typeof event.content === 'string'
+                ? event.content
+                : typeof payload.content === 'string'
+                  ? payload.content
+                  : typeof payload.token === 'string'
+                    ? payload.token
+                    : undefined;
+            const messageId = payload?.messageId ?? payload?.message_id ?? event?.messageId ?? event?.message_id;
+            const error = payload?.message ?? payload?.error ?? event?.message;
+            return { token, messageId, error };
+          };
 
-          if (__DEV__) {
-            console.log('[ChatStore] Response status:', response.status, response.statusText);
-          }
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            if (__DEV__) {
-              console.error('[ChatStore] Edge Function error:', {
-                status: response.status,
-                statusText: response.statusText,
-                body: errorText,
-              });
-            }
-            
-            // Handle Gemini safety filter / blocked content (typically 400 or 403)
-            if (response.status === 400 || response.status === 403) {
-              const lowerText = (errorText || '').toLowerCase();
-              if (lowerText.includes('safety') || lowerText.includes('blocked') || lowerText.includes('harm')) {
-                throw new Error('Your message could not be processed due to content safety guidelines. Please rephrase and try again.');
-              }
-            }
-            
-            // Handle server errors (5xx) with user-friendly message
-            if (response.status >= 500) {
-              throw new Error('The coaching service is temporarily unavailable. Please try again in a moment.');
-            }
-
-            // Handle 401 auth errors with user-friendly message
-            if (response.status === 401) {
-              throw new Error('Your session has expired. Please close this screen and log in again.');
-            }
-            
-            throw new Error(`Something went wrong. Please try again.`);
-          }
-
-          // Handle SSE stream
-          // React Native's fetch doesn't support ReadableStream (response.body is null),
-          // so we fall back to reading the full response as text and parsing SSE events.
-          const reader = response.body?.getReader();
-
-          if (reader) {
-            // Web/environments with ReadableStream support
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            while (true) {
-              const { done, value } = await reader.read();
-              
-              if (done) break;
-
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const data = line.slice(6);
-                  
-                  if (data === '[DONE]') continue;
-
-                  let event: any;
-                  try {
-                    event = JSON.parse(data);
-                  } catch (parseError) {
-                    console.error('Error parsing SSE event:', parseError);
-                    continue;
-                  }
-
-                  if (event.type === 'token') {
-                    get().appendStreamingToken(event.data);
-                  } else if (event.type === 'done') {
-                    get().finalizeStreamingMessage(event.data.messageId);
-                  } else if (event.type === 'error') {
-                    throw new Error(event.data?.message || 'The coaching service is temporarily unavailable. Please try again in a moment.');
-                  }
-                }
-              }
-            }
-          } else {
-            // React Native fallback: read full response text and parse SSE
-            const text = await response.text();
+          const parseAndHandleSseText = (text: string): { shouldRetry: boolean } => {
             const lines = text.split('\n');
+            let shouldRetry = false;
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6).trim();
-                
-                if (data === '[DONE]') continue;
+              if (!line.startsWith('data: ')) continue;
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') continue;
 
-                let event: any;
-                try {
-                  event = JSON.parse(data);
-                } catch (parseError) {
-                  console.error('Error parsing SSE event:', parseError);
-                  continue;
-                }
+              let event: any;
+              try {
+                event = JSON.parse(data);
+              } catch (parseError) {
+                console.error('Error parsing SSE event:', parseError);
+                continue;
+              }
 
-                if (event.type === 'token') {
-                  get().appendStreamingToken(event.data);
-                } else if (event.type === 'done') {
-                  get().finalizeStreamingMessage(event.data.messageId);
-                } else if (event.type === 'error') {
-                  throw new Error(event.data?.message || 'The coaching service is temporarily unavailable. Please try again in a moment.');
+              const { token, messageId, error } = parseSsePayload(event);
+              if (event.type === 'token' && token) {
+                get().appendStreamingToken(token);
+              } else if (event.type === 'done') {
+                get().finalizeStreamingMessage(typeof messageId === 'string' ? messageId : `assistant-${Date.now()}`);
+              } else if (event.type === 'error') {
+                const msg = error || 'The coaching service is temporarily unavailable. Please try again in a moment.';
+                if (!token && msg.toLowerCase().includes('service is not available')) {
+                  shouldRetry = true;
+                  break;
                 }
+                throw new Error(msg);
               }
             }
+
+            return { shouldRetry };
+          };
+
+          const callBackend = async (attempt: number): Promise<void> => {
+            const retryDelayMs = 750;
+            let response: Response;
+
+            try {
+              response = await fetch(
+                `${apiUrl}/v1/chat/stream`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    session_id: sessionId,
+                    coach_id: coachId,
+                    message: content,
+                    ...(attachments && attachments.length > 0 ? {
+                      attachments: attachments.map(a => ({
+                        name: a.name,
+                        type: a.type,
+                        mime_type: a.mimeType,
+                        base64: a.base64,
+                      })),
+                    } : {}),
+                  }),
+                  signal: controller.signal,
+                }
+              );
+            } catch (fetchError) {
+              if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+                throw new Error('The coach is taking too long to respond. Please try again.');
+              }
+              throw fetchError;
+            }
+
+            if (__DEV__) {
+              console.log('[ChatStore] Response status:', response.status, response.statusText);
+            }
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              if (__DEV__) {
+                console.error('[ChatStore] Backend error:', {
+                  status: response.status,
+                  statusText: response.statusText,
+                  body: errorText,
+                });
+              }
+              
+              if (response.status === 400 || response.status === 403) {
+                const lowerText = (errorText || '').toLowerCase();
+                if (lowerText.includes('safety') || lowerText.includes('blocked') || lowerText.includes('harm')) {
+                  throw new Error('Your message could not be processed due to content safety guidelines. Please rephrase and try again.');
+                }
+              }
+              
+              if (response.status >= 500) {
+                throw new Error('The coaching service is temporarily unavailable. Please try again in a moment.');
+              }
+
+              if (response.status === 401) {
+                throw new Error('Your session has expired. Please close this screen and log in again.');
+              }
+              
+              throw new Error('Something went wrong. Please try again.');
+            }
+
+            const reader = response.body?.getReader();
+            if (reader) {
+              const decoder = new TextDecoder();
+              let buffer = '';
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                const { shouldRetry } = parseAndHandleSseText(lines.join('\n'));
+                if (shouldRetry && attempt === 0) {
+                  set({ streamingMessage: '', streamingSessionId: sessionId });
+                  await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+                  await callBackend(1);
+                  return;
+                } else if (shouldRetry) {
+                  throw new Error('The coaching service is temporarily unavailable. Please try again in a moment.');
+                }
+              }
+              buffer += decoder.decode();
+              const { shouldRetry } = parseAndHandleSseText(buffer);
+              if (shouldRetry && attempt === 0) {
+                set({ streamingMessage: '', streamingSessionId: sessionId });
+                await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+                await callBackend(1);
+              } else if (shouldRetry) {
+                throw new Error('The coaching service is temporarily unavailable. Please try again in a moment.');
+              }
+            } else {
+              const text = await response.text();
+              const { shouldRetry } = parseAndHandleSseText(text);
+              if (shouldRetry && attempt === 0) {
+                set({ streamingMessage: '', streamingSessionId: sessionId });
+                await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+                await callBackend(1);
+              } else if (shouldRetry) {
+                throw new Error('The coaching service is temporarily unavailable. Please try again in a moment.');
+              }
+            }
+          };
+
+          try {
+            await callBackend(0);
+          } finally {
+            clearTimeout(timeoutId);
           }
 
           set({ isSending: false });
