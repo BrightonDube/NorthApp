@@ -398,6 +398,8 @@ export default function ChatScreen() {
           onSend={handleSendMessage} 
           disabled={isSending || !sessionId}
           placeholder={`Message ${coach.name}...`}
+          isProUser={isProUser}
+          onShowPaywall={showPaywall}
         />
       </KeyboardAvoidingView>
 

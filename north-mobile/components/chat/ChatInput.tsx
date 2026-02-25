@@ -7,12 +7,15 @@
  * Validates: Requirements 10.3, 11.3, 11.4, 23.7
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { View, TextInput, Pressable, Platform, StyleSheet, Keyboard, Image, Text, ScrollView, Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsOnline } from '@/stores/networkStore';
-import { useIsDark, useThemeColors } from '@/contexts/ThemeContext';
+import { useIsDark } from '@/contexts/ThemeContext';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
+import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
 // Lazy imports for native modules that may not be available
 let ImagePicker: typeof import('expo-image-picker') | null = null;
@@ -50,8 +53,10 @@ export function ChatInput({
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [sendFocused, setSendFocused] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const isOnline = useIsOnline();
   const isDark = useIsDark();
+  const { isRecording, durationMs, startRecording, stopRecording } = useAudioRecording();
 
   const handleSend = useCallback(() => {
     const trimmedMessage = message.trim();
@@ -78,6 +83,72 @@ export function ChatInput({
     handleSend();
     setTimeout(() => setSendFocused(false), 300);
   }, [handleSend]);
+
+  const transcribeRecording = useCallback(async (uri: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      Alert.alert('Session expired', 'Please sign in again to use voice input.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('audio', {
+      uri,
+      name: 'recording.m4a',
+      type: 'audio/m4a',
+    } as any);
+
+    setIsTranscribing(true);
+    try {
+      const response = await fetch(api.voiceStt, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 403 && onShowPaywall) {
+          onShowPaywall('voice_input');
+        }
+        throw new Error(errorText || 'Transcription failed');
+      }
+
+      const payload = await response.json();
+      const text = String(payload?.text || '').trim();
+      if (text.length > 0) {
+        setMessage(text);
+      }
+    } catch (error) {
+      Alert.alert('Voice input failed', error instanceof Error ? error.message : 'Could not transcribe audio.');
+    } finally {
+      setIsTranscribing(false);
+    }
+  }, [onShowPaywall]);
+
+  const handleMicPressIn = useCallback(async () => {
+    if (disabled || !isOnline || isTranscribing) return;
+    if (!isProUser) {
+      onShowPaywall?.('voice_input');
+      return;
+    }
+    try {
+      await startRecording();
+    } catch (error) {
+      Alert.alert('Voice input', error instanceof Error ? error.message : 'Unable to start recording.');
+    }
+  }, [disabled, isOnline, isTranscribing, isProUser, onShowPaywall, startRecording]);
+
+  const handleMicPressOut = useCallback(async () => {
+    if (!isRecording) return;
+    const uri = await stopRecording();
+    if (uri) {
+      await transcribeRecording(uri);
+    }
+  }, [isRecording, stopRecording, transcribeRecording]);
 
   const pickImage = useCallback(async () => {
     setShowAttachMenu(false);
@@ -153,7 +224,7 @@ export function ChatInput({
     setShowAttachMenu(prev => !prev);
   }, []);
 
-  const canSend = (message.trim().length > 0 || attachments.length > 0) && !disabled && isOnline;
+  const canSend = (message.trim().length > 0 || attachments.length > 0) && !disabled && isOnline && !isRecording && !isTranscribing;
 
   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
@@ -192,6 +263,23 @@ export function ChatInput({
         </View>
       )}
 
+      {(isRecording || isTranscribing) && (
+        <View style={styles.voiceStatusRow}>
+          {isRecording ? (
+            <>
+              <View style={styles.recordingDot} />
+              <Text style={[styles.voiceStatusText, { color: isDark ? '#F5F5F4' : '#1C1917' }]}>
+                Recording... {(durationMs / 1000).toFixed(1)}s
+              </Text>
+            </>
+          ) : (
+            <Text style={[styles.voiceStatusText, { color: isDark ? '#F5F5F4' : '#1C1917' }]}>
+              Transcribing...
+            </Text>
+          )}
+        </View>
+      )}
+
       <View style={styles.inputRow}>
         {/* Attach button */}
         <Pressable
@@ -223,6 +311,20 @@ export function ChatInput({
             accessibilityHint="Type your message here. Press Enter or the send button to send."
           />
         </View>
+
+        <Pressable
+          onPressIn={handleMicPressIn}
+          onPressOut={handleMicPressOut}
+          disabled={disabled || !isOnline || isTranscribing}
+          style={[
+            styles.attachButton,
+            isRecording && { backgroundColor: '#FEE2E2' },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Hold to record voice message"
+        >
+          <Ionicons name={isRecording ? 'radio-button-on' : 'mic-outline'} size={20} color={isRecording ? '#DC2626' : '#3B82F6'} />
+        </Pressable>
 
         <Pressable
           onPress={handleSend}
@@ -348,6 +450,23 @@ const styles = StyleSheet.create({
   },
   attachOptionText: {
     fontSize: 14,
+    fontWeight: '500',
+  },
+  voiceStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#DC2626',
+  },
+  voiceStatusText: {
+    fontSize: 12,
     fontWeight: '500',
   },
 });
