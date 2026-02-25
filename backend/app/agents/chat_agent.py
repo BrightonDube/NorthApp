@@ -166,6 +166,54 @@ def get_runtime_fallback_models(selected_model: str) -> list[str]:
     return deduped
 
 
+def estimate_tokens(text: str) -> int:
+    # Simple approximation for provider-agnostic token accounting.
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
+
+
+def calculate_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
+    # Approximate per-1M token pricing. Values are conservative defaults.
+    pricing = {
+        "meta-llama/llama-4-scout-17b-16e-instruct": (0.10, 0.10),
+        "llama-3.3-70b-versatile": (0.59, 0.79),
+        "llama-3.1-8b-instant": (0.05, 0.08),
+        "claude-3-5-sonnet-20241022": (3.00, 15.00),
+        "gemini-1.5-flash": (0.075, 0.30),
+    }
+    input_rate, output_rate = pricing.get(model, (0.10, 0.10))
+    return round((input_tokens / 1_000_000) * input_rate + (output_tokens / 1_000_000) * output_rate, 6)
+
+
+async def log_model_usage(
+    user_id: str,
+    session_id: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+):
+    try:
+        supabase = await get_async_supabase_client()
+        await (
+            supabase.from_("model_usage_logs")
+            .insert(
+                {
+                    "user_id": user_id,
+                    "session_id": session_id,
+                    "model": model,
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "cost_usd": calculate_cost_usd(model, input_tokens, output_tokens),
+                }
+            )
+            .execute()
+        )
+    except Exception as e:
+        # Non-blocking: analytics failures should not impact chat UX.
+        print(f"Failed to log model usage: {e}")
+
+
 async def get_user_firmness(user_id: str) -> int:
     supabase = await get_async_supabase_client()
     result = await (
@@ -540,6 +588,7 @@ async def stream_chat_response(
     ]
 
     full_response = ""
+    successful_model = ""
 
     stream_errors: list[str] = []
     for model in model_candidates:
@@ -577,6 +626,7 @@ async def stream_chat_response(
                             full_response += delta
                             yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
             # Successfully streamed with this model.
+            successful_model = model
             break
         except Exception as e:
             stream_errors.append(f"{model}: {e}")
@@ -591,6 +641,16 @@ async def stream_chat_response(
         return
 
     saved_id = await save_message(session_id, "assistant", full_response)
+
+    # Log model usage analytics in background-compatible, non-blocking path.
+    input_text = "\n".join([str(m.get("content", "")) for m in messages])
+    await log_model_usage(
+        user_id=user_id,
+        session_id=session_id,
+        model=successful_model or selected_model,
+        input_tokens=estimate_tokens(input_text),
+        output_tokens=estimate_tokens(full_response),
+    )
     
     # Detect if GROW stage should advance
     try:
