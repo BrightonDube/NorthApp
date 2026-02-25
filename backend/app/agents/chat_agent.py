@@ -3,6 +3,8 @@ from groq import AsyncGroq
 from app.config import get_settings
 from app.services.supabase import get_async_supabase_client
 from app.services.rag import retrieve_relevant_memories, format_memories_for_prompt
+from app.services.claude import stream_claude_response
+from app.services.gemini import stream_gemini_response
 
 PERSONA_PROMPTS = {
     "gentle": (
@@ -144,20 +146,6 @@ def select_model(
     return "meta-llama/llama-4-scout-17b-16e-instruct"
 
 
-def resolve_runtime_model(selected_model: str) -> str:
-    """
-    Resolve a selected model to one currently supported by the active runtime.
-
-    The chat runtime currently uses Groq only. If a routing rule selects a
-    model for a provider that is not integrated yet, we degrade gracefully to
-    the default Groq model instead of failing the entire request.
-    """
-    groq_default = "meta-llama/llama-4-scout-17b-16e-instruct"
-    if selected_model.startswith("claude-") or selected_model.startswith("gemini-"):
-        return groq_default
-    return selected_model
-
-
 def get_runtime_fallback_models(selected_model: str) -> list[str]:
     """
     Build ordered runtime fallback models.
@@ -166,7 +154,7 @@ def get_runtime_fallback_models(selected_model: str) -> list[str]:
     stable Groq alternatives before giving up.
     """
     candidates = [
-        resolve_runtime_model(selected_model),
+        selected_model,
         "meta-llama/llama-4-scout-17b-16e-instruct",
         "llama-3.3-70b-versatile",
         "llama-3.1-8b-instant",
@@ -506,7 +494,7 @@ async def stream_chat_response(
     attachments: list | None = None,
 ):
     settings = get_settings()
-    client = AsyncGroq(api_key=settings.groq_api_key)
+    groq_client = AsyncGroq(api_key=settings.groq_api_key)
 
     firmness = await get_user_firmness(user_id)
     coach_info = await get_coach_info(coach_id)
@@ -556,17 +544,38 @@ async def stream_chat_response(
     stream_errors: list[str] = []
     for model in model_candidates:
         try:
-            async with client.chat.completions.stream(
-                model=model,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=1024,
-            ) as stream:
-                async for chunk in stream:
-                    delta = chunk.choices[0].delta.content if chunk.choices else None
-                    if delta:
-                        full_response += delta
-                        yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+            if model.startswith("claude-"):
+                async for delta in stream_claude_response(
+                    api_key=settings.anthropic_api_key,
+                    model=model,
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=1024,
+                ):
+                    full_response += delta
+                    yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+            elif model.startswith("gemini-"):
+                async for delta in stream_gemini_response(
+                    api_key=settings.gemini_api_key,
+                    model=model,
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=1024,
+                ):
+                    full_response += delta
+                    yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+            else:
+                async with groq_client.chat.completions.stream(
+                    model=model,
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=1024,
+                ) as stream:
+                    async for chunk in stream:
+                        delta = chunk.choices[0].delta.content if chunk.choices else None
+                        if delta:
+                            full_response += delta
+                            yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
             # Successfully streamed with this model.
             break
         except Exception as e:
