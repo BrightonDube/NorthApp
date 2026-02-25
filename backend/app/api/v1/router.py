@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import chat, voice, memories, goals, settings, agents, integrations, xp, grow, checkins, analytics
+from app.api.v1 import chat, voice, memories, goals, settings, agents, integrations, xp, grow, checkins, analytics, cache, monitoring
 
 router = APIRouter()
 
@@ -15,3 +15,5 @@ router.include_router(xp.router, tags=["XP"])
 router.include_router(grow.router, tags=["GROW"])
 router.include_router(checkins.router, tags=["Check-ins"])
 router.include_router(analytics.router, tags=["Analytics"])
+router.include_router(cache.router, tags=["Cache"])
+router.include_router(monitoring.router, tags=["Monitoring"])

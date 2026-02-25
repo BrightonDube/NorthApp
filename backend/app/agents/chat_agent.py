@@ -1,4 +1,5 @@
 import json
+import time
 from app.services.supabase import get_async_supabase_client
 from app.services.rag import retrieve_relevant_memories, format_memories_for_prompt
 from app.services.groq_client import (
@@ -7,6 +8,24 @@ from app.services.groq_client import (
     MODEL_REASONING,
     get_groq_client,
 )
+from app.services.claude import (
+    MODEL_CLAUDE_SONNET,
+    stream_claude_response,
+)
+from app.services.gemini import (
+    MODEL_GEMINI_FLASH,
+    stream_gemini_response,
+)
+from app.services.cache import (
+    get_cache,
+    make_coach_prompt_key,
+    make_user_context_key,
+    make_user_firmness_key,
+    TTL_COACH_PROMPT,
+    TTL_USER_CONTEXT,
+    TTL_USER_FIRMNESS,
+)
+from app.services.monitoring import get_metrics_collector
 
 PERSONA_PROMPTS = {
     "gentle": (
@@ -130,9 +149,13 @@ def select_model(
     Returns:
         Model identifier string for the LLM API
     """
-    # Deep problem solving and reasoning-heavy contexts.
+    # High-context conversations (10+ messages) - use Gemini 1.5 Flash for 1M+ token window
+    if conversation_depth > 10 and coach_type in ["leadership", "eq"]:
+        return MODEL_GEMINI_FLASH
+
+    # Deep problem solving and reasoning-heavy contexts - use Claude for best quality
     if coach_type in ["strategic", "systems"] and (message_length > 1200 or conversation_depth > 14):
-        return MODEL_REASONING
+        return MODEL_CLAUDE_SONNET
 
     # Complex coaching logic.
     if has_images or coach_type in ["leadership", "eq"] or message_length > 700:
@@ -147,9 +170,22 @@ def get_runtime_fallback_models(selected_model: str) -> list[str]:
     Build ordered runtime fallback models.
 
     The first model is the selected runtime model. If that fails, we try known
-    stable Groq alternatives before giving up.
+    stable alternatives before giving up.
+    
+    Fallback order:
+    - Claude -> Gemini -> Groq Reasoning -> Groq Complex -> Groq Fast
+    - Gemini -> Groq Complex -> Groq Fast
+    - Groq models -> other Groq models
     """
-    candidates = [selected_model, MODEL_COMPLEX, MODEL_FAST, MODEL_REASONING]
+    # Define fallback chains
+    if selected_model == MODEL_CLAUDE_SONNET:
+        candidates = [MODEL_CLAUDE_SONNET, MODEL_GEMINI_FLASH, MODEL_REASONING, MODEL_COMPLEX, MODEL_FAST]
+    elif selected_model == MODEL_GEMINI_FLASH:
+        candidates = [MODEL_GEMINI_FLASH, MODEL_COMPLEX, MODEL_FAST, MODEL_REASONING]
+    else:
+        candidates = [selected_model, MODEL_COMPLEX, MODEL_FAST, MODEL_REASONING]
+
+    # Deduplicate while preserving order
     deduped: list[str] = []
     for model in candidates:
         if model and model not in deduped:
@@ -170,6 +206,8 @@ def calculate_cost_usd(model: str, input_tokens: int, output_tokens: int) -> flo
         "llama-3.3-70b-versatile": (0.59, 0.79),
         "llama-3.1-8b-instant": (0.05, 0.08),
         "deepseek-r1-distill-llama-70b": (0.99, 0.99),
+        "claude-3-5-sonnet-20241022": (3.00, 15.00),  # Claude 3.5 Sonnet pricing
+        "gemini-1.5-flash": (0.075, 0.30),  # Gemini 1.5 Flash pricing
     }
     input_rate, output_rate = pricing.get(model, (0.10, 0.10))
     return round((input_tokens / 1_000_000) * input_rate + (output_tokens / 1_000_000) * output_rate, 6)
@@ -204,6 +242,24 @@ async def log_model_usage(
 
 
 async def get_user_firmness(user_id: str) -> int:
+    """
+    Get user's firmness level with caching.
+    
+    Args:
+        user_id: The user's UUID
+        
+    Returns:
+        Firmness level (0-10), defaults to 5
+    """
+    cache = get_cache()
+    cache_key = make_user_firmness_key(user_id)
+
+    # Try cache first
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+
+    # Cache miss - fetch from database
     supabase = await get_async_supabase_client()
     result = await (
         supabase.from_("profiles")
@@ -212,12 +268,36 @@ async def get_user_firmness(user_id: str) -> int:
         .single()
         .execute()
     )
+
+    firmness = 5  # Default
     if result.data and result.data.get("firmness_level") is not None:
-        return result.data["firmness_level"]
-    return 5
+        firmness = result.data["firmness_level"]
+
+    # Cache the result
+    cache.set(cache_key, firmness, TTL_USER_FIRMNESS)
+
+    return firmness
 
 
 async def get_coach_system_prompt(coach_id: str) -> str:
+    """
+    Get coach system prompt with caching.
+    
+    Args:
+        coach_id: The coach's UUID
+        
+    Returns:
+        The coach's system prompt
+    """
+    cache = get_cache()
+    cache_key = make_coach_prompt_key(coach_id)
+
+    # Try cache first
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+
+    # Cache miss - fetch from database
     supabase = await get_async_supabase_client()
     result = await (
         supabase.from_("coaches")
@@ -226,14 +306,20 @@ async def get_coach_system_prompt(coach_id: str) -> str:
         .single()
         .execute()
     )
+
+    prompt = "You are a helpful life coach."  # Default
     if result.data:
-        return result.data.get("system_prompt", "You are a helpful life coach.")
-    return "You are a helpful life coach."
+        prompt = result.data.get("system_prompt", prompt)
+
+    # Cache the result (coach prompts rarely change)
+    cache.set(cache_key, prompt, TTL_COACH_PROMPT)
+
+    return prompt
 
 
 async def get_coach_info(coach_id: str) -> dict:
     """
-    Get coach information including name and system prompt.
+    Get coach information including name and system prompt with caching.
     
     Args:
         coach_id: The UUID of the coach
@@ -241,6 +327,15 @@ async def get_coach_info(coach_id: str) -> dict:
     Returns:
         dict with 'name' and 'system_prompt' keys
     """
+    cache = get_cache()
+    cache_key = f"coach_info:{coach_id}"
+
+    # Try cache first
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+
+    # Cache miss - fetch from database
     supabase = await get_async_supabase_client()
     result = await (
         supabase.from_("coaches")
@@ -249,18 +344,43 @@ async def get_coach_info(coach_id: str) -> dict:
         .single()
         .execute()
     )
-    if result.data:
-        return {
-            "name": result.data.get("name", "General Coach"),
-            "system_prompt": result.data.get("system_prompt", "You are a helpful life coach.")
-        }
-    return {
+
+    coach_info = {
         "name": "General Coach",
         "system_prompt": "You are a helpful life coach."
     }
 
+    if result.data:
+        coach_info = {
+            "name": result.data.get("name", "General Coach"),
+            "system_prompt": result.data.get("system_prompt", "You are a helpful life coach.")
+        }
+
+    # Cache the result (coach info rarely changes)
+    cache.set(cache_key, coach_info, TTL_COACH_PROMPT)
+
+    return coach_info
+
 
 async def get_user_context_text(user_id: str) -> str:
+    """
+    Get user context text with caching.
+    
+    Args:
+        user_id: The user's UUID
+        
+    Returns:
+        Formatted user context text
+    """
+    cache = get_cache()
+    cache_key = make_user_context_key(user_id)
+
+    # Try cache first
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+
+    # Cache miss - fetch from database
     supabase = await get_async_supabase_client()
     result = await (
         supabase.from_("user_context")
@@ -268,18 +388,24 @@ async def get_user_context_text(user_id: str) -> str:
         .eq("user_id", user_id)
         .execute()
     )
+
     if not result.data:
-        return ""
+        context_text = ""
+    else:
+        sections: dict[str, list[str]] = {}
+        for item in result.data:
+            cat = item["category"]
+            sections.setdefault(cat, []).append(item["content"])
 
-    sections: dict[str, list[str]] = {}
-    for item in result.data:
-        cat = item["category"]
-        sections.setdefault(cat, []).append(item["content"])
+        lines = ["## User Context:"]
+        for cat, items in sections.items():
+            lines.append(f"**{cat.title()}**: {', '.join(items)}")
+        context_text = "\n".join(lines)
 
-    lines = ["## User Context:"]
-    for cat, items in sections.items():
-        lines.append(f"**{cat.title()}**: {', '.join(items)}")
-    return "\n".join(lines)
+    # Cache the result
+    cache.set(cache_key, context_text, TTL_USER_CONTEXT)
+
+    return context_text
 
 
 async def get_conversation_history(session_id: str, limit: int = 20) -> list[dict]:
@@ -317,7 +443,7 @@ async def get_grow_state(session_id: str) -> dict:
             .single()
             .execute()
         )
-        
+
         if result.data:
             # Use 'or' to handle None values, not just missing keys
             return {
@@ -327,7 +453,7 @@ async def get_grow_state(session_id: str) -> dict:
     except Exception as e:
         # Log error but don't fail - return default state
         print(f"Error retrieving GROW state for session {session_id}: {e}")
-    
+
     # Return default state if session not found or error occurred
     return {
         "state": "goal",
@@ -529,8 +655,6 @@ async def stream_chat_response(
     message: str,
     attachments: list | None = None,
 ):
-    groq_client = get_groq_client()
-
     firmness = await get_user_firmness(user_id)
     coach_info = await get_coach_info(coach_id)
     coach_prompt = coach_info["system_prompt"]
@@ -543,20 +667,20 @@ async def stream_chat_response(
 
     persona = get_persona_prompt(firmness)
     grow_guidance = get_grow_stage_guidance(grow_state_data["state"])
-    
+
     system_prompt = f"{coach_prompt}\n\n{persona}"
     if user_context:
         system_prompt += f"\n\n{user_context}"
     if memory_text:
         system_prompt += f"\n\n{memory_text}"
-    
+
     # Add GROW stage guidance
     system_prompt += f"\n\n{grow_guidance}"
 
     user_content = build_multimodal_content(message, attachments)
 
     has_images = isinstance(user_content, list)
-    
+
     # Intelligent model selection
     coach_type = get_coach_type_from_name(coach_name)
     conversation_depth = len(history)
@@ -577,36 +701,83 @@ async def stream_chat_response(
     full_response = ""
     successful_model = ""
 
+    # Initialize monitoring
+    metrics_collector = get_metrics_collector()
+    llm_start_time = time.time()
+    llm_success = False
+    llm_error = None
+
     stream_errors: list[str] = []
     for model in model_candidates:
         try:
-            # Groq-optimized temperatures by model tier.
+            # Determine temperature based on model
             if model == MODEL_REASONING:
                 temperature = 0.2
             elif model == MODEL_COMPLEX:
                 temperature = 0.45
+            elif model == MODEL_CLAUDE_SONNET:
+                temperature = 0.7  # Claude works well with higher temperature
+            elif model == MODEL_GEMINI_FLASH:
+                temperature = 0.7  # Gemini works well with higher temperature
             else:
                 temperature = 0.6
 
-            async with groq_client.chat.completions.stream(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=1024,
-            ) as stream:
-                async for chunk in stream:
-                    delta = chunk.choices[0].delta.content if chunk.choices else None
-                    if delta:
-                        full_response += delta
-                        yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+            # Route to appropriate streaming service
+            if model == MODEL_CLAUDE_SONNET:
+                # Use Claude streaming
+                async for chunk in stream_claude_response(
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=1024,
+                ):
+                    full_response += chunk
+                    yield f"data: {json.dumps({'type': 'token', 'data': chunk})}\n\n"
+            elif model == MODEL_GEMINI_FLASH:
+                # Use Gemini streaming
+                async for chunk in stream_gemini_response(
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=1024,
+                ):
+                    full_response += chunk
+                    yield f"data: {json.dumps({'type': 'token', 'data': chunk})}\n\n"
+            else:
+                # Use Groq streaming
+                groq_client = get_groq_client()
+                async with groq_client.chat.completions.stream(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=1024,
+                ) as stream:
+                    async for chunk in stream:
+                        delta = chunk.choices[0].delta.content if chunk.choices else None
+                        if delta:
+                            full_response += delta
+                            yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+
             # Successfully streamed with this model.
             successful_model = model
+            llm_success = True
             break
         except Exception as e:
             stream_errors.append(f"{model}: {e}")
+            llm_error = str(e)
             print(f"Error streaming chat response with model={model}: {e}")
             continue
-    else:
+
+    # Record LLM metrics
+    llm_duration = time.time() - llm_start_time
+    estimated_tokens = estimate_tokens(full_response) if full_response else 0
+    metrics_collector.record_llm_call(
+        model=successful_model or selected_model,
+        tokens=estimated_tokens,
+        success=llm_success,
+        duration=llm_duration,
+        error=llm_error if not llm_success else None,
+    )
+
+    if not llm_success:
         print(
             f"Error streaming chat response (selected={selected_model}). "
             f"Attempts: {' | '.join(stream_errors)}"
@@ -625,7 +796,7 @@ async def stream_chat_response(
         input_tokens=estimate_tokens(input_text),
         output_tokens=estimate_tokens(full_response),
     )
-    
+
     # Detect if GROW stage should advance
     try:
         detection_result = await detect_stage_completion(session_id, message, full_response)
@@ -638,5 +809,5 @@ async def stream_chat_response(
     except Exception as e:
         # Don't fail the response if stage detection fails
         print(f"Error in GROW stage detection: {e}")
-    
+
     yield f"data: {json.dumps({'type': 'done', 'data': {'messageId': saved_id}})}\n\n"

@@ -9,6 +9,7 @@ def start_scheduler():
     from app.tasks.inactivity import check_inactive_users
     from app.tasks.reminders import morning_goal_reminders
     from app.tasks.calendar_sync import sync_all_calendars
+    from app.services.monitoring import check_alerts_periodically
 
     # Hourly: check for inactive users and re-engage
     scheduler.add_job(
@@ -34,8 +35,16 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Every 5 minutes: check for alert conditions
+    scheduler.add_job(
+        check_alerts_periodically,
+        IntervalTrigger(minutes=5),
+        id="alert_check",
+        replace_existing=True,
+    )
+
     scheduler.start()
-    print("[Scheduler] Started with 3 jobs: inactivity, reminders, calendar_sync")
+    print("[Scheduler] Started with 4 jobs: inactivity, reminders, calendar_sync, alert_check")
 
 
 def stop_scheduler():

@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     # LLM
     groq_api_key: str
+    anthropic_api_key: str = ""
+    gemini_api_key: str = ""
 
     # Embeddings (Voyage AI)
     voyage_api_key: str
@@ -31,6 +33,11 @@ class Settings(BaseSettings):
     # App
     environment: str = "development"
     allowed_origins: str = "http://localhost:8081"
+
+    # Monitoring
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.1
+    sentry_profiles_sample_rate: float = 0.1
 
     @property
     def is_production(self) -> bool:

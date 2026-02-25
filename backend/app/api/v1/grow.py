@@ -19,7 +19,7 @@ async def get_grow_state(
     associated data, and last update timestamp.
     """
     supabase = await get_async_supabase_client()
-    
+
     # Verify session ownership
     result = await (
         supabase.from_("chat_sessions")
@@ -28,14 +28,14 @@ async def get_grow_state(
         .single()
         .execute()
     )
-    
+
     if not result.data:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     # Verify user owns this session
     if result.data.get("user_id") != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return GrowStateResponse(
         state=result.data.get("grow_state") or "goal",
         data=result.data.get("grow_data") or {},
@@ -56,7 +56,7 @@ async def update_grow_state(
     Validates that state transitions are valid (can't skip stages).
     """
     supabase = await get_async_supabase_client()
-    
+
     # Verify session ownership and get current state
     existing = await (
         supabase.from_("chat_sessions")
@@ -65,17 +65,17 @@ async def update_grow_state(
         .single()
         .execute()
     )
-    
+
     if not existing.data:
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     # Verify user owns this session
     if existing.data.get("user_id") != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     current_state = existing.data.get("grow_state") or "goal"
     new_state = body.grow_state
-    
+
     # Validate state transitions
     valid_transitions = {
         "goal": ["goal", "reality"],
@@ -84,23 +84,23 @@ async def update_grow_state(
         "way_forward": ["options", "way_forward", "complete"],
         "complete": ["complete", "goal"],  # Can restart or stay complete
     }
-    
+
     if new_state not in valid_transitions.get(current_state, []):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid state transition from '{current_state}' to '{new_state}'"
         )
-    
+
     # Prepare update data
     update_data = {
         "grow_state": new_state,
         "grow_updated_at": "now()",
     }
-    
+
     # Update grow_data if provided
     if body.grow_data is not None:
         update_data["grow_data"] = body.grow_data
-    
+
     # Update database
     result = await (
         supabase.from_("chat_sessions")
@@ -110,7 +110,7 @@ async def update_grow_state(
         .single()
         .execute()
     )
-    
+
     return GrowStateResponse(
         state=result.data.get("grow_state"),
         data=result.data.get("grow_data") or {},

@@ -36,7 +36,7 @@ async def _verify_with_jwks(token: str, settings: Settings) -> AuthUser:
                 "verify_aud": True,
             }
         )
-        
+
         # Extract user information from payload
         user_id = payload.get("sub")
         if not user_id:

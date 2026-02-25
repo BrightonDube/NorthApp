@@ -1,6 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
-import json
 
 from app.dependencies import get_current_user, AuthUser
 from app.config import get_settings

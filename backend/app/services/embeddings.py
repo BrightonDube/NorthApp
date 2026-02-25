@@ -2,6 +2,11 @@ import asyncio
 import voyageai
 
 from app.config import get_settings
+from app.services.cache import (
+    get_cache,
+    make_embedding_key,
+    TTL_EMBEDDING,
+)
 
 
 def _normalize_dimensions(embedding: list[float], target_dimensions: int) -> list[float]:
@@ -14,6 +19,25 @@ def _normalize_dimensions(embedding: list[float], target_dimensions: int) -> lis
 
 
 async def create_embedding(text: str, input_type: str = "document") -> list[float]:
+    """
+    Create an embedding for the given text with caching.
+    
+    Args:
+        text: The text to embed
+        input_type: The type of input ("document" or "query")
+        
+    Returns:
+        The embedding vector
+    """
+    cache = get_cache()
+    cache_key = make_embedding_key(text)
+
+    # Try cache first
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+
+    # Cache miss - generate embedding
     settings = get_settings()
     if not settings.voyage_api_key:
         raise RuntimeError("VOYAGE_API_KEY is required for embeddings")
@@ -33,4 +57,9 @@ async def create_embedding(text: str, input_type: str = "document") -> list[floa
     if not embedding:
         raise RuntimeError("Voyage embeddings response had empty embedding vector")
 
-    return _normalize_dimensions(embedding, settings.memory_embedding_dimensions)
+    normalized_embedding = _normalize_dimensions(embedding, settings.memory_embedding_dimensions)
+
+    # Cache the result (embeddings are deterministic)
+    cache.set(cache_key, normalized_embedding, TTL_EMBEDDING)
+
+    return normalized_embedding

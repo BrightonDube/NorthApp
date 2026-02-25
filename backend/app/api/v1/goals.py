@@ -13,6 +13,89 @@ async def list_goals(
     status: str | None = None,
     user: AuthUser = Depends(get_current_user),
 ):
+    """
+    List all goals for the authenticated user.
+    
+    Retrieves user's goals with optional filtering by status. Each goal includes
+    associated subtasks for detailed progress tracking.
+    
+    **Authentication:** Required (JWT Bearer token)
+    
+    **Query Parameters:**
+    - `status` (string, optional): Filter by status (active, completed, paused, abandoned)
+    
+    **Response:**
+    ```json
+    [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "user-uuid",
+        "title": "Launch side project",
+        "description": "Build and ship MVP in 3 months",
+        "category": "career",
+        "deadline": "2026-05-24T00:00:00Z",
+        "status": "active",
+        "difficulty": "hard",
+        "progress": 35,
+        "coach_id": "strategic-thinking",
+        "created_at": "2026-02-24T10:00:00Z",
+        "updated_at": "2026-02-25T14:30:00Z",
+        "subtasks": [
+          {
+            "id": "subtask-uuid",
+            "goal_id": "550e8400-e29b-41d4-a716-446655440000",
+            "title": "Define MVP features",
+            "status": "completed",
+            "order_index": 0,
+            "due_date": "2026-03-01T00:00:00Z",
+            "created_at": "2026-02-24T10:05:00Z",
+            "completed_at": "2026-02-26T09:15:00Z"
+          }
+        ]
+      }
+    ]
+    ```
+    
+    **Goal Categories:**
+    - `personal`: Personal development
+    - `career`: Professional growth
+    - `health`: Physical/mental wellness
+    - `relationships`: Social connections
+    - `financial`: Money management
+    - `creative`: Artistic pursuits
+    
+    **Goal Statuses:**
+    - `active`: Currently working on
+    - `completed`: Successfully achieved
+    - `paused`: Temporarily on hold
+    - `abandoned`: No longer pursuing
+    
+    **Difficulty Levels:**
+    - `easy`: Quick wins, low complexity
+    - `medium`: Moderate effort required
+    - `hard`: Significant challenge
+    - `epic`: Long-term, transformative goal
+    
+    **Error Codes:**
+    - `401 Unauthorized`: Invalid or missing JWT token
+    
+    **Example Usage:**
+    ```bash
+    # Get all goals
+    curl -X GET "https://api.example.com/v1/goals" \\
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    
+    # Get only active goals
+    curl -X GET "https://api.example.com/v1/goals?status=active" \\
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+    
+    **Related Endpoints:**
+    - `POST /v1/goals` - Create new goal
+    - `PATCH /v1/goals/{id}` - Update goal
+    - `DELETE /v1/goals/{id}` - Delete goal
+    - `POST /v1/agent/plan` - AI-powered goal planning
+    """
     supabase = await get_async_supabase_client()
     query = (
         supabase.from_("goals")
@@ -32,6 +115,67 @@ async def create_goal(
     body: CreateGoalRequest,
     user: AuthUser = Depends(get_current_user),
 ):
+    """
+    Create a new goal for the authenticated user.
+    
+    Creates a goal with optional deadline, description, and coach assignment.
+    Goals can be broken down into subtasks for better tracking.
+    
+    **Authentication:** Required (JWT Bearer token)
+    
+    **Request Body:**
+    ```json
+    {
+      "title": "Launch side project",
+      "description": "Build and ship MVP in 3 months",
+      "category": "career",
+      "deadline": "2026-05-24T00:00:00Z",
+      "difficulty": "hard",
+      "coach_id": "strategic-thinking"
+    }
+    ```
+    
+    **Required Fields:**
+    - `title` (string): Goal name (max 200 characters)
+    
+    **Optional Fields:**
+    - `description` (string): Detailed explanation
+    - `category` (string): Goal category (default: "personal")
+    - `deadline` (string): ISO 8601 datetime
+    - `difficulty` (string): easy, medium, hard, epic (default: "medium")
+    - `coach_id` (string): UUID of preferred coach
+    
+    **Response:**
+    Returns the created goal with generated ID and timestamps.
+    
+    **Error Codes:**
+    - `400 Bad Request`: Invalid request body or missing required fields
+    - `401 Unauthorized`: Invalid or missing JWT token
+    
+    **Example Usage:**
+    ```bash
+    curl -X POST "https://api.example.com/v1/goals" \\
+      -H "Authorization: Bearer YOUR_JWT_TOKEN" \\
+      -H "Content-Type: application/json" \\
+      -d '{
+        "title": "Run a marathon",
+        "category": "health",
+        "difficulty": "hard",
+        "deadline": "2026-10-15T00:00:00Z"
+      }'
+    ```
+    
+    **Tips:**
+    - Use specific, measurable titles
+    - Set realistic deadlines
+    - Choose difficulty honestly for better planning
+    - Assign a coach for specialized guidance
+    
+    **Related Endpoints:**
+    - `GET /v1/goals` - List all goals
+    - `POST /v1/goals/{id}/subtasks` - Add subtasks
+    - `POST /v1/agent/plan` - AI-powered goal breakdown
+    """
     supabase = await get_async_supabase_client()
     insert_data = {
         "user_id": user.id,

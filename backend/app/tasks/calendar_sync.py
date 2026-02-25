@@ -1,5 +1,5 @@
 from app.services.supabase import get_async_supabase_client
-from app.services.calendar import fetch_today_events, get_user_tokens
+from app.services.calendar import fetch_today_events
 from app.services.groq_client import MODEL_FAST, get_groq_client
 
 
