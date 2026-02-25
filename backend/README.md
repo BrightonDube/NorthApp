@@ -41,6 +41,12 @@ supabase db push
 # supabase/migrations/20260220000000_add_memories_goals_xp.sql
 ```
 
+If you already have existing memories from non-Groq providers, backfill embeddings:
+
+```bash
+python scripts/backfill_memory_embeddings.py
+```
+
 ### 4. Run locally
 
 ```bash

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # LLM
     groq_api_key: str
     groq_embedding_model: str = "nomic-embed-text-v1.5"
+    memory_embedding_dimensions: int = 1536
 
     # Push Notifications
     onesignal_app_id: str = ""

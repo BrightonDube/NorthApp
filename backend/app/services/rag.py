@@ -8,26 +8,21 @@ async def retrieve_relevant_memories(
     limit: int = 5,
     threshold: float = 0.7,
 ) -> list[dict]:
-    try:
-        query_embedding = await create_embedding(query)
-        if not query_embedding:
-            return []
-
-        supabase = await get_async_supabase_client()
-        result = await supabase.rpc(
-            "match_memories",
-            {
-                "query_embedding": query_embedding,
-                "match_user_id": user_id,
-                "match_count": limit,
-                "match_threshold": threshold,
-            },
-        ).execute()
-        return result.data or []
-    except Exception as e:
-        # Non-blocking fallback: chat should continue even if embedding/RAG fails.
-        print(f"[RAG] retrieve_relevant_memories failed: {e}")
+    query_embedding = await create_embedding(query)
+    if not query_embedding:
         return []
+
+    supabase = await get_async_supabase_client()
+    result = await supabase.rpc(
+        "match_memories",
+        {
+            "query_embedding": query_embedding,
+            "match_user_id": user_id,
+            "match_count": limit,
+            "match_threshold": threshold,
+        },
+    ).execute()
+    return result.data or []
 
 
 async def format_memories_for_prompt(memories: list[dict]) -> str:
