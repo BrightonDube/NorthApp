@@ -5,7 +5,8 @@ Python (FastAPI) backend for the North AI Coaching app. Hosted on Railway.
 ## Stack
 
 - **FastAPI** — async web framework
-- **Groq** — unified LLM provider for chat, reasoning, embeddings, STT, and TTS
+- **Groq** — LLM provider for chat, reasoning, STT, and TTS
+- **Voyage AI** — embeddings provider for pgvector memory retrieval
 - **Supabase** — PostgreSQL + pgvector + Auth
 - **APScheduler** — background tasks (inactivity checks, reminders, calendar sync)
 - **OneSignal** — push notifications
@@ -41,7 +42,7 @@ supabase db push
 # supabase/migrations/20260220000000_add_memories_goals_xp.sql
 ```
 
-If you already have existing memories from non-Groq providers, backfill embeddings:
+If you already have existing memories from non-Voyage providers, backfill embeddings:
 
 ```bash
 python scripts/backfill_memory_embeddings.py
@@ -99,7 +100,7 @@ chatStore.ts (React Native)
 FastAPI (Railway)
     ├── JWT validated via SUPABASE_JWT_SECRET
     ├── Groq models — streaming chat + reasoning
-    ├── Groq embeddings → pgvector RAG
+    ├── Voyage embeddings → pgvector RAG
     ├── Memory extraction (background task)
     └── APScheduler
         ├── Hourly: inactivity re-engagement

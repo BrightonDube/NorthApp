@@ -10,7 +10,10 @@ class Settings(BaseSettings):
 
     # LLM
     groq_api_key: str
-    groq_embedding_model: str = "nomic-embed-text-v1.5"
+
+    # Embeddings (Voyage AI)
+    voyage_api_key: str
+    voyage_embedding_model: str = "voyage-3-lite"
     memory_embedding_dimensions: int = 1536
 
     # Push Notifications

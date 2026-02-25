@@ -8,7 +8,7 @@ async def retrieve_relevant_memories(
     limit: int = 5,
     threshold: float = 0.7,
 ) -> list[dict]:
-    query_embedding = await create_embedding(query)
+    query_embedding = await create_embedding(query, input_type="query")
     if not query_embedding:
         return []
 
