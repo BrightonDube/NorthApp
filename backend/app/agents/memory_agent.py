@@ -1,8 +1,7 @@
 import json
-from groq import AsyncGroq
-from app.config import get_settings
 from app.services.supabase import get_async_supabase_client
 from app.services.embeddings import create_embedding
+from app.services.groq_client import MODEL_FAST, get_groq_client
 
 FACT_EXTRACTION_PROMPT = """Analyze the following conversation message and extract any NEW facts about the user.
 
@@ -36,12 +35,11 @@ Message to analyze:
 
 
 async def extract_and_store_facts(message: str, user_id: str, source_message_id: str | None = None) -> int:
-    settings = get_settings()
-    client = AsyncGroq(api_key=settings.groq_api_key)
+    client = get_groq_client()
 
     try:
         response = await client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model=MODEL_FAST,
             messages=[
                 {"role": "user", "content": FACT_EXTRACTION_PROMPT + message}
             ],

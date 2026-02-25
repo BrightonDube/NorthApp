@@ -10,9 +10,7 @@ class Settings(BaseSettings):
 
     # LLM
     groq_api_key: str
-    openai_api_key: str = ""
-    anthropic_api_key: str = ""
-    gemini_api_key: str = ""
+    groq_embedding_model: str = "nomic-embed-text-v1.5"
 
     # Push Notifications
     onesignal_app_id: str = ""

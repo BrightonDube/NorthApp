@@ -1,6 +1,5 @@
 import json
-from groq import AsyncGroq
-from app.config import get_settings
+from app.services.groq_client import MODEL_REASONING, get_groq_client
 
 GOAL_PLANNER_SYSTEM = """You are an expert goal-setting coach. When given a goal description, 
 you break it down into a structured, actionable plan.
@@ -26,20 +25,19 @@ Guidelines:
 
 
 async def generate_goal_plan(goal_description: str, user_context: str | None = None) -> dict:
-    settings = get_settings()
-    client = AsyncGroq(api_key=settings.groq_api_key)
+    client = get_groq_client()
 
     user_message = f"Goal: {goal_description}"
     if user_context:
         user_message += f"\n\nUser context: {user_context}"
 
     response = await client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model=MODEL_REASONING,
         messages=[
             {"role": "system", "content": GOAL_PLANNER_SYSTEM},
             {"role": "user", "content": user_message},
         ],
-        temperature=0.4,
+        temperature=0.2,
         max_tokens=1024,
         response_format={"type": "json_object"},
     )

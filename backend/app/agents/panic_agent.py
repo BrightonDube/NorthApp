@@ -1,6 +1,5 @@
 import json
-from groq import AsyncGroq
-from app.config import get_settings
+from app.services.groq_client import MODEL_COMPLEX, get_groq_client
 
 PANIC_SYSTEM_PROMPT = """You are a crisis support coach. The user has pressed the PANIC button — they are overwhelmed and need immediate support.
 
@@ -24,8 +23,7 @@ async def stream_panic_response(
     user_id: str,
     initial_message: str | None = None,
 ):
-    settings = get_settings()
-    client = AsyncGroq(api_key=settings.groq_api_key)
+    client = get_groq_client()
 
     user_content = initial_message or "I pressed the panic button. I need help."
 
@@ -37,9 +35,9 @@ async def stream_panic_response(
     full_response = ""
 
     async with client.chat.completions.stream(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model=MODEL_COMPLEX,
         messages=messages,
-        temperature=0.5,
+        temperature=0.35,
         max_tokens=512,
     ) as stream:
         async for chunk in stream:

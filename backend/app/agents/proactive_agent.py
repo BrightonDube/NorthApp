@@ -1,7 +1,6 @@
-from groq import AsyncGroq
-from app.config import get_settings
 from app.services.supabase import get_async_supabase_client
 from app.services.notifications import send_push_notification
+from app.services.groq_client import MODEL_FAST, get_groq_client
 
 CHECKIN_PROMPT = """You are a proactive life coach. A user hasn't checked in for a while.
 Generate a SHORT, personalized re-engagement message (max 2 sentences).
@@ -49,8 +48,7 @@ async def get_user_context_summary(user_id: str) -> str:
 
 
 async def generate_checkin_message(user_id: str) -> str:
-    settings = get_settings()
-    client = AsyncGroq(api_key=settings.groq_api_key)
+    client = get_groq_client()
 
     context = await get_user_context_summary(user_id)
     goal = await get_user_top_goal(user_id)
@@ -58,9 +56,9 @@ async def generate_checkin_message(user_id: str) -> str:
     prompt = CHECKIN_PROMPT.format(context=context, goal=goal)
 
     response = await client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model=MODEL_FAST,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.8,
+        temperature=0.7,
         max_tokens=100,
     )
 

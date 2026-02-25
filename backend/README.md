@@ -5,8 +5,7 @@ Python (FastAPI) backend for the North AI Coaching app. Hosted on Railway.
 ## Stack
 
 - **FastAPI** — async web framework
-- **Groq** (Llama 4 Scout) — primary LLM, multimodal (text, images, files)
-- **OpenAI** — embeddings (`text-embedding-3-small`), Whisper STT, TTS (`tts-1`)
+- **Groq** — unified LLM provider for chat, reasoning, embeddings, STT, and TTS
 - **Supabase** — PostgreSQL + pgvector + Auth
 - **APScheduler** — background tasks (inactivity checks, reminders, calendar sync)
 - **OneSignal** — push notifications
@@ -68,7 +67,7 @@ pytest tests/
 |--------|----------|-------------|
 | `POST` | `/v1/chat/stream` | SSE streaming chat (Groq multimodal + RAG) |
 | `POST` | `/v1/chat/voice` | Whisper STT — audio → text |
-| `POST` | `/v1/chat/voice/response` | OpenAI TTS — text → MP3 |
+| `POST` | `/v1/chat/voice/response` | Groq TTS — text → MP3 |
 | `GET` | `/v1/goals` | List goals with subtasks |
 | `POST` | `/v1/goals` | Create goal |
 | `PATCH` | `/v1/goals/{id}` | Update goal/progress |
@@ -93,8 +92,8 @@ chatStore.ts (React Native)
     ▼ Bearer JWT (Supabase token)
 FastAPI (Railway)
     ├── JWT validated via SUPABASE_JWT_SECRET
-    ├── Groq Llama 4 Scout — streaming chat
-    ├── OpenAI embeddings → pgvector RAG
+    ├── Groq models — streaming chat + reasoning
+    ├── Groq embeddings → pgvector RAG
     ├── Memory extraction (background task)
     └── APScheduler
         ├── Hourly: inactivity re-engagement

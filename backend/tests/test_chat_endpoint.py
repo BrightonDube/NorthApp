@@ -114,11 +114,11 @@ async def test_chat_stream_endpoint_success():
             mock_user.email = "test@example.com"
             mock_auth.return_value = mock_user
             
-            with patch("groq.AsyncGroq") as mock_groq_class:
+            with patch("app.agents.chat_agent.get_groq_client") as mock_get_client:
                 # Mock Groq client
                 mock_groq = MagicMock()
                 mock_groq.chat.completions.stream.return_value = create_mock_groq_stream()
-                mock_groq_class.return_value = mock_groq
+                mock_get_client.return_value = mock_groq
                 
                 # Make request
                 response = client.post(
@@ -215,10 +215,10 @@ async def test_chat_stream_with_multimodal_input():
             mock_user.id = "test-user-id"
             mock_auth.return_value = mock_user
             
-            with patch("groq.AsyncGroq") as mock_groq_class:
+            with patch("app.agents.chat_agent.get_groq_client") as mock_get_client:
                 mock_groq = MagicMock()
                 mock_groq.chat.completions.stream.return_value = create_mock_groq_stream()
-                mock_groq_class.return_value = mock_groq
+                mock_get_client.return_value = mock_groq
                 
                 # Request with image attachment
                 response = client.post(

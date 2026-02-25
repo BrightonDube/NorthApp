@@ -48,7 +48,7 @@ Built for creators, founders, and operators who:
 - **Routing**: Expo Router (file-based)
 - **State**: Zustand
 - **Backend**: Supabase (Auth, PostgreSQL, Edge Functions)
-- **AI**: OpenAI (GPT-4 / GPT-3.5)
+- **AI**: Groq API (Llama / DeepSeek models)
 - **Payments**: RevenueCat
 - **Testing**: Jest, React Native Testing Library, fast-check (PBT)
 
@@ -65,7 +65,7 @@ Mobile Client (Expo)
         │    ├── PostgreSQL Database
         │    └── Edge Functions (AI Proxy)
         │           │
-        │           └─── OpenAI API
+        │           └─── Groq API
         │
         └─── RevenueCat (Subscriptions)
 ```
@@ -93,7 +93,7 @@ Mobile Client (Expo)
 - iOS Simulator (macOS) or Android Emulator
 - Supabase account
 - RevenueCat account
-- OpenAI API key
+- Groq API key
 
 ### Installation
 
@@ -114,7 +114,7 @@ npm start
 ```
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
-OPENAI_API_KEY=your_openai_api_key
+GROQ_API_KEY=your_groq_api_key
 REVENUECAT_API_KEY=your_revenuecat_api_key
 ```
 

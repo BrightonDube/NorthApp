@@ -1,22 +1,20 @@
-from groq import AsyncGroq
-from app.config import get_settings
 from app.services.supabase import get_async_supabase_client
 from app.services.calendar import fetch_today_events, get_user_tokens
+from app.services.groq_client import MODEL_FAST, get_groq_client
 
 
 async def summarize_calendar_events(events: list[dict]) -> str:
     if not events:
         return "No events scheduled today."
 
-    settings = get_settings()
-    client = AsyncGroq(api_key=settings.groq_api_key)
+    client = get_groq_client()
 
     events_text = "\n".join(
         [f"- {e.get('summary', 'Untitled')} at {e.get('start', 'unknown time')}" for e in events]
     )
 
     response = await client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model=MODEL_FAST,
         messages=[
             {
                 "role": "user",
@@ -25,7 +23,7 @@ async def summarize_calendar_events(events: list[dict]) -> str:
                 ),
             }
         ],
-        temperature=0.3,
+        temperature=0.45,
         max_tokens=100,
     )
     return response.choices[0].message.content.strip()

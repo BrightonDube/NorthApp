@@ -1,6 +1,6 @@
 import httpx
-from groq import AsyncGroq
 from app.config import get_settings
+from app.services.groq_client import MODEL_COMPLEX, get_groq_client
 
 CURATOR_SYSTEM = """You are a research assistant. Given search results and a user query, 
 extract the 3 most relevant and actionable insights.
@@ -42,14 +42,14 @@ async def curate_resources(query: str, user_context: str | None = None) -> dict:
          for r in results[:5]]
     )
 
-    client = AsyncGroq(api_key=settings.groq_api_key)
+    client = get_groq_client()
     response = await client.chat.completions.create(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model=MODEL_COMPLEX,
         messages=[
             {"role": "system", "content": CURATOR_SYSTEM},
             {"role": "user", "content": f"Query: {query}\n\nSearch results:\n{results_text}"},
         ],
-        temperature=0.3,
+        temperature=0.35,
         max_tokens=512,
     )
 

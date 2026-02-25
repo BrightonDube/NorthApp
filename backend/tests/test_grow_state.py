@@ -123,8 +123,7 @@ async def test_detect_stage_completion_should_advance():
     mock_groq_client.chat.completions.create = AsyncMock(return_value=mock_completion)
     
     with patch('app.agents.chat_agent.get_async_supabase_client', new_callable=AsyncMock, return_value=mock_supabase), \
-         patch('app.agents.chat_agent.AsyncGroq', return_value=mock_groq_client), \
-         patch('app.agents.chat_agent.get_settings'):
+         patch('app.agents.chat_agent.get_groq_client', return_value=mock_groq_client):
         
         result = await detect_stage_completion(
             "test-session-id",
@@ -169,8 +168,7 @@ async def test_detect_stage_completion_should_not_advance():
     mock_groq_client.chat.completions.create = AsyncMock(return_value=mock_completion)
     
     with patch('app.agents.chat_agent.get_async_supabase_client', new_callable=AsyncMock, return_value=mock_supabase), \
-         patch('app.agents.chat_agent.AsyncGroq', return_value=mock_groq_client), \
-         patch('app.agents.chat_agent.get_settings'):
+         patch('app.agents.chat_agent.get_groq_client', return_value=mock_groq_client):
         
         result = await detect_stage_completion(
             "test-session-id",
@@ -198,12 +196,8 @@ async def test_detect_stage_completion_already_complete():
     mock_from.select.return_value.eq.return_value.single.return_value.execute = AsyncMock(return_value=mock_result)
     mock_supabase.from_ = MagicMock(return_value=mock_from)
     
-    # Mock settings
-    mock_settings = MagicMock()
-    mock_settings.groq_api_key = "test-key"
-    
     with patch('app.agents.chat_agent.get_async_supabase_client', new_callable=AsyncMock, return_value=mock_supabase), \
-         patch('app.agents.chat_agent.get_settings', return_value=mock_settings):
+         patch('app.agents.chat_agent.get_groq_client'):
         result = await detect_stage_completion(
             "test-session-id",
             "Thanks for the help!",

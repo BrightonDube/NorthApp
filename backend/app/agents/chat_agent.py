@@ -1,10 +1,12 @@
 import json
-from groq import AsyncGroq
-from app.config import get_settings
 from app.services.supabase import get_async_supabase_client
 from app.services.rag import retrieve_relevant_memories, format_memories_for_prompt
-from app.services.claude import stream_claude_response
-from app.services.gemini import stream_gemini_response
+from app.services.groq_client import (
+    MODEL_COMPLEX,
+    MODEL_FAST,
+    MODEL_REASONING,
+    get_groq_client,
+)
 
 PERSONA_PROMPTS = {
     "gentle": (
@@ -128,22 +130,16 @@ def select_model(
     Returns:
         Model identifier string for the LLM API
     """
-    # Multimodal requests require vision-capable models
-    if has_images:
-        return "meta-llama/llama-4-scout-17b-16e-instruct"
+    # Deep problem solving and reasoning-heavy contexts.
+    if coach_type in ["strategic", "systems"] and (message_length > 1200 or conversation_depth > 14):
+        return MODEL_REASONING
 
-    # Complex reasoning for strategic/systems coaches with long messages.
-    # NOTE: Claude integration is pending; callers should fall back if provider unavailable.
-    if coach_type in ["strategic", "systems"] and message_length > 1000:
-        return "claude-3-5-sonnet-20241022"
+    # Complex coaching logic.
+    if has_images or coach_type in ["leadership", "eq"] or message_length > 700:
+        return MODEL_COMPLEX
 
-    # High-context conversations for leadership/EQ coaches.
-    # NOTE: Gemini integration is pending; callers should fall back if provider unavailable.
-    if coach_type in ["leadership", "eq"] and conversation_depth > 10:
-        return "gemini-1.5-flash"
-
-    # Standard coaching - default to Groq Llama 4 Scout
-    return "meta-llama/llama-4-scout-17b-16e-instruct"
+    # Fast chat and basic inputs.
+    return MODEL_FAST
 
 
 def get_runtime_fallback_models(selected_model: str) -> list[str]:
@@ -153,12 +149,7 @@ def get_runtime_fallback_models(selected_model: str) -> list[str]:
     The first model is the selected runtime model. If that fails, we try known
     stable Groq alternatives before giving up.
     """
-    candidates = [
-        selected_model,
-        "meta-llama/llama-4-scout-17b-16e-instruct",
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
-    ]
+    candidates = [selected_model, MODEL_COMPLEX, MODEL_FAST, MODEL_REASONING]
     deduped: list[str] = []
     for model in candidates:
         if model and model not in deduped:
@@ -176,11 +167,9 @@ def estimate_tokens(text: str) -> int:
 def calculate_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
     # Approximate per-1M token pricing. Values are conservative defaults.
     pricing = {
-        "meta-llama/llama-4-scout-17b-16e-instruct": (0.10, 0.10),
         "llama-3.3-70b-versatile": (0.59, 0.79),
         "llama-3.1-8b-instant": (0.05, 0.08),
-        "claude-3-5-sonnet-20241022": (3.00, 15.00),
-        "gemini-1.5-flash": (0.075, 0.30),
+        "deepseek-r1-distill-llama-70b": (0.99, 0.99),
     }
     input_rate, output_rate = pricing.get(model, (0.10, 0.10))
     return round((input_tokens / 1_000_000) * input_rate + (output_tokens / 1_000_000) * output_rate, 6)
@@ -357,8 +346,7 @@ async def detect_stage_completion(session_id: str, user_message: str, assistant_
     Returns:
         dict with 'should_advance' (bool) and 'next_state' (str) keys
     """
-    settings = get_settings()
-    client = AsyncGroq(api_key=settings.groq_api_key)
+    client = get_groq_client()
 
     # Get current GROW state
     grow_state_data = await get_grow_state(session_id)
@@ -422,12 +410,12 @@ Respond with ONLY a JSON object in this exact format:
     try:
         # Use LLM to detect stage completion
         response = await client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model=MODEL_REASONING,
             messages=[
                 {"role": "system", "content": "You are a GROW coaching expert analyzing conversation progress. Respond only with valid JSON."},
                 {"role": "user", "content": detection_prompt}
             ],
-            temperature=0.3,  # Lower temperature for more consistent analysis
+            temperature=0.2,
             max_tokens=150,
         )
 
@@ -541,8 +529,7 @@ async def stream_chat_response(
     message: str,
     attachments: list | None = None,
 ):
-    settings = get_settings()
-    groq_client = AsyncGroq(api_key=settings.groq_api_key)
+    groq_client = get_groq_client()
 
     firmness = await get_user_firmness(user_id)
     coach_info = await get_coach_info(coach_id)
@@ -593,38 +580,25 @@ async def stream_chat_response(
     stream_errors: list[str] = []
     for model in model_candidates:
         try:
-            if model.startswith("claude-"):
-                async for delta in stream_claude_response(
-                    api_key=settings.anthropic_api_key,
-                    model=model,
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=1024,
-                ):
-                    full_response += delta
-                    yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
-            elif model.startswith("gemini-"):
-                async for delta in stream_gemini_response(
-                    api_key=settings.gemini_api_key,
-                    model=model,
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=1024,
-                ):
-                    full_response += delta
-                    yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+            # Groq-optimized temperatures by model tier.
+            if model == MODEL_REASONING:
+                temperature = 0.2
+            elif model == MODEL_COMPLEX:
+                temperature = 0.45
             else:
-                async with groq_client.chat.completions.stream(
-                    model=model,
-                    messages=messages,
-                    temperature=0.7,
-                    max_tokens=1024,
-                ) as stream:
-                    async for chunk in stream:
-                        delta = chunk.choices[0].delta.content if chunk.choices else None
-                        if delta:
-                            full_response += delta
-                            yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+                temperature = 0.6
+
+            async with groq_client.chat.completions.stream(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=1024,
+            ) as stream:
+                async for chunk in stream:
+                    delta = chunk.choices[0].delta.content if chunk.choices else None
+                    if delta:
+                        full_response += delta
+                        yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
             # Successfully streamed with this model.
             successful_model = model
             break
