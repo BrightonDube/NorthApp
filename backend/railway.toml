@@ -4,7 +4,7 @@ service = "2c555a37-5e4c-4a8d-b8e8-eae8734d90fb"
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "pip install -r requirements.txt"
+buildCommand = "python -m pip install --upgrade pip && python -m pip install -r requirements.txt"
 
 [deploy]
 startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
