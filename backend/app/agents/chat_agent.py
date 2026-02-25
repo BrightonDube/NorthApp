@@ -158,6 +158,26 @@ def resolve_runtime_model(selected_model: str) -> str:
     return selected_model
 
 
+def get_runtime_fallback_models(selected_model: str) -> list[str]:
+    """
+    Build ordered runtime fallback models.
+
+    The first model is the selected runtime model. If that fails, we try known
+    stable Groq alternatives before giving up.
+    """
+    candidates = [
+        resolve_runtime_model(selected_model),
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+    ]
+    deduped: list[str] = []
+    for model in candidates:
+        if model and model not in deduped:
+            deduped.append(model)
+    return deduped
+
+
 async def get_user_firmness(user_id: str) -> int:
     supabase = await get_async_supabase_client()
     result = await (
@@ -523,7 +543,7 @@ async def stream_chat_response(
         has_images=has_images,
         conversation_depth=conversation_depth,
     )
-    model = resolve_runtime_model(selected_model)
+    model_candidates = get_runtime_fallback_models(selected_model)
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -533,20 +553,31 @@ async def stream_chat_response(
 
     full_response = ""
 
-    try:
-        async with client.chat.completions.stream(
-            model=model,
-            messages=messages,
-            temperature=0.7,
-            max_tokens=1024,
-        ) as stream:
-            async for chunk in stream:
-                delta = chunk.choices[0].delta.content if chunk.choices else None
-                if delta:
-                    full_response += delta
-                    yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
-    except Exception as e:
-        print(f"Error streaming chat response (model={model}, selected={selected_model}): {e}")
+    stream_errors: list[str] = []
+    for model in model_candidates:
+        try:
+            async with client.chat.completions.stream(
+                model=model,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1024,
+            ) as stream:
+                async for chunk in stream:
+                    delta = chunk.choices[0].delta.content if chunk.choices else None
+                    if delta:
+                        full_response += delta
+                        yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+            # Successfully streamed with this model.
+            break
+        except Exception as e:
+            stream_errors.append(f"{model}: {e}")
+            print(f"Error streaming chat response with model={model}: {e}")
+            continue
+    else:
+        print(
+            f"Error streaming chat response (selected={selected_model}). "
+            f"Attempts: {' | '.join(stream_errors)}"
+        )
         yield f"data: {json.dumps({'type': 'error', 'data': {'message': 'AI service is not available at the moment. Please try again later.'}})}\n\n"
         return
 

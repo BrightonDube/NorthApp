@@ -66,3 +66,15 @@ class GrowStateResponse(BaseModel):
     state: Literal["goal", "reality", "options", "way_forward", "complete"]
     data: dict
     updated_at: str | None = None
+
+
+class CheckInResponse(BaseModel):
+    id: str
+    user_id: str
+    mood: int
+    energy: int
+    priorities: list[str]
+    reflection: str
+    gratitude: str
+    type: Literal["morning", "evening"]
+    created_at: str

@@ -70,3 +70,12 @@ class AwardXPRequest(BaseModel):
 class UpdateGrowStateRequest(BaseModel):
     grow_state: Literal["goal", "reality", "options", "way_forward", "complete"]
     grow_data: dict | None = None
+
+
+class CreateCheckInRequest(BaseModel):
+    mood: int = Field(ge=1, le=5)
+    energy: int = Field(ge=1, le=5)
+    priorities: list[str] = Field(default_factory=list)
+    reflection: str = ""
+    gratitude: str = ""
+    type: Literal["morning", "evening"]

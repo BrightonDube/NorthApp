@@ -12,6 +12,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
+import { api, buildAuthHeaders } from '@/lib/api';
 
 export interface CheckIn {
   id: string;
@@ -92,6 +93,71 @@ function isConsecutiveDay(d1: Date, d2: Date): boolean {
   return diff >= oneDay && diff < oneDay * 2;
 }
 
+function mapCheckInRow(row: any): CheckIn {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    mood: row.mood,
+    energy: row.energy,
+    priorities: row.priorities || [],
+    reflection: row.reflection || '',
+    gratitude: row.gratitude || '',
+    type: row.type || 'morning',
+    createdAt: normalizeDateString(row.created_at),
+  };
+}
+
+async function fetchCheckInsFromBackend(limit: number): Promise<CheckIn[] | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken || !api.checkIns) return null;
+
+  const response = await fetch(`${api.checkIns}?limit=${limit}`, {
+    method: 'GET',
+    headers: buildAuthHeaders(accessToken),
+  });
+  if (!response.ok) {
+    throw new Error(`Check-in fetch failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload)) return [];
+  return payload.map(mapCheckInRow);
+}
+
+async function submitCheckInToBackend(data: {
+  mood: number;
+  energy: number;
+  priorities?: string[];
+  reflection?: string;
+  gratitude?: string;
+  type: 'morning' | 'evening';
+}): Promise<CheckIn | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken || !api.checkIns) return null;
+
+  const response = await fetch(api.checkIns, {
+    method: 'POST',
+    headers: buildAuthHeaders(accessToken),
+    body: JSON.stringify({
+      mood: data.mood,
+      energy: data.energy,
+      priorities: data.priorities || [],
+      reflection: data.reflection || '',
+      gratitude: data.gratitude || '',
+      type: data.type,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Check-in submit failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  return mapCheckInRow(payload);
+}
+
 export const useCheckInStore = create<CheckInStore>()(
   persist(
     (set, get) => ({
@@ -110,33 +176,46 @@ export const useCheckInStore = create<CheckInStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error('Not authenticated');
 
-          const { data, error } = await supabase
-            .from('check_ins')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(limit);
+          let checkIns: CheckIn[] = [];
+          try {
+            const backendData = await fetchCheckInsFromBackend(limit);
+            if (backendData) {
+              checkIns = backendData;
+            } else {
+              const { data, error } = await supabase
+                .from('check_ins')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(limit);
 
-          if (error) {
-            // Table may not exist yet (PostgREST schema cache miss or SQL relation missing)
-            if (error.code === '42P01' || error.code === 'PGRST205') {
-              set({ isLoading: false });
-              return;
+              if (error) {
+                if (error.code === '42P01' || error.code === 'PGRST205') {
+                  set({ isLoading: false });
+                  return;
+                }
+                throw error;
+              }
+              checkIns = (data || []).map(mapCheckInRow);
             }
-            throw error;
-          }
+          } catch (backendError) {
+            console.warn('[CheckInStore] Backend fetch failed, falling back to Supabase:', backendError);
+            const { data, error } = await supabase
+              .from('check_ins')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(limit);
 
-          const checkIns: CheckIn[] = (data || []).map(row => ({
-            id: row.id,
-            userId: row.user_id,
-            mood: row.mood,
-            energy: row.energy,
-            priorities: row.priorities || [],
-            reflection: row.reflection || '',
-            gratitude: row.gratitude || '',
-            type: row.type || 'morning',
-            createdAt: normalizeDateString(row.created_at),
-          }));
+            if (error) {
+              if (error.code === '42P01' || error.code === 'PGRST205') {
+                set({ isLoading: false });
+                return;
+              }
+              throw error;
+            }
+            checkIns = (data || []).map(mapCheckInRow);
+          }
 
           set({ checkIns, isLoading: false });
           get().calculateStreak();
@@ -153,57 +232,55 @@ export const useCheckInStore = create<CheckInStore>()(
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) throw new Error('Not authenticated');
 
-          const { data: inserted, error } = await supabase
-            .from('check_ins')
-            .insert({
-              user_id: user.id,
-              mood: data.mood,
-              energy: data.energy,
-              priorities: data.priorities || [],
-              reflection: data.reflection || '',
-              gratitude: data.gratitude || '',
-              type: data.type,
-            })
-            .select()
-            .single();
+          let checkIn: CheckIn | null = null;
+          try {
+            checkIn = await submitCheckInToBackend(data);
+          } catch (backendError) {
+            console.warn('[CheckInStore] Backend submit failed, falling back to Supabase:', backendError);
+          }
 
-          if (error) {
-            // If table doesn't exist, store locally
-            if (error.code === '42P01' || error.code === 'PGRST205') {
-              const localCheckIn: CheckIn = {
-                id: `local-${Date.now()}`,
-                userId: user.id,
+          if (!checkIn) {
+            const { data: inserted, error } = await supabase
+              .from('check_ins')
+              .insert({
+                user_id: user.id,
                 mood: data.mood,
                 energy: data.energy,
                 priorities: data.priorities || [],
                 reflection: data.reflection || '',
                 gratitude: data.gratitude || '',
                 type: data.type,
-                createdAt: normalizeDateString(new Date().toISOString()),
-              };
+              })
+              .select()
+              .single();
 
-              set(state => ({
-                checkIns: [localCheckIn, ...state.checkIns],
-                lastCheckInDate: new Date().toISOString().split('T')[0],
-                isLoading: false,
-              }));
-              get().calculateStreak();
-              return;
+            if (error) {
+              // If table doesn't exist, store locally
+              if (error.code === '42P01' || error.code === 'PGRST205') {
+                const localCheckIn: CheckIn = {
+                  id: `local-${Date.now()}`,
+                  userId: user.id,
+                  mood: data.mood,
+                  energy: data.energy,
+                  priorities: data.priorities || [],
+                  reflection: data.reflection || '',
+                  gratitude: data.gratitude || '',
+                  type: data.type,
+                  createdAt: normalizeDateString(new Date().toISOString()),
+                };
+
+                set(state => ({
+                  checkIns: [localCheckIn, ...state.checkIns],
+                  lastCheckInDate: new Date().toISOString().split('T')[0],
+                  isLoading: false,
+                }));
+                get().calculateStreak();
+                return;
+              }
+              throw error;
             }
-            throw error;
+            checkIn = mapCheckInRow(inserted);
           }
-
-          const checkIn: CheckIn = {
-            id: inserted.id,
-            userId: inserted.user_id,
-            mood: inserted.mood,
-            energy: inserted.energy,
-            priorities: inserted.priorities || [],
-            reflection: inserted.reflection || '',
-            gratitude: inserted.gratitude || '',
-            type: inserted.type || data.type,
-            createdAt: normalizeDateString(inserted.created_at),
-          };
 
           set(state => ({
             checkIns: [checkIn, ...state.checkIns],

@@ -45,6 +45,9 @@ export const api = {
   // XP / Gamification
   xp: `${API_BASE}/v1/xp`,
   xpAward: `${API_BASE}/v1/xp/award`,
+
+  // Check-ins
+  checkIns: `${API_BASE}/v1/check-ins`,
 };
 
 /**
