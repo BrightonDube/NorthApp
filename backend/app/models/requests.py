@@ -65,3 +65,8 @@ class PanicRequest(BaseModel):
 
 class AwardXPRequest(BaseModel):
     event_type: Literal["task_complete", "check_in", "goal_complete", "streak_bonus", "first_message", "session_report"]
+
+
+class UpdateGrowStateRequest(BaseModel):
+    grow_state: Literal["goal", "reality", "options", "way_forward", "complete"]
+    grow_data: dict | None = None

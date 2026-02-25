@@ -6,7 +6,7 @@ from app.dependencies import get_current_user, AuthUser
 from app.models.requests import ChatRequest
 from app.agents.chat_agent import stream_chat_response, save_message
 from app.agents.memory_agent import extract_and_store_facts
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 
 router = APIRouter()
 
@@ -26,10 +26,10 @@ async def chat_stream(
     background_tasks: BackgroundTasks,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
     # Verify session belongs to user
-    session_result = (
+    session_result = await (
         supabase.from_("chat_sessions")
         .select("id, user_id")
         .eq("id", body.session_id)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user, AuthUser
 from app.models.responses import MemoryResponse
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 
 router = APIRouter()
 
@@ -11,8 +11,8 @@ async def list_memories(
     limit: int = 50,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
-    result = (
+    supabase = await get_async_supabase_client()
+    result = await (
         supabase.from_("memories")
         .select("id, content, category, importance, created_at")
         .eq("user_id", user.id)
@@ -28,8 +28,8 @@ async def delete_memory(
     memory_id: str,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
-    result = (
+    supabase = await get_async_supabase_client()
+    result = await (
         supabase.from_("memories")
         .delete()
         .eq("id", memory_id)

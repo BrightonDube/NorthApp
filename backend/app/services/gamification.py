@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 
 LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000]
 
@@ -22,8 +22,8 @@ def calculate_level(total_xp: int) -> int:
 
 
 async def get_user_xp(user_id: str) -> dict:
-    supabase = get_supabase_client()
-    result = (
+    supabase = await get_async_supabase_client()
+    result = await (
         supabase.from_("user_xp")
         .select("*")
         .eq("user_id", user_id)
@@ -33,7 +33,7 @@ async def get_user_xp(user_id: str) -> dict:
     if result.data:
         return result.data
     # Create row if not exists
-    insert = (
+    insert = await (
         supabase.from_("user_xp")
         .insert({"user_id": user_id})
         .select()
@@ -44,7 +44,7 @@ async def get_user_xp(user_id: str) -> dict:
 
 
 async def award_xp(user_id: str, event_type: str, multiplier: int = 1) -> dict:
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
     user_xp_data = await get_user_xp(user_id)
     current_total = user_xp_data.get("total_xp", 0)
@@ -62,7 +62,7 @@ async def award_xp(user_id: str, event_type: str, multiplier: int = 1) -> dict:
         return {"xp_earned": 0, "total_xp": current_total, "level": current_level, "leveled_up": False}
 
     # Record XP event
-    supabase.from_("xp_events").insert({
+    await supabase.from_("xp_events").insert({
         "user_id": user_id,
         "event_type": event_type,
         "xp_amount": xp,
@@ -73,7 +73,7 @@ async def award_xp(user_id: str, event_type: str, multiplier: int = 1) -> dict:
     new_level = calculate_level(new_total)
     leveled_up = new_level > current_level
 
-    supabase.from_("user_xp").upsert({
+    await supabase.from_("user_xp").upsert({
         "user_id": user_id,
         "total_xp": new_total,
         "level": new_level,
@@ -89,7 +89,7 @@ async def award_xp(user_id: str, event_type: str, multiplier: int = 1) -> dict:
 
 
 async def update_streak(user_id: str) -> int:
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
     user_xp_data = await get_user_xp(user_id)
 
     current_streak = user_xp_data.get("current_streak", 0)
@@ -97,7 +97,7 @@ async def update_streak(user_id: str) -> int:
     new_streak = current_streak + 1
     new_longest = max(longest_streak, new_streak)
 
-    supabase.from_("user_xp").upsert({
+    await supabase.from_("user_xp").upsert({
         "user_id": user_id,
         "current_streak": new_streak,
         "longest_streak": new_longest,

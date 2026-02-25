@@ -1,13 +1,13 @@
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 from app.agents.proactive_agent import send_reengagement_notification
 
 
 async def check_inactive_users():
     print("[Inactivity] Running check...")
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
     # Find users whose last message was >24h ago and haven't been notified today
-    result = supabase.rpc("get_inactive_users", {"hours_threshold": 24}).execute()
+    result = await supabase.rpc("get_inactive_users", {"hours_threshold": 24}).execute()
 
     if not result.data:
         print("[Inactivity] No inactive users found")

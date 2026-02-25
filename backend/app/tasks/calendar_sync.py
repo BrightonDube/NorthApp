@@ -1,6 +1,6 @@
 from groq import AsyncGroq
 from app.config import get_settings
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 from app.services.calendar import fetch_today_events, get_user_tokens
 
 
@@ -33,10 +33,10 @@ async def summarize_calendar_events(events: list[dict]) -> str:
 
 async def sync_all_calendars():
     print("[CalendarSync] Starting daily calendar sync...")
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
     # Get all users with connected Google Calendar
-    result = (
+    result = await (
         supabase.from_("profiles")
         .select("id")
         .not_.is_("google_calendar_tokens", "null")
@@ -55,7 +55,7 @@ async def sync_all_calendars():
             summary = await summarize_calendar_events(events)
 
             # Upsert into user_context as 'calendar' category
-            supabase.from_("user_context").upsert(
+            await supabase.from_("user_context").upsert(
                 {
                     "user_id": user_id,
                     "category": "calendar",

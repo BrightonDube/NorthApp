@@ -5,7 +5,7 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
 from app.config import get_settings
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
@@ -61,15 +61,15 @@ async def exchange_code_for_tokens(code: str) -> dict:
 
 
 async def store_user_tokens(user_id: str, tokens: dict) -> None:
-    supabase = get_supabase_client()
-    supabase.from_("profiles").update({
+    supabase = await get_async_supabase_client()
+    await supabase.from_("profiles").update({
         "google_calendar_tokens": json.dumps(tokens)
     }).eq("id", user_id).execute()
 
 
 async def get_user_tokens(user_id: str) -> dict | None:
-    supabase = get_supabase_client()
-    result = (
+    supabase = await get_async_supabase_client()
+    result = await (
         supabase.from_("profiles")
         .select("google_calendar_tokens")
         .eq("id", user_id)

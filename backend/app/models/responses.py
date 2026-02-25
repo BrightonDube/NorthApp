@@ -60,3 +60,9 @@ class GoalPlanResponse(BaseModel):
     difficulty: str
     suggested_deadline: str | None
     subtasks: list[dict]
+
+
+class GrowStateResponse(BaseModel):
+    state: Literal["goal", "reality", "options", "way_forward", "complete"]
+    data: dict
+    updated_at: str | None = None

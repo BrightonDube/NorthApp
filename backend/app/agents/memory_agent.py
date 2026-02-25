@@ -1,7 +1,7 @@
 import json
 from groq import AsyncGroq
 from app.config import get_settings
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 from app.services.embeddings import create_embedding
 
 FACT_EXTRACTION_PROMPT = """Analyze the following conversation message and extract any NEW facts about the user.
@@ -60,7 +60,7 @@ async def extract_and_store_facts(message: str, user_id: str, source_message_id:
     if not facts:
         return 0
 
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
     stored = 0
 
     for fact in facts:
@@ -80,7 +80,7 @@ async def extract_and_store_facts(message: str, user_id: str, source_message_id:
             if source_message_id:
                 insert_data["source_message_id"] = source_message_id
 
-            supabase.from_("memories").insert(insert_data).execute()
+            await supabase.from_("memories").insert(insert_data).execute()
             stored += 1
         except Exception as e:
             print(f"[MemoryAgent] Failed to store fact: {e}")

@@ -1,5 +1,5 @@
 from app.services.embeddings import create_embedding
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 
 
 async def retrieve_relevant_memories(
@@ -9,9 +9,9 @@ async def retrieve_relevant_memories(
     threshold: float = 0.7,
 ) -> list[dict]:
     query_embedding = await create_embedding(query)
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
-    result = supabase.rpc(
+    result = await supabase.rpc(
         "match_memories",
         {
             "query_embedding": query_embedding,

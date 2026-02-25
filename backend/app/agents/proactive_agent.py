@@ -1,6 +1,6 @@
 from groq import AsyncGroq
 from app.config import get_settings
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 from app.services.notifications import send_push_notification
 
 CHECKIN_PROMPT = """You are a proactive life coach. A user hasn't checked in for a while.
@@ -19,8 +19,8 @@ Return ONLY the message text, nothing else."""
 
 
 async def get_user_top_goal(user_id: str) -> str:
-    supabase = get_supabase_client()
-    result = (
+    supabase = await get_async_supabase_client()
+    result = await (
         supabase.from_("goals")
         .select("title")
         .eq("user_id", user_id)
@@ -35,8 +35,8 @@ async def get_user_top_goal(user_id: str) -> str:
 
 
 async def get_user_context_summary(user_id: str) -> str:
-    supabase = get_supabase_client()
-    result = (
+    supabase = await get_async_supabase_client()
+    result = await (
         supabase.from_("user_context")
         .select("category, content")
         .eq("user_id", user_id)

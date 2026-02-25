@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user, AuthUser
 from app.models.requests import CreateGoalRequest, UpdateGoalRequest, CreateSubtaskRequest, UpdateSubtaskRequest
 from app.models.responses import GoalResponse, SubtaskResponse
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 from app.services.gamification import award_xp
 
 router = APIRouter()
@@ -13,7 +13,7 @@ async def list_goals(
     status: str | None = None,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
     query = (
         supabase.from_("goals")
         .select("*, subtasks(*)")
@@ -23,7 +23,7 @@ async def list_goals(
     if status:
         query = query.eq("status", status)
 
-    result = query.execute()
+    result = await query.execute()
     return result.data or []
 
 
@@ -32,7 +32,7 @@ async def create_goal(
     body: CreateGoalRequest,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
     insert_data = {
         "user_id": user.id,
         "title": body.title,
@@ -46,7 +46,7 @@ async def create_goal(
     if body.coach_id:
         insert_data["coach_id"] = body.coach_id
 
-    result = (
+    result = await (
         supabase.from_("goals")
         .insert(insert_data)
         .select("*, subtasks(*)")
@@ -62,10 +62,10 @@ async def update_goal(
     body: UpdateGoalRequest,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
     # Verify ownership
-    existing = (
+    existing = await (
         supabase.from_("goals")
         .select("id, status, user_id")
         .eq("id", goal_id)
@@ -80,7 +80,7 @@ async def update_goal(
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    result = (
+    result = await (
         supabase.from_("goals")
         .update(update_data)
         .eq("id", goal_id)
@@ -101,8 +101,8 @@ async def delete_goal(
     goal_id: str,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
-    result = (
+    supabase = await get_async_supabase_client()
+    result = await (
         supabase.from_("goals")
         .delete()
         .eq("id", goal_id)
@@ -119,10 +119,10 @@ async def create_subtask(
     body: CreateSubtaskRequest,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
     # Verify goal ownership
-    goal = (
+    goal = await (
         supabase.from_("goals")
         .select("id")
         .eq("id", goal_id)
@@ -142,7 +142,7 @@ async def create_subtask(
     if body.due_date:
         insert_data["due_date"] = body.due_date
 
-    result = (
+    result = await (
         supabase.from_("subtasks")
         .insert(insert_data)
         .select()
@@ -158,9 +158,9 @@ async def update_subtask(
     body: UpdateSubtaskRequest,
     user: AuthUser = Depends(get_current_user),
 ):
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
-    existing = (
+    existing = await (
         supabase.from_("subtasks")
         .select("id, status, user_id")
         .eq("id", subtask_id)
@@ -176,7 +176,7 @@ async def update_subtask(
         from datetime import datetime, timezone
         update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
 
-    result = (
+    result = await (
         supabase.from_("subtasks")
         .update(update_data)
         .eq("id", subtask_id)

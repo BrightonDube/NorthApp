@@ -1,14 +1,14 @@
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_async_supabase_client
 from app.agents.proactive_agent import generate_checkin_message
 from app.services.notifications import send_push_notification
 
 
 async def morning_goal_reminders():
     print("[Reminders] Running morning goal reminders...")
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
 
     # Get users with active goals
-    result = (
+    result = await (
         supabase.from_("goals")
         .select("user_id, title")
         .eq("status", "active")
