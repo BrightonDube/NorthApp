@@ -18,10 +18,10 @@ DEPENDENCIES_TO_REMOVE = [
     "langchain-groq",
 ]
 
-# Files to check for imports
+# Files to check for imports (already deleted in Task 3.1-3.4)
 FILES_TO_CHECK = [
-    "app/services/claude.py",
-    "app/services/gemini.py",
+    # "app/services/claude.py",  # DELETED in Task 3.1
+    # "app/services/gemini.py",  # DELETED in Task 3.2
 ]
 
 
@@ -158,7 +158,8 @@ def verify_app_still_works():
     
     # Try importing main app
     try:
-        import app.main
+        import importlib
+        importlib.import_module("app.main")
         print("✅ App imports successfully")
     except ImportError as e:
         print(f"❌ Import error: {e}")

@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from app.dependencies import get_current_user, AuthUser
 from app.models.requests import ChatRequest
 from app.agents.chat_agent import stream_chat_response, save_message
-from app.agents.memory_agent import extract_and_store_facts
+from app.agents.memory_agent import extract_and_store_facts, extract_conversation_insights
 from app.services.supabase import get_async_supabase_client
 
 router = APIRouter()
@@ -129,3 +129,128 @@ async def chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+
+@router.post("/sessions/{session_id}/insights")
+async def extract_session_insights(
+    session_id: str,
+    user: AuthUser = Depends(get_current_user),
+):
+    """
+    Extract high-level insights from a completed coaching conversation.
+    
+    This endpoint analyzes the entire conversation and extracts key takeaways,
+    breakthroughs, patterns, and commitments. Insights are stored for future
+    reference and can be surfaced in subsequent conversations.
+    
+    **Authentication:** Required (JWT Bearer token)
+    
+    **Path Parameters:**
+    - `session_id` (string, required): UUID of the chat session to analyze
+    
+    **Response:**
+    ```json
+    {
+      "insights_extracted": 3,
+      "message": "Successfully extracted 3 insights from conversation"
+    }
+    ```
+    
+    **Requirements:**
+    - Session must belong to the authenticated user
+    - Conversation must have at least 5 messages
+    - Insights must have confidence >= 0.7 to be stored
+    
+    **Error Codes:**
+    - `401 Unauthorized`: Invalid or missing JWT token
+    - `404 Not Found`: Session not found or doesn't belong to user
+    - `400 Bad Request`: Conversation too short (< 5 messages)
+    
+    **Example Request:**
+    ```bash
+    POST /v1/sessions/550e8400-e29b-41d4-a716-446655440000/insights
+    Authorization: Bearer <jwt_token>
+    ```
+    
+    **Example Response:**
+    ```json
+    {
+      "insights_extracted": 2,
+      "message": "Successfully extracted 2 insights from conversation"
+    }
+    ```
+    
+    **Insight Types:**
+    - Breakthroughs or realizations
+    - Patterns in thinking or behavior
+    - Commitments or decisions made
+    - Progress toward goals
+    - Shifts in perspective
+    - Action items agreed upon
+    
+    **Performance:**
+    - Analysis typically completes in 3-5 seconds
+    - Longer conversations may take up to 10 seconds
+    
+    **Related Endpoints:**
+    - `GET /v1/memories` - View all stored memories and insights
+    - `DELETE /v1/memories/{id}` - Delete specific memory or insight
+    """
+    from fastapi import HTTPException
+    
+    supabase = await get_async_supabase_client()
+    
+    # Verify session belongs to user
+    session_result = await (
+        supabase.from_("chat_sessions")
+        .select("id, user_id, coach_id")
+        .eq("id", session_id)
+        .eq("user_id", user.id)
+        .single()
+        .execute()
+    )
+    
+    if not session_result.data:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session = session_result.data
+    
+    # Extract insights
+    try:
+        count = await extract_conversation_insights(
+            session_id=session_id,
+            user_id=user.id,
+            coach_id=session["coach_id"]
+        )
+        
+        if count == 0:
+            # Check if it's because conversation is too short
+            messages_result = await supabase.from_("messages").select("id").eq(
+                "chat_session_id", session_id
+            ).execute()
+            
+            if len(messages_result.data) < 5:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Conversation too short. Need at least 5 messages to extract insights."
+                )
+            
+            return {
+                "insights_extracted": 0,
+                "message": "No significant insights found in this conversation"
+            }
+        
+        return {
+            "insights_extracted": count,
+            "message": f"Successfully extracted {count} insight{'s' if count != 1 else ''} from conversation"
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[API] Insight extraction failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to extract insights. Please try again later."
+        )

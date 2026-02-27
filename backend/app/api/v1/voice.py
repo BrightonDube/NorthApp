@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
-from fastapi.responses import Response
 
 from app.dependencies import get_current_user, AuthUser
 from app.models.requests import TTSRequest
 from app.models.responses import TranscriptResponse
-from app.services.voice_stt import transcribe_audio
-from app.services.voice_tts import synthesize_speech
+# TODO: Implement multimodal features using Groq (Task 7a)
+# from app.services.voice_stt import transcribe_audio  # DELETED - will be replaced with Groq Whisper
+# from app.services.voice_tts import synthesize_speech  # DELETED - will be replaced with Groq TTS
 from app.services.supabase import get_async_supabase_client
 
 router = APIRouter()
@@ -40,7 +40,9 @@ async def voice_to_text(
     user: AuthUser = Depends(get_current_user),
 ):
     """
-    Transcribe audio recordings to text using OpenAI Whisper API.
+    Transcribe audio recordings to text using Groq Whisper API.
+    
+    **Status:** Not yet implemented. Will be implemented in Task 7a using Groq Whisper Large v3.
     
     Converts voice messages to text for natural communication. Users can speak their
     thoughts instead of typing, making coaching conversations more fluid and accessible.
@@ -93,11 +95,11 @@ async def voice_to_text(
     - `POST /v1/chat/stream` - Send transcribed text to AI
     - `PATCH /v1/settings` - Enable/disable voice features
     """
-    await _check_voice_access(user.id)
-    audio_bytes = await audio.read()
-    filename = audio.filename or "audio.webm"
-    text = await transcribe_audio(audio_bytes, filename)
-    return TranscriptResponse(text=text)
+    # TODO: Implement using Groq Whisper Large v3 (Task 7a.1)
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Voice transcription will be implemented using Groq Whisper in Task 7a"
+    )
 
 
 @router.post("/chat/voice/response")
@@ -106,7 +108,9 @@ async def text_to_speech(
     user: AuthUser = Depends(get_current_user),
 ):
     """
-    Generate audio speech from text using OpenAI Text-to-Speech API.
+    Generate audio speech from text using Groq Text-to-Speech API.
+    
+    **Status:** Not yet implemented. Will be implemented in Task 7a using Groq TTS models.
     
     Converts AI coaching responses to natural-sounding speech, enabling users to
     listen to responses while multitasking or when reading is inconvenient.
@@ -168,10 +172,8 @@ async def text_to_speech(
     - `POST /v1/chat/stream` - Get AI response text
     - `PATCH /v1/settings` - Enable/disable voice features
     """
-    await _check_voice_access(user.id)
-    audio_bytes = await synthesize_speech(body.text, body.voice)
-    return Response(
-        content=audio_bytes,
-        media_type="audio/mpeg",
-        headers={"Content-Disposition": "inline; filename=response.mp3"},
+    # TODO: Implement using Groq TTS models (Task 7a.2)
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Voice synthesis will be implemented using Groq TTS in Task 7a"
     )

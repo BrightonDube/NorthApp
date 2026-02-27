@@ -344,8 +344,12 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Reports Section */}
+        {/* Data Management Section */}
         <View style={[styles.section, { backgroundColor: colors.card }]}>
+          <SettingsRow 
+            label="Memories" 
+            onPress={() => router.push('/memories' as any)}
+          />
           <SettingsRow 
             label="Session Reports" 
             onPress={() => router.push('/report' as any)}

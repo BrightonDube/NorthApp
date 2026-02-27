@@ -184,7 +184,7 @@ async def test_format_memories_for_prompt_success():
     # Verify high importance items have star marker
     assert "⭐" in result
     lines = result.split("\n")
-    high_importance_lines = [l for l in lines if "User wants to learn Python" in l or "User struggles with time management" in l]
+    high_importance_lines = [line for line in lines if "User wants to learn Python" in line or "User struggles with time management" in line]
     for line in high_importance_lines:
         assert "⭐" in line
 
@@ -232,7 +232,7 @@ async def test_format_memories_for_prompt_medium_importance():
     result = await format_memories_for_prompt(memories)
     
     lines = result.split("\n")
-    memory_line = [l for l in lines if "Test memory" in l][0]
+    memory_line = [line for line in lines if "Test memory" in line][0]
     assert memory_line.startswith("-")
     assert "⭐" not in memory_line
 
@@ -251,7 +251,7 @@ async def test_format_memories_for_prompt_low_importance():
     result = await format_memories_for_prompt(memories)
     
     lines = result.split("\n")
-    memory_line = [l for l in lines if "Test memory" in l][0]
+    memory_line = [line for line in lines if "Test memory" in line][0]
     assert memory_line.startswith("-")
     assert "⭐" not in memory_line
 

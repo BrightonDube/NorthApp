@@ -8,7 +8,6 @@ Tests cache functionality including:
 - Key generation
 """
 
-import pytest
 import time
 from app.services.cache import (
     CacheService,

@@ -19,10 +19,10 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # Daily 9 AM UTC: send goal reminders
+    # Hourly: send morning reminders (checks each user's timezone)
     scheduler.add_job(
         morning_goal_reminders,
-        CronTrigger(hour=9, minute=0),
+        IntervalTrigger(hours=1),
         id="morning_reminders",
         replace_existing=True,
     )

@@ -24,7 +24,7 @@ for url in urls:
             print("\nJWKS Keys:")
             print(json.dumps(response.json(), indent=2))
             break
-        except:
+        except (ValueError, KeyError):
             print("Response text:", response.text[:200])
     else:
         print("Response:", response.text[:200])

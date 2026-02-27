@@ -10,12 +10,11 @@ This module tests the rate limiting service and middleware to ensure:
 
 import pytest
 import time
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from app.services.rate_limiter import (
     RateLimiter,
     RateLimitExceeded,
-    get_rate_limiter,
     RATE_LIMITS,
 )
 from app.services.cache import get_cache

@@ -56,7 +56,7 @@ async def get_metrics(
         "total_tokens": 125000,
         "calls_by_model": {
           "meta-llama/llama-4-scout-17b-16e-instruct": 400,
-          "claude-3-5-sonnet-20241022": 50
+          "llama-3.3-70b-versatile": 50
         },
         "failures": [...]
       },

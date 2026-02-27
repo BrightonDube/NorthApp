@@ -53,9 +53,11 @@ async def get_usage_analytics(
     
     **Model Pricing (per 1M tokens):**
     - Groq Llama 4 Scout: $0.10 input, $0.10 output
-    - Claude 3.5 Sonnet: $3.00 input, $15.00 output
-    - Gemini 1.5 Flash: $0.075 input, $0.30 output
     - Groq Llama 3.3 70B: $0.59 input, $0.79 output
+    - Groq Llama 3.1 8B: $0.05 input, $0.08 output
+    - DeepSeek R1 Distill: $0.99 input, $0.99 output
+    
+    Note: Legacy providers (Claude, Gemini, OpenAI) removed as part of Groq consolidation.
     
     **Error Codes:**
     - `401 Unauthorized`: Invalid or missing JWT token

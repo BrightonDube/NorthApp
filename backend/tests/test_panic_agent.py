@@ -4,7 +4,7 @@ Tests crisis support response functionality
 """
 import pytest
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from app.agents.panic_agent import stream_panic_response, PANIC_SYSTEM_PROMPT
 
 

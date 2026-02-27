@@ -2,7 +2,6 @@
 """Test script to verify OpenAPI documentation generation."""
 
 from app.main import app
-import json
 
 # Generate OpenAPI spec
 spec = app.openapi()
@@ -32,7 +31,7 @@ for path, methods in spec['paths'].items():
             else:
                 endpoints_without_docs += 1
 
-print(f"\n📝 Documentation Coverage:")
+print("\n📝 Documentation Coverage:")
 print(f"  Endpoints with documentation: {endpoints_with_docs}")
 print(f"  Endpoints without documentation: {endpoints_without_docs}")
 print(f"  Coverage: {endpoints_with_docs / (endpoints_with_docs + endpoints_without_docs) * 100:.1f}%")

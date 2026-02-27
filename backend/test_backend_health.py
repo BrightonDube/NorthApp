@@ -5,7 +5,6 @@ Tests Task 0.5: Verify backend is accessible and responding.
 """
 import requests
 import sys
-from typing import Dict, Any
 
 # Railway backend URL
 BACKEND_URL = "https://north-backend-production-5023.up.railway.app"
@@ -19,7 +18,7 @@ def test_health_endpoint() -> bool:
         
         if response.status_code == 200:
             data = response.json()
-            print(f"✅ Health check passed!")
+            print("✅ Health check passed!")
             print(f"   Status: {data.get('status')}")
             print(f"   Version: {data.get('version')}")
             return True
@@ -75,7 +74,7 @@ def test_chat_endpoint_auth() -> bool:
             return True
         else:
             print(f"⚠️  Unexpected status code: {response.status_code}")
-            print(f"   Expected 401 (Unauthorized)")
+            print("   Expected 401 (Unauthorized)")
             return False
             
     except Exception as e:

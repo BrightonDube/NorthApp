@@ -2,19 +2,62 @@ from app.services.supabase import get_async_supabase_client
 from app.services.notifications import send_push_notification
 from app.services.groq_client import MODEL_FAST, get_groq_client
 
-CHECKIN_PROMPT = """You are a proactive life coach. A user hasn't checked in for a while.
+CHECKIN_PROMPT_GENTLE = """You are a gentle, supportive life coach. A user hasn't checked in for a while.
 Generate a SHORT, personalized re-engagement message (max 2 sentences).
 
 Make it:
-- Warm but not pushy
-- Slightly witty or memorable
+- Extremely warm and supportive
+- Validating and understanding
 - Reference their context if available
-- End with a gentle invitation to check in
+- End with a gentle, no-pressure invitation
 
 User context: {context}
 Their top goal: {goal}
 
 Return ONLY the message text, nothing else."""
+
+CHECKIN_PROMPT_BALANCED = """You are a balanced life coach. A user hasn't checked in for a while.
+Generate a SHORT, personalized re-engagement message (max 2 sentences).
+
+Make it:
+- Warm but willing to challenge
+- Slightly witty or memorable
+- Reference their context if available
+- End with an encouraging invitation to check in
+
+User context: {context}
+Their top goal: {goal}
+
+Return ONLY the message text, nothing else."""
+
+CHECKIN_PROMPT_FIRM = """You are a direct, no-nonsense life coach. A user hasn't checked in for a while.
+Generate a SHORT, personalized re-engagement message (max 2 sentences).
+
+Make it:
+- Direct and accountable
+- Challenge them without being harsh
+- Reference their context if available
+- End with a clear call to action
+
+User context: {context}
+Their top goal: {goal}
+
+Return ONLY the message text, nothing else."""
+
+
+async def get_user_firmness_level(user_id: str) -> int:
+    """Get user's firmness level preference."""
+    supabase = await get_async_supabase_client()
+    result = await (
+        supabase.from_("profiles")
+        .select("firmness_level")
+        .eq("id", user_id)
+        .single()
+        .execute()
+    )
+    if result.data and result.data.get("firmness_level") is not None:
+        return result.data["firmness_level"]
+    return 5  # Default balanced
 
 
 async def get_user_top_goal(user_id: str) -> str:
@@ -48,12 +91,24 @@ async def get_user_context_summary(user_id: str) -> str:
 
 
 async def generate_checkin_message(user_id: str) -> str:
+    """Generate a personalized check-in message based on user's firmness level."""
     client = get_groq_client()
+
+    # Get user's firmness level to determine tone
+    firmness_level = await get_user_firmness_level(user_id)
+    
+    # Select appropriate prompt based on firmness level
+    if firmness_level <= 3:
+        prompt_template = CHECKIN_PROMPT_GENTLE
+    elif firmness_level <= 7:
+        prompt_template = CHECKIN_PROMPT_BALANCED
+    else:
+        prompt_template = CHECKIN_PROMPT_FIRM
 
     context = await get_user_context_summary(user_id)
     goal = await get_user_top_goal(user_id)
 
-    prompt = CHECKIN_PROMPT.format(context=context, goal=goal)
+    prompt = prompt_template.format(context=context, goal=goal)
 
     response = await client.chat.completions.create(
         model=MODEL_FAST,

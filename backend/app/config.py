@@ -10,8 +10,6 @@ class Settings(BaseSettings):
 
     # LLM
     groq_api_key: str
-    anthropic_api_key: str = ""
-    gemini_api_key: str = ""
 
     # Embeddings (Voyage AI)
     voyage_api_key: str

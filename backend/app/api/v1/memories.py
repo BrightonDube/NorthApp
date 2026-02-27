@@ -142,3 +142,138 @@ async def delete_memory(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="Memory not found")
+
+
+
+@router.get("/insights")
+async def list_insights(
+    coach_id: str | None = None,
+    limit: int = 20,
+    user: AuthUser = Depends(get_current_user),
+):
+    """
+    Retrieve conversation insights extracted from completed coaching sessions.
+    
+    Insights are high-level takeaways, breakthroughs, and patterns identified from
+    entire conversations (not individual messages). They provide a summary of key
+    learnings and progress over time.
+    
+    **Authentication:** Required (JWT Bearer token)
+    
+    **Query Parameters:**
+    - `coach_id` (string, optional): Filter insights by specific coach
+    - `limit` (integer, optional): Maximum number of insights to return (default: 20, max: 50)
+    
+    **Response:**
+    ```json
+    [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "insight": "User realized they've been avoiding difficult conversations due to fear of conflict",
+        "confidence": 0.9,
+        "session_id": "660e8400-e29b-41d4-a716-446655440001",
+        "coach_id": "leadership-eq",
+        "created_at": "2026-02-24T10:30:00Z"
+      }
+    ]
+    ```
+    
+    **Confidence Levels:**
+    - `0.9-1.0`: Explicitly stated by user or clearly evident
+    - `0.7-0.9`: Strongly implied or demonstrated
+    - Only insights with confidence >= 0.7 are stored
+    
+    **Error Codes:**
+    - `401 Unauthorized`: Invalid or missing JWT token
+    
+    **Example Usage:**
+    ```bash
+    # Get all insights
+    curl -X GET "https://api.example.com/v1/insights" \\
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    
+    # Get insights from specific coach
+    curl -X GET "https://api.example.com/v1/insights?coach_id=strategic-thinking" \\
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+    
+    **Insight Types:**
+    - Breakthroughs or realizations
+    - Patterns in thinking or behavior
+    - Commitments or decisions made
+    - Progress toward goals
+    - Shifts in perspective
+    - Action items agreed upon
+    
+    **Related Endpoints:**
+    - `POST /v1/sessions/{id}/insights` - Extract insights from a session
+    - `DELETE /v1/insights/{id}` - Delete a specific insight
+    - `GET /v1/memories` - View individual facts/memories
+    """
+    supabase = await get_async_supabase_client()
+    
+    query = (
+        supabase.from_("conversation_insights")
+        .select("id, insight, confidence, session_id, coach_id, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", desc=True)
+        .limit(min(limit, 50))
+    )
+    
+    if coach_id:
+        query = query.eq("coach_id", coach_id)
+    
+    result = await query.execute()
+    return result.data or []
+
+
+@router.delete("/insights/{insight_id}", status_code=204)
+async def delete_insight(
+    insight_id: str,
+    user: AuthUser = Depends(get_current_user),
+):
+    """
+    Delete a specific conversation insight.
+    
+    Allows users to remove incorrect or unwanted insights extracted from conversations.
+    
+    **Authentication:** Required (JWT Bearer token)
+    
+    **Path Parameters:**
+    - `insight_id` (string, required): UUID of the insight to delete
+    
+    **Response:**
+    - Status: `204 No Content` (successful deletion)
+    - No response body
+    
+    **Error Codes:**
+    - `401 Unauthorized`: Invalid or missing JWT token
+    - `404 Not Found`: Insight not found or doesn't belong to user
+    
+    **Example Usage:**
+    ```bash
+    curl -X DELETE "https://api.example.com/v1/insights/550e8400-e29b-41d4-a716-446655440000" \\
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
+    ```
+    
+    **Important Notes:**
+    - Deletion is permanent and cannot be undone
+    - Does not affect the original conversation
+    - User can only delete their own insights
+    
+    **Related Endpoints:**
+    - `GET /v1/insights` - List all insights
+    - `POST /v1/sessions/{id}/insights` - Extract new insights
+    """
+    supabase = await get_async_supabase_client()
+    
+    result = await (
+        supabase.from_("conversation_insights")
+        .delete()
+        .eq("id", insight_id)
+        .eq("user_id", user.id)
+        .execute()
+    )
+    
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Insight not found")

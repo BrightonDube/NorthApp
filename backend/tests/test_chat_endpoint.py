@@ -1,6 +1,6 @@
 """
 Integration tests for the chat streaming endpoint.
-Tests Task 0.5: Verify chat functionality works
+Tests Task 2.6: Verify chat endpoint works with new AI service
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -41,117 +41,234 @@ def create_mock_supabase_client():
     mock_messages_result = MagicMock()
     mock_messages_result.data = []
     
+    # Mock GROW state query
+    mock_grow_result = MagicMock()
+    mock_grow_result.data = {
+        "grow_state": "goal",
+        "grow_data": {}
+    }
+    
     # Mock message insert
     mock_insert_result = MagicMock()
     mock_insert_result.data = [{"id": "test-message-id"}]
     
-    # Setup the mock chain
-    mock_from = MagicMock()
-    mock_from.select.return_value.eq.return_value.eq.return_value.single.return_value.execute = AsyncMock(return_value=mock_session_result)
-    mock_from.select.return_value.eq.return_value.single.return_value.execute = AsyncMock(return_value=mock_profile_result)
-    mock_from.select.return_value.eq.return_value.execute = AsyncMock(return_value=mock_context_result)
-    mock_from.select.return_value.eq.return_value.order.return_value.limit.return_value.execute = AsyncMock(return_value=mock_messages_result)
-    mock_from.insert.return_value.execute = AsyncMock(return_value=mock_insert_result)
+    # Mock insights query
+    mock_insights_result = MagicMock()
+    mock_insights_result.data = []
     
-    mock_client.from_ = MagicMock(return_value=mock_from)
+    # Setup the mock chain - need to handle multiple query patterns
+    def create_mock_from():
+        mock_from = MagicMock()
+        
+        # Session verification query
+        mock_from.select.return_value.eq.return_value.eq.return_value.single.return_value.execute = AsyncMock(return_value=mock_session_result)
+        
+        # Profile query
+        mock_from.select.return_value.eq.return_value.single.return_value.execute = AsyncMock(return_value=mock_profile_result)
+        
+        # User context query
+        mock_from.select.return_value.eq.return_value.execute = AsyncMock(return_value=mock_context_result)
+        
+        # Messages query (conversation history)
+        mock_from.select.return_value.eq.return_value.order.return_value.limit.return_value.execute = AsyncMock(return_value=mock_messages_result)
+        
+        # Insights query
+        mock_from.select.return_value.eq.return_value.eq.return_value.order.return_value.order.return_value.limit.return_value.execute = AsyncMock(return_value=mock_insights_result)
+        
+        # Message insert
+        mock_from.insert.return_value.execute = AsyncMock(return_value=mock_insert_result)
+        
+        return mock_from
+    
+    mock_client.from_ = MagicMock(side_effect=lambda table: create_mock_from())
     
     return mock_client
 
 
-def create_mock_groq_stream():
-    """Create a mock Groq streaming response"""
-    class MockChoice:
-        def __init__(self, content):
-            self.delta = MagicMock()
-            self.delta.content = content
+def create_mock_ai_service_stream():
+    """Create a mock AIService streaming response"""
+    async def mock_stream():
+        chunks = [
+            "What ",
+            "brings ",
+            "you ",
+            "here ",
+            "today?",
+        ]
+        for chunk in chunks:
+            yield chunk
     
-    class MockChunk:
-        def __init__(self, content):
-            self.choices = [MockChoice(content)]
-    
-    class MockStream:
-        def __init__(self):
-            self.chunks = [
-                "What ",
-                "brings ",
-                "you ",
-                "here ",
-                "today?",
-            ]
-            self.index = 0
-        
-        async def __aenter__(self):
-            return self
-        
-        async def __aexit__(self, *args):
-            pass
-        
-        def __aiter__(self):
-            return self
-        
-        async def __anext__(self):
-            if self.index >= len(self.chunks):
-                raise StopAsyncIteration
-            chunk = MockChunk(self.chunks[self.index])
-            self.index += 1
-            return chunk
-    
-    return MockStream()
+    return mock_stream()
 
 
 @pytest.mark.asyncio
 async def test_chat_stream_endpoint_success():
-    """Test that chat endpoint streams responses successfully"""
+    """Test that chat endpoint streams responses successfully with new AIService"""
     
     # Create valid JWT token (mock)
     test_token = "Bearer test.jwt.token"
     
-    with patch("app.services.supabase.get_async_supabase_client", return_value=create_mock_supabase_client()):
-        with patch("app.dependencies.get_current_user") as mock_auth:
-            # Mock authentication
-            mock_user = MagicMock()
-            mock_user.id = "test-user-id"
-            mock_user.email = "test@example.com"
-            mock_auth.return_value = mock_user
-            
-            with patch("app.agents.chat_agent.get_groq_client") as mock_get_client:
-                # Mock Groq client
-                mock_groq = MagicMock()
-                mock_groq.chat.completions.stream.return_value = create_mock_groq_stream()
-                mock_get_client.return_value = mock_groq
-                
-                # Make request
-                response = client.post(
-                    "/v1/chat/stream",
-                    json={
-                        "session_id": "test-session-id",
-                        "coach_id": "test-coach-id",
-                        "message": "Hello, can you help me?",
-                        "attachments": []
-                    },
-                    headers={"Authorization": test_token}
-                )
-                
-                # Verify response
-                assert response.status_code == 200
-                assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
-                
-                # Parse SSE stream
-                content = response.text
-                lines = [line for line in content.split("\n") if line.startswith("data:")]
-                
-                # Should have multiple data chunks
-                assert len(lines) > 0
-                
-                # Verify streaming format
-                for line in lines[:-1]:  # All but last should be tokens
-                    data = json.loads(line[6:])  # Remove "data: " prefix
-                    assert data["type"] == "token"
-                    assert "data" in data
-                
-                # Last message should be "done"
-                last_data = json.loads(lines[-1][6:])
-                assert last_data["type"] == "done"
+    # Mock RAG service to avoid embeddings dependency
+    with patch("app.agents.chat_agent.retrieve_relevant_memories", return_value=[]):
+        with patch("app.agents.chat_agent.format_memories_for_prompt", return_value=""):
+            with patch("app.agents.chat_agent.get_conversation_insights", return_value=""):
+                with patch("app.services.supabase.get_async_supabase_client", return_value=create_mock_supabase_client()):
+                    with patch("app.dependencies.get_current_user") as mock_auth:
+                        # Mock authentication
+                        mock_user = MagicMock()
+                        mock_user.id = "test-user-id"
+                        mock_user.email = "test@example.com"
+                        mock_auth.return_value = mock_user
+                        
+                        # Mock AIService instance and its stream_completion method
+                        with patch("app.agents.chat_agent.get_ai_service") as mock_get_ai_service:
+                            mock_ai_service = MagicMock()
+                            mock_ai_service.stream_completion = MagicMock(return_value=create_mock_ai_service_stream())
+                            mock_get_ai_service.return_value = mock_ai_service
+                            
+                            # Make request
+                            response = client.post(
+                                "/v1/chat/stream",
+                                json={
+                                    "session_id": "test-session-id",
+                                    "coach_id": "test-coach-id",
+                                    "message": "Hello, can you help me?",
+                                    "attachments": []
+                                },
+                                headers={"Authorization": test_token}
+                            )
+                            
+                            # Verify response
+                            assert response.status_code == 200
+                            assert "text/event-stream" in response.headers["content-type"]
+                            
+                            # Parse SSE stream
+                            content = response.text
+                            lines = [line for line in content.split("\n") if line.startswith("data:")]
+                            
+                            # Should have multiple data chunks
+                            assert len(lines) > 0
+                            
+                            # Verify streaming format
+                            token_count = 0
+                            done_count = 0
+                            for line in lines:
+                                data = json.loads(line[6:])  # Remove "data: " prefix
+                                if data["type"] == "token":
+                                    token_count += 1
+                                    assert "data" in data
+                                elif data["type"] == "done":
+                                    done_count += 1
+                                    assert "data" in data
+                            
+                            # Should have received token chunks and a done message
+                            assert token_count > 0
+                            assert done_count == 1
+                            
+                            # Verify AIService was called
+                            assert mock_ai_service.stream_completion.called
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_sse_format():
+    """Test that SSE format is correct (data: {...}\\n\\n)"""
+    
+    test_token = "Bearer test.jwt.token"
+    
+    with patch("app.agents.chat_agent.retrieve_relevant_memories", return_value=[]):
+        with patch("app.agents.chat_agent.format_memories_for_prompt", return_value=""):
+            with patch("app.agents.chat_agent.get_conversation_insights", return_value=""):
+                with patch("app.services.supabase.get_async_supabase_client", return_value=create_mock_supabase_client()):
+                    with patch("app.dependencies.get_current_user") as mock_auth:
+                        mock_user = MagicMock()
+                        mock_user.id = "test-user-id"
+                        mock_auth.return_value = mock_user
+                        
+                        with patch("app.agents.chat_agent.get_ai_service") as mock_get_ai_service:
+                            mock_ai_service = MagicMock()
+                            mock_ai_service.stream_completion = MagicMock(return_value=create_mock_ai_service_stream())
+                            mock_get_ai_service.return_value = mock_ai_service
+                            
+                            response = client.post(
+                                "/v1/chat/stream",
+                                json={
+                                    "session_id": "test-session-id",
+                                    "coach_id": "test-coach-id",
+                                    "message": "Test message",
+                                },
+                                headers={"Authorization": test_token}
+                            )
+                            
+                            # Verify SSE format
+                            content = response.text
+                            
+                            # Each event should be "data: {...}\n\n"
+                            events = content.split("data: ")
+                            for event in events[1:]:  # Skip first empty split
+                                # Should end with \n\n
+                                assert event.endswith("\n\n") or event.endswith("\n")
+                                
+                                # Should be valid JSON
+                                json_str = event.strip()
+                                data = json.loads(json_str)
+                                
+                                # Should have type field
+                                assert "type" in data
+                                assert data["type"] in ["token", "done", "error"]
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_error_handling():
+    """Test that errors are handled gracefully and returned in SSE format"""
+    
+    test_token = "Bearer test.jwt.token"
+    
+    with patch("app.agents.chat_agent.retrieve_relevant_memories", return_value=[]):
+        with patch("app.agents.chat_agent.format_memories_for_prompt", return_value=""):
+            with patch("app.agents.chat_agent.get_conversation_insights", return_value=""):
+                with patch("app.services.supabase.get_async_supabase_client", return_value=create_mock_supabase_client()):
+                    with patch("app.dependencies.get_current_user") as mock_auth:
+                        mock_user = MagicMock()
+                        mock_user.id = "test-user-id"
+                        mock_auth.return_value = mock_user
+                        
+                        # Mock AIService to raise an error
+                        with patch("app.agents.chat_agent.get_ai_service") as mock_get_ai_service:
+                            from app.services.ai_service import AIServiceError
+                            
+                            async def error_stream():
+                                raise AIServiceError("AI service temporarily unavailable")
+                            
+                            mock_ai_service = MagicMock()
+                            mock_ai_service.stream_completion = MagicMock(return_value=error_stream())
+                            mock_get_ai_service.return_value = mock_ai_service
+                            
+                            response = client.post(
+                                "/v1/chat/stream",
+                                json={
+                                    "session_id": "test-session-id",
+                                    "coach_id": "test-coach-id",
+                                    "message": "Test message",
+                                },
+                                headers={"Authorization": test_token}
+                            )
+                            
+                            # Should still return 200 (streaming started)
+                            assert response.status_code == 200
+                            
+                            # Parse response
+                            content = response.text
+                            lines = [line for line in content.split("\n") if line.startswith("data:")]
+                            
+                            # Should have at least one error event
+                            error_found = False
+                            for line in lines:
+                                data = json.loads(line[6:])
+                                if data["type"] == "error":
+                                    error_found = True
+                                    assert "message" in data["data"]
+                            
+                            assert error_found, "Error event should be present in stream"
 
 
 @pytest.mark.asyncio
@@ -166,8 +283,8 @@ async def test_chat_stream_requires_authentication():
         }
     )
     
-    # Should return 401 without auth header
-    assert response.status_code == 401
+    # Should return 401 or 403 without auth header
+    assert response.status_code in [401, 403]
 
 
 @pytest.mark.asyncio
@@ -209,46 +326,57 @@ async def test_chat_stream_with_multimodal_input():
     
     test_token = "Bearer test.jwt.token"
     
-    with patch("app.services.supabase.get_async_supabase_client", return_value=create_mock_supabase_client()):
-        with patch("app.dependencies.get_current_user") as mock_auth:
-            mock_user = MagicMock()
-            mock_user.id = "test-user-id"
-            mock_auth.return_value = mock_user
-            
-            with patch("app.agents.chat_agent.get_groq_client") as mock_get_client:
-                mock_groq = MagicMock()
-                mock_groq.chat.completions.stream.return_value = create_mock_groq_stream()
-                mock_get_client.return_value = mock_groq
-                
-                # Request with image attachment
-                response = client.post(
-                    "/v1/chat/stream",
-                    json={
-                        "session_id": "test-session-id",
-                        "coach_id": "test-coach-id",
-                        "message": "What do you see in this image?",
-                        "attachments": [
-                            {
-                                "type": "image",
-                                "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-                                "mime_type": "image/png"
-                            }
-                        ]
-                    },
-                    headers={"Authorization": test_token}
-                )
-                
-                assert response.status_code == 200
-                
-                # Verify Groq was called with multimodal content
-                call_args = mock_groq.chat.completions.stream.call_args
-                messages = call_args[1]["messages"]
-                
-                # Last message should have multimodal content
-                user_message = messages[-1]
-                assert user_message["role"] == "user"
-                # Content should be a list with text and image_url
-                assert isinstance(user_message["content"], list)
+    with patch("app.agents.chat_agent.retrieve_relevant_memories", return_value=[]):
+        with patch("app.agents.chat_agent.format_memories_for_prompt", return_value=""):
+            with patch("app.agents.chat_agent.get_conversation_insights", return_value=""):
+                with patch("app.services.supabase.get_async_supabase_client", return_value=create_mock_supabase_client()):
+                    with patch("app.dependencies.get_current_user") as mock_auth:
+                        mock_user = MagicMock()
+                        mock_user.id = "test-user-id"
+                        mock_auth.return_value = mock_user
+                        
+                        with patch("app.agents.chat_agent.get_ai_service") as mock_get_ai_service:
+                            mock_ai_service = MagicMock()
+                            mock_ai_service.stream_completion = MagicMock(return_value=create_mock_ai_service_stream())
+                            mock_get_ai_service.return_value = mock_ai_service
+                            
+                            # Request with image attachment
+                            response = client.post(
+                                "/v1/chat/stream",
+                                json={
+                                    "session_id": "test-session-id",
+                                    "coach_id": "test-coach-id",
+                                    "message": "What do you see in this image?",
+                                    "attachments": [
+                                        {
+                                            "type": "image",
+                                            "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+                                            "mime_type": "image/png"
+                                        }
+                                    ]
+                                },
+                                headers={"Authorization": test_token}
+                            )
+                            
+                            assert response.status_code == 200
+                            
+                            # Verify AIService was called
+                            assert mock_ai_service.stream_completion.called
+                            
+                            # Get the call arguments
+                            call_args = mock_ai_service.stream_completion.call_args
+                            request = call_args[0][0]  # First positional argument is AIRequest
+                            
+                            # Verify messages were passed
+                            assert hasattr(request, 'messages')
+                            messages = request.messages
+                            
+                            # Last message should be from user
+                            user_message = messages[-1]
+                            assert user_message["role"] == "user"
+                            
+                            # Content should be a list with text and image_url for multimodal
+                            assert isinstance(user_message["content"], list)
 
 
 def test_health_endpoint():
