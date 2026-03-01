@@ -1,5 +1,10 @@
+import logging
+
 import httpx
+
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 async def send_push_notification(
@@ -11,7 +16,7 @@ async def send_push_notification(
     settings = get_settings()
 
     if not settings.onesignal_app_id or not settings.onesignal_api_key:
-        print(f"[Notifications] OneSignal not configured, skipping push for user {user_id}")
+        logger.warning("OneSignal not configured, skipping push for user %s", user_id)
         return False
 
     payload = {
@@ -39,5 +44,5 @@ async def send_push_notification(
     if response.status_code == 200:
         return True
 
-    print(f"[Notifications] OneSignal error {response.status_code}: {response.text}")
+    logger.error("OneSignal error %d: %s", response.status_code, response.text)
     return False

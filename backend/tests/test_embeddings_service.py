@@ -206,16 +206,19 @@ async def test_create_embedding_default_input_type():
     mock_settings.voyage_api_key = "test-api-key"
     mock_settings.voyage_embedding_model = "voyage-3"
     mock_settings.memory_embedding_dimensions = 1536
+
+    mock_cache = MagicMock()
+    mock_cache.get = MagicMock(return_value=None)
+    mock_cache.set = MagicMock()
     
     with patch("app.services.embeddings.get_settings", return_value=mock_settings):
-        with patch("app.services.embeddings.voyageai.Client", return_value=mock_client):
-            with patch("asyncio.to_thread", return_value=mock_response) as mock_to_thread:
-                await create_embedding(text)
-                
-                # Verify default input_type is "document"
-                # The function should be called with client.embed
-                mock_to_thread.assert_called_once()
-                # Just verify it was called - the actual implementation uses input_type="document" by default
+        with patch("app.services.embeddings.get_cache", return_value=mock_cache):
+            with patch("app.services.embeddings.voyageai.Client", return_value=mock_client):
+                with patch("app.services.embeddings.asyncio.to_thread", return_value=mock_response) as mock_to_thread:
+                    await create_embedding(text)
+                    
+                    # Verify asyncio.to_thread was called (cache miss → real embed)
+                    mock_to_thread.assert_called_once()
 
 
 if __name__ == "__main__":

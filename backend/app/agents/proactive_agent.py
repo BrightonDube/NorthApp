@@ -1,6 +1,12 @@
+import logging
+
 from app.services.supabase import get_async_supabase_client
 from app.services.notifications import send_push_notification
-from app.services.groq_client import MODEL_FAST, get_groq_client
+from app.services.groq_client import MODEL_FAST
+from app.services.ai_service import AIService, AIRequest
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 CHECKIN_PROMPT_GENTLE = """You are a gentle, supportive life coach. A user hasn't checked in for a while.
 Generate a SHORT, personalized re-engagement message (max 2 sentences).
@@ -92,7 +98,8 @@ async def get_user_context_summary(user_id: str) -> str:
 
 async def generate_checkin_message(user_id: str) -> str:
     """Generate a personalized check-in message based on user's firmness level."""
-    client = get_groq_client()
+    settings = get_settings()
+    ai = AIService(api_key=settings.groq_api_key)
 
     # Get user's firmness level to determine tone
     firmness_level = await get_user_firmness_level(user_id)
@@ -110,14 +117,20 @@ async def generate_checkin_message(user_id: str) -> str:
 
     prompt = prompt_template.format(context=context, goal=goal)
 
-    response = await client.chat.completions.create(
-        model=MODEL_FAST,
+    request = AIRequest(
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
         max_tokens=100,
+        model=MODEL_FAST,
+        stream=False,
     )
+    response = await ai.complete(request)
 
-    return response.choices[0].message.content.strip()
+    if not response.success:
+        logger.warning("Check-in message generation failed for user %s: %s", user_id, response.error)
+        return "Hey! Just checking in. How are things going?"
+
+    return response.content.strip()
 
 
 async def send_reengagement_notification(user_id: str) -> bool:

@@ -1,6 +1,10 @@
 """
 Unit tests for proactive_agent.py
-Tests proactive check-in and re-engagement functionality
+
+generate_checkin_message no longer uses get_groq_client — it instantiates
+AIService directly (app.agents.proactive_agent.AIService) and calls
+ai.complete(request).  Tests patch that class to return a mock whose
+.complete() returns a fake AIResponse with .success / .content attributes.
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -154,175 +158,130 @@ async def test_get_user_context_summary_no_context():
     assert result == "No context available"
 
 
+def _make_ai_response(content: str, success: bool = True) -> MagicMock:
+    """Build a mock AIService response object."""
+    r = MagicMock()
+    r.success = success
+    r.content = content
+    r.error = None if success else content
+    return r
+
+
+def _make_ai_service(content: str, success: bool = True) -> MagicMock:
+    """Return a mock AIService whose .complete() returns the given content."""
+    svc = MagicMock()
+    svc.complete = AsyncMock(return_value=_make_ai_response(content, success))
+    return svc
+
+
 @pytest.mark.asyncio
 async def test_generate_checkin_message_gentle_tone():
-    """Test generating check-in message with gentle tone (firmness 0-3)"""
-    user_id = "test-user-id"
-    
-    # Mock firmness level (gentle)
-    mock_firmness = 2
-    
-    # Mock context and goal
-    mock_context = "values: Growth mindset; goals: Learn Python"
-    mock_goal = "Learn Python"
-    
-    # Mock Groq response
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = "I'm here whenever you're ready. No pressure at all."
-    
-    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=mock_firmness):
-        with patch("app.agents.proactive_agent.get_user_context_summary", return_value=mock_context):
-            with patch("app.agents.proactive_agent.get_user_top_goal", return_value=mock_goal):
-                with patch("app.agents.proactive_agent.get_groq_client") as mock_get_groq:
-                    mock_groq = MagicMock()
-                    mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-                    mock_get_groq.return_value = mock_groq
-                    
-                    result = await generate_checkin_message(user_id)
-    
+    """Firmness 0-3 selects CHECKIN_PROMPT_GENTLE which contains 'gentle'/'supportive'."""
+    captured_request = []
+
+    svc = MagicMock()
+    async def _complete(req):
+        captured_request.append(req)
+        return _make_ai_response("I'm here whenever you're ready. No pressure at all.")
+    svc.complete = _complete
+
+    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=2):
+        with patch("app.agents.proactive_agent.get_user_context_summary", return_value="values: Growth mindset"):
+            with patch("app.agents.proactive_agent.get_user_top_goal", return_value="Learn Python"):
+                with patch("app.agents.proactive_agent.AIService", return_value=svc):
+                    result = await generate_checkin_message("test-user-id")
+
     assert len(result) > 0
-    
-    # Verify gentle prompt was used
-    call_args = mock_groq.chat.completions.create.call_args
-    prompt = call_args[1]["messages"][0]["content"]
+    prompt = captured_request[0].messages[0]["content"]
     assert "gentle" in prompt.lower() or "supportive" in prompt.lower()
 
 
 @pytest.mark.asyncio
 async def test_generate_checkin_message_balanced_tone():
-    """Test generating check-in message with balanced tone (firmness 4-7)"""
-    user_id = "test-user-id"
-    
-    # Mock firmness level (balanced)
-    mock_firmness = 5
-    
-    # Mock context and goal
-    mock_context = "values: Growth mindset; goals: Learn Python"
-    mock_goal = "Learn Python"
-    
-    # Mock Groq response
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = "Hey! How's that Python learning going? Ready to dive back in?"
-    
-    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=mock_firmness):
-        with patch("app.agents.proactive_agent.get_user_context_summary", return_value=mock_context):
-            with patch("app.agents.proactive_agent.get_user_top_goal", return_value=mock_goal):
-                with patch("app.agents.proactive_agent.get_groq_client") as mock_get_groq:
-                    mock_groq = MagicMock()
-                    mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-                    mock_get_groq.return_value = mock_groq
-                    
-                    result = await generate_checkin_message(user_id)
-    
+    """Firmness 4-7 selects CHECKIN_PROMPT_BALANCED which contains 'balanced'."""
+    captured_request = []
+
+    svc = MagicMock()
+    async def _complete(req):
+        captured_request.append(req)
+        return _make_ai_response("Hey! How's that Python learning going?")
+    svc.complete = _complete
+
+    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=5):
+        with patch("app.agents.proactive_agent.get_user_context_summary", return_value="values: Growth mindset"):
+            with patch("app.agents.proactive_agent.get_user_top_goal", return_value="Learn Python"):
+                with patch("app.agents.proactive_agent.AIService", return_value=svc):
+                    result = await generate_checkin_message("test-user-id")
+
     assert len(result) > 0
-    
-    # Verify balanced prompt was used
-    call_args = mock_groq.chat.completions.create.call_args
-    prompt = call_args[1]["messages"][0]["content"]
+    prompt = captured_request[0].messages[0]["content"]
     assert "balanced" in prompt.lower()
 
 
 @pytest.mark.asyncio
 async def test_generate_checkin_message_firm_tone():
-    """Test generating check-in message with firm tone (firmness 8-10)"""
-    user_id = "test-user-id"
-    
-    # Mock firmness level (firm)
-    mock_firmness = 9
-    
-    # Mock context and goal
-    mock_context = "values: Growth mindset; goals: Learn Python"
-    mock_goal = "Learn Python"
-    
-    # Mock Groq response
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = "You said you'd learn Python. Time to show up and do the work."
-    
-    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=mock_firmness):
-        with patch("app.agents.proactive_agent.get_user_context_summary", return_value=mock_context):
-            with patch("app.agents.proactive_agent.get_user_top_goal", return_value=mock_goal):
-                with patch("app.agents.proactive_agent.get_groq_client") as mock_get_groq:
-                    mock_groq = MagicMock()
-                    mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-                    mock_get_groq.return_value = mock_groq
-                    
-                    result = await generate_checkin_message(user_id)
-    
+    """Firmness 8-10 selects CHECKIN_PROMPT_FIRM which contains 'direct'/'accountable'."""
+    captured_request = []
+
+    svc = MagicMock()
+    async def _complete(req):
+        captured_request.append(req)
+        return _make_ai_response("You said you'd learn Python. Time to show up.")
+    svc.complete = _complete
+
+    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=9):
+        with patch("app.agents.proactive_agent.get_user_context_summary", return_value="values: Growth mindset"):
+            with patch("app.agents.proactive_agent.get_user_top_goal", return_value="Learn Python"):
+                with patch("app.agents.proactive_agent.AIService", return_value=svc):
+                    result = await generate_checkin_message("test-user-id")
+
     assert len(result) > 0
-    
-    # Verify firm prompt was used
-    call_args = mock_groq.chat.completions.create.call_args
-    prompt = call_args[1]["messages"][0]["content"]
+    prompt = captured_request[0].messages[0]["content"]
     assert "direct" in prompt.lower() or "accountable" in prompt.lower()
 
 
 @pytest.mark.asyncio
 async def test_generate_checkin_message_success():
-    """Test generating personalized check-in message"""
-    user_id = "test-user-id"
-    
-    # Mock firmness level
-    mock_firmness = 5
-    
-    # Mock context and goal
+    """Full happy path: correct content returned, context/goal injected in prompt."""
+    expected = "Hey! How's that Python learning going? Ready to dive back in?"
     mock_context = "values: Growth mindset; goals: Learn Python"
     mock_goal = "Learn Python"
-    
-    # Mock Groq response
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = "Hey! How's that Python learning going? Ready to dive back in?"
-    
-    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=mock_firmness):
+    captured_request = []
+
+    svc = MagicMock()
+    async def _complete(req):
+        captured_request.append(req)
+        return _make_ai_response(expected)
+    svc.complete = _complete
+
+    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=5):
         with patch("app.agents.proactive_agent.get_user_context_summary", return_value=mock_context):
             with patch("app.agents.proactive_agent.get_user_top_goal", return_value=mock_goal):
-                with patch("app.agents.proactive_agent.get_groq_client") as mock_get_groq:
-                    mock_groq = MagicMock()
-                    mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-                    mock_get_groq.return_value = mock_groq
-                    
-                    result = await generate_checkin_message(user_id)
-    
-    assert len(result) > 0
-    assert result == "Hey! How's that Python learning going? Ready to dive back in?"
-    
-    # Verify Groq was called with correct parameters
-    call_args = mock_groq.chat.completions.create.call_args
-    assert call_args[1]["temperature"] == 0.7
-    assert call_args[1]["max_tokens"] == 100
-    
-    # Verify prompt includes context and goal
-    prompt = call_args[1]["messages"][0]["content"]
+                with patch("app.agents.proactive_agent.AIService", return_value=svc):
+                    result = await generate_checkin_message("test-user-id")
+
+    assert result == expected
+
+    req = captured_request[0]
+    assert req.temperature == 0.7
+    assert req.max_tokens == 100
+    prompt = req.messages[0]["content"]
     assert mock_context in prompt
     assert mock_goal in prompt
 
 
 @pytest.mark.asyncio
 async def test_generate_checkin_message_strips_whitespace():
-    """Test that generated message is stripped of whitespace"""
-    user_id = "test-user-id"
-    
-    # Mock firmness level
-    mock_firmness = 5
-    
-    # Mock Groq response with extra whitespace
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = "  \n  Test message  \n  "
-    
-    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=mock_firmness):
+    """Response content is stripped before returning."""
+    svc = MagicMock()
+    svc.complete = AsyncMock(return_value=_make_ai_response("  \n  Test message  \n  "))
+
+    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=5):
         with patch("app.agents.proactive_agent.get_user_context_summary", return_value="context"):
             with patch("app.agents.proactive_agent.get_user_top_goal", return_value="goal"):
-                with patch("app.agents.proactive_agent.get_groq_client") as mock_get_groq:
-                    mock_groq = MagicMock()
-                    mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-                    mock_get_groq.return_value = mock_groq
-                    
-                    result = await generate_checkin_message(user_id)
-    
+                with patch("app.agents.proactive_agent.AIService", return_value=svc):
+                    result = await generate_checkin_message("test-user-id")
+
     assert result == "Test message"
 
 
@@ -389,30 +348,24 @@ async def test_checkin_prompt_format():
 
 @pytest.mark.asyncio
 async def test_generate_checkin_message_uses_fast_model():
-    """Test that check-in generation uses fast model for efficiency"""
-    user_id = "test-user-id"
-    
-    # Mock firmness level
-    mock_firmness = 5
-    
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = "Test"
-    
-    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=mock_firmness):
+    """AIRequest must be built with MODEL_FAST for check-in efficiency."""
+    from app.services.groq_client import MODEL_FAST
+
+    captured_request = []
+
+    svc = MagicMock()
+    async def _complete(req):
+        captured_request.append(req)
+        return _make_ai_response("Test")
+    svc.complete = _complete
+
+    with patch("app.agents.proactive_agent.get_user_firmness_level", return_value=5):
         with patch("app.agents.proactive_agent.get_user_context_summary", return_value="context"):
             with patch("app.agents.proactive_agent.get_user_top_goal", return_value="goal"):
-                with patch("app.agents.proactive_agent.get_groq_client") as mock_get_groq:
-                    mock_groq = MagicMock()
-                    mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-                    mock_get_groq.return_value = mock_groq
-                    
-                    await generate_checkin_message(user_id)
-                    
-                    # Verify using fast model
-                    call_args = mock_groq.chat.completions.create.call_args
-                    from app.services.groq_client import MODEL_FAST
-                    assert call_args[1]["model"] == MODEL_FAST
+                with patch("app.agents.proactive_agent.AIService", return_value=svc):
+                    await generate_checkin_message("test-user-id")
+
+    assert captured_request[0].model == MODEL_FAST
 
 
 if __name__ == "__main__":

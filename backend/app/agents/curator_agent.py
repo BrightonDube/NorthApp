@@ -1,6 +1,12 @@
+import logging
+
 import httpx
+
 from app.config import get_settings
-from app.services.groq_client import MODEL_COMPLEX, get_groq_client
+from app.services.groq_client import MODEL_COMPLEX
+from app.services.ai_service import AIService, AIRequest
+
+logger = logging.getLogger(__name__)
 
 CURATOR_SYSTEM = """You are a research assistant. Given search results and a user query, 
 extract the 3 most relevant and actionable insights.
@@ -42,18 +48,26 @@ async def curate_resources(query: str, user_context: str | None = None) -> dict:
          for r in results[:5]]
     )
 
-    client = get_groq_client()
-    response = await client.chat.completions.create(
-        model=MODEL_COMPLEX,
+    settings = get_settings()
+    ai = AIService(api_key=settings.groq_api_key)
+
+    request = AIRequest(
         messages=[
             {"role": "system", "content": CURATOR_SYSTEM},
             {"role": "user", "content": f"Query: {query}\n\nSearch results:\n{results_text}"},
         ],
         temperature=0.35,
         max_tokens=512,
+        model=MODEL_COMPLEX,
+        stream=False,
     )
+    response = await ai.complete(request)
 
-    summary = response.choices[0].message.content.strip()
+    if not response.success:
+        logger.warning("Resource curation failed: %s", response.error)
+        return {"summary": "Could not summarize results at this time.", "sources": []}
+
+    summary = response.content.strip()
     sources = [r.get("url") for r in results[:3] if r.get("url")]
 
     return {"summary": summary, "sources": sources}

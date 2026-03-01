@@ -1,26 +1,34 @@
-from fastapi import APIRouter, Depends, BackgroundTasks
+import logging
+
+from typing import AsyncGenerator
+
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.dependencies import get_current_user, AuthUser
 from app.models.requests import ChatRequest
-from app.agents.chat_agent import stream_chat_response, save_message
+from app.agents.chat_agent import stream_chat_response
 from app.agents.memory_agent import extract_and_store_facts, extract_conversation_insights
 from app.services.supabase import get_async_supabase_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-async def run_memory_extraction(message: str, user_id: str):
+async def run_memory_extraction(message: str, user_id: str) -> None:
+    """Background task: extract facts from a user message and persist them."""
     try:
         count = await extract_and_store_facts(message, user_id)
         if count:
-            print(f"[Memory] Stored {count} facts for user {user_id}")
+            logger.info("Stored %d facts for user %s", count, user_id)
     except Exception as e:
-        print(f"[Memory] Background extraction failed: {e}")
+        logger.warning("Background memory extraction failed: %s", e)
 
 
 @router.post("/chat/stream")
 async def chat_stream(
+    request: Request,
     body: ChatRequest,
     background_tasks: BackgroundTasks,
     user: AuthUser = Depends(get_current_user),
@@ -104,28 +112,44 @@ async def chat_stream(
         .execute()
     )
     if not session_result.data:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Save user message first
-    await save_message(body.session_id, "user", body.message)
+    # NOTE: User message is already saved by the mobile client before calling
+    # this endpoint. We do NOT save it again here to avoid duplicates.
 
     # Queue memory extraction in background (non-blocking)
     background_tasks.add_task(run_memory_extraction, body.message, user.id)
 
     attachments = [a.model_dump() for a in body.attachments] if body.attachments else None
 
+    async def _disconnect_aware_stream(
+        request: Request,
+        inner: AsyncGenerator[str, None],
+    ) -> AsyncGenerator[str, None]:
+        """Wrap the chat generator so we stop producing tokens when the client disconnects."""
+        try:
+            async for chunk in inner:
+                if await request.is_disconnected():
+                    logger.info("Client disconnected mid-stream for session %s", body.session_id)
+                    return
+                yield chunk
+        except Exception as e:
+            logger.warning("Stream interrupted for session %s: %s", body.session_id, e)
+
+    inner_gen = stream_chat_response(
+        user_id=user.id,
+        session_id=body.session_id,
+        coach_id=body.coach_id,
+        message=body.message,
+        attachments=attachments,
+    )
+
     return StreamingResponse(
-        stream_chat_response(
-            user_id=user.id,
-            session_id=body.session_id,
-            coach_id=body.coach_id,
-            message=body.message,
-            attachments=attachments,
-        ),
+        _disconnect_aware_stream(request, inner_gen),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
     )
@@ -197,8 +221,6 @@ async def extract_session_insights(
     - `GET /v1/memories` - View all stored memories and insights
     - `DELETE /v1/memories/{id}` - Delete specific memory or insight
     """
-    from fastapi import HTTPException
-    
     supabase = await get_async_supabase_client()
     
     # Verify session belongs to user
@@ -249,7 +271,7 @@ async def extract_session_insights(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[API] Insight extraction failed: {e}")
+        logger.error("Insight extraction failed: %s", e)
         raise HTTPException(
             status_code=500,
             detail="Failed to extract insights. Please try again later."

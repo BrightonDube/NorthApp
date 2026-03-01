@@ -115,15 +115,15 @@ async def test_detect_stage_completion_should_advance():
     mock_from.select.return_value.eq.return_value.order.return_value.limit.return_value.execute = AsyncMock(return_value=mock_history_result)
     mock_supabase.from_ = MagicMock(return_value=mock_from)
     
-    # Mock Groq API response
-    mock_groq_client = AsyncMock()
-    mock_completion = MagicMock()
-    mock_completion.choices = [MagicMock()]
-    mock_completion.choices[0].message.content = '{"should_advance": true, "reasoning": "User has clearly articulated specific, measurable goals"}'
-    mock_groq_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+    # Mock AIService response
+    mock_ai_response = MagicMock()
+    mock_ai_response.success = True
+    mock_ai_response.content = '{"should_advance": true, "reasoning": "User has clearly articulated specific, measurable goals"}'
+    mock_ai_service = MagicMock()
+    mock_ai_service.complete = AsyncMock(return_value=mock_ai_response)
     
     with patch('app.agents.chat_agent.get_async_supabase_client', new_callable=AsyncMock, return_value=mock_supabase), \
-         patch('app.agents.chat_agent.get_groq_client', return_value=mock_groq_client):
+         patch('app.agents.chat_agent.get_ai_service', return_value=mock_ai_service):
         
         result = await detect_stage_completion(
             "test-session-id",
@@ -160,15 +160,15 @@ async def test_detect_stage_completion_should_not_advance():
     mock_from.select.return_value.eq.return_value.order.return_value.limit.return_value.execute = AsyncMock(return_value=mock_history_result)
     mock_supabase.from_ = MagicMock(return_value=mock_from)
     
-    # Mock Groq API response
-    mock_groq_client = AsyncMock()
-    mock_completion = MagicMock()
-    mock_completion.choices = [MagicMock()]
-    mock_completion.choices[0].message.content = '{"should_advance": false, "reasoning": "Goal is too vague, needs more specificity"}'
-    mock_groq_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+    # Mock AIService response
+    mock_ai_response = MagicMock()
+    mock_ai_response.success = True
+    mock_ai_response.content = '{"should_advance": false, "reasoning": "Goal is too vague, needs more specificity"}'
+    mock_ai_service = MagicMock()
+    mock_ai_service.complete = AsyncMock(return_value=mock_ai_response)
     
     with patch('app.agents.chat_agent.get_async_supabase_client', new_callable=AsyncMock, return_value=mock_supabase), \
-         patch('app.agents.chat_agent.get_groq_client', return_value=mock_groq_client):
+         patch('app.agents.chat_agent.get_ai_service', return_value=mock_ai_service):
         
         result = await detect_stage_completion(
             "test-session-id",
@@ -197,7 +197,7 @@ async def test_detect_stage_completion_already_complete():
     mock_supabase.from_ = MagicMock(return_value=mock_from)
     
     with patch('app.agents.chat_agent.get_async_supabase_client', new_callable=AsyncMock, return_value=mock_supabase), \
-         patch('app.agents.chat_agent.get_groq_client'):
+         patch('app.agents.chat_agent.get_ai_service'):
         result = await detect_stage_completion(
             "test-session-id",
             "Thanks for the help!",

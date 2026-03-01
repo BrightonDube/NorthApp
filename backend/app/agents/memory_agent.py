@@ -1,7 +1,13 @@
 import json
+import logging
+
 from app.services.supabase import get_async_supabase_client
 from app.services.embeddings import create_embedding
-from app.services.groq_client import MODEL_FAST, get_groq_client
+from app.services.groq_client import MODEL_FAST
+from app.services.ai_service import AIService, AIRequest
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 FACT_EXTRACTION_PROMPT = """Analyze the following conversation message and extract any NEW facts about the user.
 
@@ -34,25 +40,32 @@ Message to analyze:
 """
 
 
+def _get_ai_service() -> AIService:
+    """Lazily construct an AIService instance from app settings."""
+    settings = get_settings()
+    return AIService(api_key=settings.groq_api_key)
+
+
 async def extract_and_store_facts(message: str, user_id: str, source_message_id: str | None = None) -> int:
-    client = get_groq_client()
+    ai = _get_ai_service()
 
     try:
-        response = await client.chat.completions.create(
-            model=MODEL_FAST,
-            messages=[
-                {"role": "user", "content": FACT_EXTRACTION_PROMPT + message}
-            ],
+        request = AIRequest(
+            messages=[{"role": "user", "content": FACT_EXTRACTION_PROMPT + message}],
             temperature=0.1,
             max_tokens=512,
-            response_format={"type": "json_object"},
+            model=MODEL_FAST,
+            stream=False,
         )
+        response = await ai.complete(request)
+        if not response.success:
+            logger.warning("Fact extraction failed: %s", response.error)
+            return 0
 
-        raw = response.choices[0].message.content
-        data = json.loads(raw)
+        data = json.loads(response.content)
         facts = data.get("facts", [])
     except Exception as e:
-        print(f"[MemoryAgent] Fact extraction failed: {e}")
+        logger.warning("Fact extraction failed: %s", e)
         return 0
 
     if not facts:
@@ -81,7 +94,7 @@ async def extract_and_store_facts(message: str, user_id: str, source_message_id:
             await supabase.from_("memories").insert(insert_data).execute()
             stored += 1
         except Exception as e:
-            print(f"[MemoryAgent] Failed to store fact: {e}")
+            logger.warning("Failed to store fact: %s", e)
 
     return stored
 
@@ -146,14 +159,14 @@ async def extract_conversation_insights(
     ).order("created_at", desc=False).execute()
     
     if not messages_result.data:
-        print(f"[MemoryAgent] No messages found for session {session_id}")
+        logger.info("No messages found for session %s", session_id)
         return 0
     
     messages = messages_result.data
     
     # Check if conversation has enough messages
     if len(messages) < min_messages:
-        print(f"[MemoryAgent] Session {session_id} has only {len(messages)} messages, need at least {min_messages}")
+        logger.info("Session %s has only %d messages, need at least %d", session_id, len(messages), min_messages)
         return 0
     
     # Format conversation for analysis
@@ -162,29 +175,30 @@ async def extract_conversation_insights(
         for msg in messages
     ])
     
-    # Extract insights using LLM
-    client = get_groq_client()
-    
+    # Extract insights using AIService (retries + monitoring built in)
+    ai = _get_ai_service()
+
     try:
-        response = await client.chat.completions.create(
-            model=MODEL_FAST,
-            messages=[
-                {"role": "user", "content": INSIGHT_EXTRACTION_PROMPT + conversation_text}
-            ],
+        request = AIRequest(
+            messages=[{"role": "user", "content": INSIGHT_EXTRACTION_PROMPT + conversation_text}],
             temperature=0.2,
             max_tokens=1024,
-            response_format={"type": "json_object"},
+            model=MODEL_FAST,
+            stream=False,
         )
-        
-        raw = response.choices[0].message.content
-        data = json.loads(raw)
+        response = await ai.complete(request)
+        if not response.success:
+            logger.warning("Insight extraction failed: %s", response.error)
+            return 0
+
+        data = json.loads(response.content)
         insights = data.get("insights", [])
     except Exception as e:
-        print(f"[MemoryAgent] Insight extraction failed: {e}")
+        logger.warning("Insight extraction failed: %s", e)
         return 0
     
     if not insights:
-        print(f"[MemoryAgent] No insights extracted from session {session_id}")
+        logger.info("No insights extracted from session %s", session_id)
         return 0
     
     # Store insights in database
@@ -206,8 +220,8 @@ async def extract_conversation_insights(
                 "confidence": confidence,
             }).execute()
             stored += 1
-            print(f"[MemoryAgent] Stored insight: {content[:100]}... (confidence: {confidence})")
+            logger.info("Stored insight: %.100s... (confidence: %.1f)", content, confidence)
         except Exception as e:
-            print(f"[MemoryAgent] Failed to store insight: {e}")
+            logger.warning("Failed to store insight: %s", e)
     
     return stored

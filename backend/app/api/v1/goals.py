@@ -1,4 +1,7 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.dependencies import get_current_user, AuthUser
 from app.models.requests import CreateGoalRequest, UpdateGoalRequest, CreateSubtaskRequest, UpdateSubtaskRequest
 from app.models.responses import GoalResponse, SubtaskResponse
@@ -317,7 +320,6 @@ async def update_subtask(
 
     update_data = body.model_dump(exclude_none=True)
     if body.status == "completed":
-        from datetime import datetime, timezone
         update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
 
     result = await (

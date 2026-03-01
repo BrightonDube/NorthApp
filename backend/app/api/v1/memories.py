@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from app.dependencies import get_current_user, AuthUser
 from app.models.responses import MemoryResponse
 from app.services.supabase import get_async_supabase_client
@@ -8,7 +8,7 @@ router = APIRouter()
 
 @router.get("/memories", response_model=list[MemoryResponse])
 async def list_memories(
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=100),
     user: AuthUser = Depends(get_current_user),
 ):
     """

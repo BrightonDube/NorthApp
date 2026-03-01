@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     google_redirect_uri: str = ""
 
     # App
+    secret_key: str = "change-me-in-production"  # HMAC signing key for OAuth state, etc.
     environment: str = "development"
     allowed_origins: str = "http://localhost:8081"
 

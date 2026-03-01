@@ -65,16 +65,15 @@ async def test_insights_end_to_end_flow():
     
     mock_supabase_extract.from_ = MagicMock(side_effect=from_side_effect)
     
-    # Mock Groq client for LLM extraction
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [
-        MagicMock(message=MagicMock(content='{"insights": [{"content": "User realized they procrastinate due to fear of failure", "confidence": 0.9}]}'))
-    ]
-    mock_groq_client = AsyncMock()
-    mock_groq_client.chat.completions.create = AsyncMock(return_value=mock_groq_response)
+    # Mock AIService for LLM extraction
+    mock_ai_response = MagicMock()
+    mock_ai_response.success = True
+    mock_ai_response.content = '{"insights": [{"content": "User realized they procrastinate due to fear of failure", "confidence": 0.9}]}'
+    mock_ai_service = MagicMock()
+    mock_ai_service.complete = AsyncMock(return_value=mock_ai_response)
     
     with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase_extract):
-        with patch("app.agents.memory_agent.get_groq_client", return_value=mock_groq_client):
+        with patch("app.agents.memory_agent._get_ai_service", return_value=mock_ai_service):
             # Step 1 & 2: Extract and store insights
             insights_count = await extract_conversation_insights(
                 session_id=session_id,

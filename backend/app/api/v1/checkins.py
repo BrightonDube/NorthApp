@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends, Query
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies import get_current_user, AuthUser
 from app.models.requests import CreateCheckInRequest
 from app.models.responses import CheckInResponse
 from app.services.supabase import get_async_supabase_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -174,22 +178,33 @@ async def create_check_in(
     - `GET /v1/check-ins` - View check-in history
     - `POST /v1/xp/award` - Award XP manually
     """
-    supabase = await get_async_supabase_client()
-    result = await (
-        supabase.from_("check_ins")
-        .insert(
-            {
-                "user_id": user.id,
-                "mood": body.mood,
-                "energy": body.energy,
-                "priorities": body.priorities,
-                "reflection": body.reflection,
-                "gratitude": body.gratitude,
-                "type": body.type,
-            }
+    try:
+        supabase = await get_async_supabase_client()
+        result = await (
+            supabase.from_("check_ins")
+            .insert(
+                {
+                    "user_id": user.id,
+                    "mood": body.mood,
+                    "energy": body.energy,
+                    "priorities": body.priorities,
+                    "reflection": body.reflection,
+                    "gratitude": body.gratitude,
+                    "type": body.type,
+                }
+            )
+            .select("id, user_id, mood, energy, priorities, reflection, gratitude, type, created_at")
+            .single()
+            .execute()
         )
-        .select("id, user_id, mood, energy, priorities, reflection, gratitude, type, created_at")
-        .single()
-        .execute()
-    )
-    return result.data
+
+        if not result.data:
+            logger.error("Check-in insert returned no data for user %s", user.id)
+            raise HTTPException(status_code=500, detail="Failed to save check-in")
+
+        return result.data
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to create check-in for user %s: %s", user.id, e)
+        raise HTTPException(status_code=500, detail="Failed to save check-in. Please try again.")

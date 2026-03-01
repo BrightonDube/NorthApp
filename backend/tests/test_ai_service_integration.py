@@ -125,7 +125,7 @@ async def test_ai_service_max_retries_exceeded():
             async for chunk in ai_service.stream_completion(request):
                 pass
         
-        assert "failed after 3 attempts" in str(exc_info.value)
+        assert "failed after 3 connection attempts" in str(exc_info.value)
 
 
 @pytest.mark.asyncio

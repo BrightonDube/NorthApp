@@ -1,8 +1,13 @@
+import logging
 from datetime import datetime
+
 import pytz
+
 from app.services.supabase import get_async_supabase_client
 from app.agents.proactive_agent import generate_checkin_message
 from app.services.notifications import send_push_notification
+
+logger = logging.getLogger(__name__)
 
 
 async def morning_goal_reminders():
@@ -17,7 +22,7 @@ async def morning_goal_reminders():
     
     Validates: Requirements 6.2 (Morning Reminders)
     """
-    print("[Reminders] Running morning goal reminders...")
+    logger.info("Running morning goal reminders...")
     supabase = await get_async_supabase_client()
 
     # Get users who have morning reminders enabled
@@ -29,7 +34,7 @@ async def morning_goal_reminders():
     )
 
     if not profiles_result.data:
-        print("[Reminders] No users with morning reminders enabled")
+        logger.info("No users with morning reminders enabled")
         return
 
     # Get active goals for all users
@@ -79,10 +84,10 @@ async def morning_goal_reminders():
             
             if sent:
                 count += 1
-                print(f"[Reminders] Sent to user {user_id} at {user_local_time.strftime('%H:%M %Z')}")
+                logger.info("Sent reminder to user %s at %s", user_id, user_local_time.strftime('%H:%M %Z'))
             
         except pytz.exceptions.UnknownTimeZoneError:
-            print(f"[Reminders] Invalid timezone '{user_timezone}' for user {user_id}, using UTC")
+            logger.warning("Invalid timezone '%s' for user %s, falling back to UTC", user_timezone, user_id)
             # Fallback to UTC
             utc_time = datetime.now(pytz.UTC)
             if utc_time.hour == reminder_hour:
@@ -97,8 +102,8 @@ async def morning_goal_reminders():
                     if sent:
                         count += 1
                 except Exception as e:
-                    print(f"[Reminders] Failed for user {user_id}: {e}")
+                    logger.warning("Reminder failed for user %s: %s", user_id, e)
         except Exception as e:
-            print(f"[Reminders] Failed for user {user_id}: {e}")
+            logger.warning("Reminder failed for user %s: %s", user_id, e)
 
-    print(f"[Reminders] Sent {count} morning reminders, skipped {skipped} (wrong time)")
+    logger.info("Sent %d morning reminders, skipped %d (wrong time)", count, skipped)

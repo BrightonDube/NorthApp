@@ -4,6 +4,8 @@ Monitoring and metrics API endpoints.
 Provides access to system health metrics, performance data, and active alerts.
 """
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends
 from typing import Dict, Any
 
@@ -238,13 +240,11 @@ async def get_alerts(
     - `GET /v1/monitoring/metrics` - Full metrics dashboard
     - `GET /health` - Basic health check
     """
-    from datetime import datetime
-
     collector = get_metrics_collector()
     alerts = collector.check_alerts()
 
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "alert_count": len(alerts),
         "alerts": alerts,
     }
@@ -321,8 +321,6 @@ async def detailed_health_check(
     - `GET /v1/monitoring/metrics` - Full metrics
     - `GET /v1/monitoring/alerts` - Active alerts
     """
-    from datetime import datetime
-
     collector = get_metrics_collector()
 
     # Get all metrics
@@ -354,7 +352,7 @@ async def detailed_health_check(
 
     return {
         "status": overall_status,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "components": {
             "api": {
                 "status": "healthy" if api_healthy else "degraded",

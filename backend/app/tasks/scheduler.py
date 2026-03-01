@@ -1,6 +1,10 @@
+import logging
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+
+logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler()
 
@@ -44,10 +48,10 @@ def start_scheduler():
     )
 
     scheduler.start()
-    print("[Scheduler] Started with 4 jobs: inactivity, reminders, calendar_sync, alert_check")
+    logger.info("Scheduler started with 4 jobs: inactivity, reminders, calendar_sync, alert_check")
 
 
 def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown()
-        print("[Scheduler] Stopped")
+        logger.info("Scheduler stopped")

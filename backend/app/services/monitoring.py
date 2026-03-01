@@ -11,7 +11,7 @@ This module provides comprehensive monitoring capabilities including:
 import time
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict, deque
 from threading import Lock
 
@@ -112,7 +112,7 @@ class MetricsCollector:
                 "connection_pool_size": pool_size,
                 "active_connections": active,
                 "idle_connections": idle,
-                "last_updated": datetime.utcnow(),
+                "last_updated": datetime.now(timezone.utc),
             })
 
     def _get_recent_items(self, items: deque, window_seconds: Optional[int] = None) -> List[Dict]:
@@ -287,7 +287,7 @@ class MetricsCollector:
         """
         with self._lock:
             state = self._alert_state[alert_id]
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Check if alert is in cooldown period (5 minutes)
             if state["triggered"]:
@@ -311,7 +311,7 @@ class MetricsCollector:
     def get_all_metrics(self) -> Dict[str, Any]:
         """Get all metrics in a single call."""
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "window_minutes": self.window_minutes,
             "requests": self.get_request_metrics(),
             "errors": self.get_error_metrics(),

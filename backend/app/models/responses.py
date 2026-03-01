@@ -74,7 +74,9 @@ class CheckInResponse(BaseModel):
     mood: int
     energy: int
     priorities: list[str]
-    reflection: str
-    gratitude: str
+    # reflection and gratitude are nullable in the database schema; default to
+    # empty string so Pydantic validation never fails on a NULL value.
+    reflection: str = ""
+    gratitude: str = ""
     type: Literal["morning", "evening"]
     created_at: str

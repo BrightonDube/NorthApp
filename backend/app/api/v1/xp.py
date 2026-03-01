@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.dependencies import get_current_user, AuthUser
-from app.services.gamification import award_xp, get_user_xp, update_streak
+from app.services.gamification import award_xp, get_user_xp, update_streak, calculate_level
 from app.models.responses import XPResponse
 from app.models.requests import AwardXPRequest
 
@@ -152,7 +152,6 @@ async def get_xp(user: AuthUser = Depends(get_current_user)):
     - `POST /v1/xp/award` - Award XP for actions
     """
     data = await get_user_xp(user.id)
-    from app.services.gamification import calculate_level
     total = data.get("total_xp", 0)
     return XPResponse(
         xp_earned=0,

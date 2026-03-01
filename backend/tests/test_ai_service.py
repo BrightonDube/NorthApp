@@ -116,7 +116,7 @@ async def test_stream_completion_max_retries_exceeded(ai_service, sample_request
                 pass
         
         # Verify error message contains retry count
-        assert "3 attempts" in str(exc_info.value)
+        assert "3 connection attempts" in str(exc_info.value)
 
 
 @pytest.mark.asyncio

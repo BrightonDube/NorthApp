@@ -41,11 +41,11 @@ async def get_usage_analytics(
           "output_tokens": 43000,
           "cost_usd": 0.115
         },
-        "claude-3-5-sonnet-20241022": {
+        "llama-3.1-8b-instant": {
           "requests": 25,
           "input_tokens": 15500,
           "output_tokens": 9300,
-          "cost_usd": 0.027
+          "cost_usd": 0.002
         }
       }
     }
@@ -56,8 +56,6 @@ async def get_usage_analytics(
     - Groq Llama 3.3 70B: $0.59 input, $0.79 output
     - Groq Llama 3.1 8B: $0.05 input, $0.08 output
     - DeepSeek R1 Distill: $0.99 input, $0.99 output
-    
-    Note: Legacy providers (Claude, Gemini, OpenAI) removed as part of Groq consolidation.
     
     **Error Codes:**
     - `401 Unauthorized`: Invalid or missing JWT token

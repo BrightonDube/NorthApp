@@ -84,8 +84,8 @@ multiple LLM providers, implements RAG for long-term memory, and provides real-t
 - User-controlled memory management
 
 ### 🎙️ Voice Interface
-- Speech-to-text via OpenAI Whisper
-- Text-to-speech with multiple voices
+- Speech-to-text via Groq Whisper Large v3
+- Text-to-speech via Groq TTS (Orpheus)
 - Pro subscription feature
 
 ### 📊 Goal Tracking

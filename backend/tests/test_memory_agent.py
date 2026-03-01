@@ -1,487 +1,292 @@
 """
 Unit tests for memory_agent.py
-Tests fact extraction and storage functionality
+
+All tests patch `app.agents.memory_agent._get_ai_service` (the factory used by
+extract_and_store_facts / extract_conversation_insights) and mock the AIService
+response object which has .success (bool) and .content (str) attributes.
+The old get_groq_client approach is no longer used — agents were migrated to AIService.
 """
+import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from app.agents.memory_agent import extract_and_store_facts, FACT_EXTRACTION_PROMPT
+
+from app.agents.memory_agent import (
+    extract_and_store_facts,
+    extract_conversation_insights,
+    FACT_EXTRACTION_PROMPT,
+)
 
 
-@pytest.mark.asyncio
-async def test_extract_and_store_facts_success():
-    """Test successful fact extraction and storage"""
-    message = "I love working in the morning and I value honesty in relationships"
-    user_id = "test-user-id"
-    
-    # Mock Groq response
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = '''
-    {
-        "facts": [
-            {
-                "content": "The user prefers working in the morning",
-                "category": "preference",
-                "importance": "medium"
-            },
-            {
-                "content": "The user values honesty in relationships",
-                "category": "value",
-                "importance": "high"
-            }
-        ]
-    }
-    '''
-    
-    # Mock embedding response
-    mock_embedding = [0.1] * 1536
-    
-    # Mock Supabase insert
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_ai_response(content: str, success: bool = True) -> MagicMock:
+    """Build a mock AIService response object."""
+    r = MagicMock()
+    r.success = success
+    r.content = content
+    r.error = None if success else content
+    return r
+
+
+def _make_ai_service(response: MagicMock) -> MagicMock:
+    """Build a mock AIService whose .complete() returns the given response."""
+    svc = MagicMock()
+    svc.complete = AsyncMock(return_value=response)
+    return svc
+
+
+def _make_supabase_with_insert() -> AsyncMock:
+    """Return a Supabase mock where from_().insert().execute() succeeds."""
     mock_supabase = AsyncMock()
-    mock_insert_result = MagicMock()
-    mock_insert_result.data = [{"id": "memory-1"}, {"id": "memory-2"}]
-    
-    # Create proper mock chain
-    mock_execute = AsyncMock(return_value=mock_insert_result)
+    mock_execute = AsyncMock(return_value=MagicMock(data=[{"id": "row-1"}]))
     mock_insert = MagicMock()
     mock_insert.execute = mock_execute
     mock_from = MagicMock()
     mock_from.insert = MagicMock(return_value=mock_insert)
     mock_supabase.from_ = MagicMock(return_value=mock_from)
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-        mock_get_groq.return_value = mock_groq
-        
-        with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-            with patch("app.agents.memory_agent.create_embedding", return_value=mock_embedding):
+    return mock_supabase
+
+
+def _make_supabase_messages(messages: list) -> AsyncMock:
+    """Return a Supabase mock for the messages query used by extract_conversation_insights."""
+    mock_supabase = AsyncMock()
+
+    mock_result = MagicMock()
+    mock_result.data = messages
+
+    # Chain: .from_().select().eq().order().execute()
+    mock_order = MagicMock()
+    mock_order.execute = AsyncMock(return_value=mock_result)
+    mock_eq = MagicMock()
+    mock_eq.order = MagicMock(return_value=mock_order)
+    mock_select = MagicMock()
+    mock_select.eq = MagicMock(return_value=mock_eq)
+    mock_from = MagicMock()
+    mock_from.select = MagicMock(return_value=mock_select)
+
+    # insights insert chain
+    mock_ins_exec = AsyncMock(return_value=MagicMock(data=[{"id": "ins-1"}]))
+    mock_ins = MagicMock()
+    mock_ins.execute = mock_ins_exec
+    mock_from.insert = MagicMock(return_value=mock_ins)
+
+    mock_supabase.from_ = MagicMock(return_value=mock_from)
+    return mock_supabase
+
+
+# ---------------------------------------------------------------------------
+# extract_and_store_facts
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_extract_and_store_facts_success():
+    """Successful fact extraction stores two facts and returns 2."""
+    message = "I love working in the morning and I value honesty in relationships"
+    user_id = "test-user-id"
+
+    ai_response = _make_ai_response(json.dumps({
+        "facts": [
+            {"content": "The user prefers working in the morning", "category": "preference", "importance": "medium"},
+            {"content": "The user values honesty in relationships", "category": "value", "importance": "high"},
+        ]
+    }))
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
+        with patch("app.agents.memory_agent.get_async_supabase_client", return_value=_make_supabase_with_insert()):
+            with patch("app.agents.memory_agent.create_embedding", return_value=[0.1] * 1536):
                 result = await extract_and_store_facts(message, user_id)
-    
-    # Should have stored 2 facts
+
     assert result == 2
-    
-    # Verify Groq was called with correct prompt
-    call_args = mock_groq.chat.completions.create.call_args
-    assert FACT_EXTRACTION_PROMPT in call_args[1]["messages"][0]["content"]
-    assert message in call_args[1]["messages"][0]["content"]
 
 
 @pytest.mark.asyncio
 async def test_extract_and_store_facts_no_facts():
-    """Test when no facts are extracted from message"""
-    message = "Hello"
-    user_id = "test-user-id"
-    
-    # Mock Groq response with no facts
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = '{"facts": []}'
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-        mock_get_groq.return_value = mock_groq
-        
-        result = await extract_and_store_facts(message, user_id)
-    
-    # Should return 0 when no facts found
+    """When LLM returns empty facts list, result is 0."""
+    ai_response = _make_ai_response('{"facts": []}')
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
+        result = await extract_and_store_facts("Hello", "test-user-id")
+
     assert result == 0
 
 
 @pytest.mark.asyncio
-async def test_extract_and_store_facts_groq_error():
-    """Test handling of Groq API errors"""
-    message = "Test message"
-    user_id = "test-user-id"
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(side_effect=Exception("API Error"))
-        mock_get_groq.return_value = mock_groq
-        
-        result = await extract_and_store_facts(message, user_id)
-    
-    # Should return 0 on error
+async def test_extract_and_store_facts_ai_failure():
+    """When AIService returns success=False, result is 0."""
+    ai_response = _make_ai_response("quota exceeded", success=False)
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
+        result = await extract_and_store_facts("Test message", "test-user-id")
+
+    assert result == 0
+
+
+@pytest.mark.asyncio
+async def test_extract_and_store_facts_ai_exception():
+    """When AIService.complete raises, result is 0."""
+    svc = MagicMock()
+    svc.complete = AsyncMock(side_effect=Exception("network error"))
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=svc):
+        result = await extract_and_store_facts("Test message", "test-user-id")
+
     assert result == 0
 
 
 @pytest.mark.asyncio
 async def test_extract_and_store_facts_invalid_json():
-    """Test handling of invalid JSON response"""
-    message = "Test message"
-    user_id = "test-user-id"
-    
-    # Mock Groq response with invalid JSON
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = 'invalid json'
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-        mock_get_groq.return_value = mock_groq
-        
-        result = await extract_and_store_facts(message, user_id)
-    
-    # Should return 0 on JSON parse error
+    """When LLM content is not valid JSON, result is 0."""
+    ai_response = _make_ai_response("not json at all")
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
+        result = await extract_and_store_facts("Test message", "test-user-id")
+
     assert result == 0
 
 
 @pytest.mark.asyncio
 async def test_extract_and_store_facts_with_source_message():
-    """Test fact extraction with source message ID"""
-    message = "I achieved my goal today"
-    user_id = "test-user-id"
+    """source_message_id is included in the DB insert payload."""
     source_message_id = "msg-123"
-    
-    # Mock Groq response
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = '''
-    {
+    ai_response = _make_ai_response(json.dumps({
         "facts": [
-            {
-                "content": "The user achieved their goal",
-                "category": "achievement",
-                "importance": "high"
-            }
+            {"content": "The user achieved their goal", "category": "achievement", "importance": "high"}
         ]
-    }
-    '''
-    
-    mock_embedding = [0.1] * 1536
-    mock_supabase = AsyncMock()
-    mock_insert_result = MagicMock()
-    mock_insert_result.data = [{"id": "memory-1"}]
-    
-    # Create proper mock chain
-    mock_execute = AsyncMock(return_value=mock_insert_result)
-    mock_insert = MagicMock()
-    mock_insert.execute = mock_execute
-    mock_from = MagicMock()
-    mock_from.insert = MagicMock(return_value=mock_insert)
-    mock_supabase.from_ = MagicMock(return_value=mock_from)
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-        mock_get_groq.return_value = mock_groq
-        
+    }))
+    mock_supabase = _make_supabase_with_insert()
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
         with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-            with patch("app.agents.memory_agent.create_embedding", return_value=mock_embedding):
-                result = await extract_and_store_facts(message, user_id, source_message_id)
-    
+            with patch("app.agents.memory_agent.create_embedding", return_value=[0.1] * 1536):
+                result = await extract_and_store_facts("I achieved my goal today", "test-user-id", source_message_id)
+
     assert result == 1
-    
-    # Verify source_message_id was included in insert
     insert_call = mock_supabase.from_.return_value.insert.call_args
-    insert_data = insert_call[0][0]
-    assert insert_data["source_message_id"] == source_message_id
+    assert insert_call[0][0]["source_message_id"] == source_message_id
 
 
 @pytest.mark.asyncio
 async def test_extract_and_store_facts_empty_content():
-    """Test handling of facts with empty content"""
-    message = "Test message"
-    user_id = "test-user-id"
-    
-    # Mock Groq response with empty content
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = '''
-    {
-        "facts": [
-            {
-                "content": "",
-                "category": "fact",
-                "importance": "low"
-            }
-        ]
-    }
-    '''
-    
-    # Mock Supabase (even though it shouldn't be called)
-    mock_supabase = AsyncMock()
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-        mock_get_groq.return_value = mock_groq
-        
-        with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-            result = await extract_and_store_facts(message, user_id)
-    
-    # Should skip empty content
+    """Facts with empty content string are skipped."""
+    ai_response = _make_ai_response(json.dumps({
+        "facts": [{"content": "", "category": "fact", "importance": "low"}]
+    }))
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
+        with patch("app.agents.memory_agent.get_async_supabase_client", return_value=AsyncMock()):
+            result = await extract_and_store_facts("Test message", "test-user-id")
+
     assert result == 0
 
 
 @pytest.mark.asyncio
 async def test_extract_and_store_facts_storage_error():
-    """Test handling of database storage errors"""
-    message = "I love coding"
-    user_id = "test-user-id"
-    
-    # Mock Groq response
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = '''
-    {
-        "facts": [
-            {
-                "content": "The user loves coding",
-                "category": "preference",
-                "importance": "medium"
-            }
-        ]
-    }
-    '''
-    
-    mock_embedding = [0.1] * 1536
-    
-    # Mock Supabase to raise error on insert
+    """DB insert failure causes that fact to be skipped; overall result is 0."""
+    ai_response = _make_ai_response(json.dumps({
+        "facts": [{"content": "The user loves coding", "category": "preference", "importance": "medium"}]
+    }))
     mock_supabase = AsyncMock()
     mock_supabase.from_.return_value.insert.return_value.execute = AsyncMock(
         side_effect=Exception("Database error")
     )
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-        mock_get_groq.return_value = mock_groq
-        
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
         with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-            with patch("app.agents.memory_agent.create_embedding", return_value=mock_embedding):
-                result = await extract_and_store_facts(message, user_id)
-    
-    # Should return 0 when storage fails
+            with patch("app.agents.memory_agent.create_embedding", return_value=[0.1] * 1536):
+                result = await extract_and_store_facts("I love coding", "test-user-id")
+
     assert result == 0
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+# ---------------------------------------------------------------------------
+# extract_conversation_insights
+# ---------------------------------------------------------------------------
 
+_ENOUGH_MESSAGES = [
+    {"role": "user", "content": "Message 1"},
+    {"role": "assistant", "content": "Response 1"},
+    {"role": "user", "content": "Message 2"},
+    {"role": "assistant", "content": "Response 2"},
+    {"role": "user", "content": "Message 3"},
+    {"role": "assistant", "content": "Response 3"},
+]
 
-
-# Tests for conversation insight extraction
 
 @pytest.mark.asyncio
 async def test_extract_conversation_insights_success():
-    """Test successful insight extraction from conversation"""
-    session_id = "session-123"
-    user_id = "user-456"
-    coach_id = "coach-789"
-    
-    # Mock messages from conversation
-    mock_messages = [
-        {"role": "user", "content": "I'm struggling with procrastination"},
-        {"role": "assistant", "content": "What makes it hard to start?"},
-        {"role": "user", "content": "I think I'm afraid of failing"},
-        {"role": "assistant", "content": "Tell me more about that fear"},
-        {"role": "user", "content": "I realize now that I've been avoiding tasks because I'm scared they won't be perfect"},
-        {"role": "assistant", "content": "That's a powerful insight. What would it mean to let go of perfection?"},
-    ]
-    
-    # Mock Groq response with insights
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = '''
-    {
+    """Two high-confidence insights are stored and count returned."""
+    ai_response = _make_ai_response(json.dumps({
         "insights": [
-            {
-                "content": "User realized they procrastinate due to fear of failure and perfectionism",
-                "confidence": 0.95
-            },
-            {
-                "content": "User is beginning to understand the connection between perfectionism and avoidance",
-                "confidence": 0.85
-            }
+            {"content": "User avoids tasks due to fear of failure", "confidence": 0.95},
+            {"content": "User understands perfectionism link", "confidence": 0.85},
         ]
-    }
-    '''
-    
-    # Mock Supabase
-    mock_supabase = AsyncMock()
-    
-    # Mock messages query
-    mock_messages_result = MagicMock()
-    mock_messages_result.data = mock_messages
-    mock_messages_query = MagicMock()
-    mock_messages_query.execute = AsyncMock(return_value=mock_messages_result)
-    mock_messages_select = MagicMock()
-    mock_messages_select.eq = MagicMock(return_value=MagicMock())
-    mock_messages_select.eq.return_value.order = MagicMock(return_value=mock_messages_query)
-    mock_supabase.from_ = MagicMock(return_value=MagicMock())
-    mock_supabase.from_.return_value.select = MagicMock(return_value=mock_messages_select)
-    
-    # Mock insights insert
-    mock_insert_result = MagicMock()
-    mock_insert_result.data = [{"id": "insight-1"}, {"id": "insight-2"}]
-    mock_execute = AsyncMock(return_value=mock_insert_result)
-    mock_insert = MagicMock()
-    mock_insert.execute = mock_execute
-    mock_supabase.from_.return_value.insert = MagicMock(return_value=mock_insert)
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-        mock_get_groq.return_value = mock_groq
-        
+    }))
+    mock_supabase = _make_supabase_messages(_ENOUGH_MESSAGES)
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
         with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-            from app.agents.memory_agent import extract_conversation_insights
-            result = await extract_conversation_insights(session_id, user_id, coach_id)
-    
-    # Should have stored 2 insights
+            result = await extract_conversation_insights("s-1", "u-1", "c-1")
+
     assert result == 2
 
 
 @pytest.mark.asyncio
 async def test_extract_conversation_insights_too_few_messages():
-    """Test that insights are not extracted from short conversations"""
-    session_id = "session-123"
-    user_id = "user-456"
-    coach_id = "coach-789"
-    
-    # Mock only 3 messages (below minimum of 5)
-    mock_messages = [
+    """Conversations with fewer than 5 messages return 0 without calling the LLM."""
+    few_messages = [
         {"role": "user", "content": "Hello"},
-        {"role": "assistant", "content": "Hi there"},
-        {"role": "user", "content": "How are you?"},
+        {"role": "assistant", "content": "Hi"},
+        {"role": "user", "content": "Bye"},
     ]
-    
-    mock_supabase = AsyncMock()
-    mock_messages_result = MagicMock()
-    mock_messages_result.data = mock_messages
-    mock_messages_query = MagicMock()
-    mock_messages_query.execute = AsyncMock(return_value=mock_messages_result)
-    mock_messages_select = MagicMock()
-    mock_messages_select.eq = MagicMock(return_value=MagicMock())
-    mock_messages_select.eq.return_value.order = MagicMock(return_value=mock_messages_query)
-    mock_supabase.from_ = MagicMock(return_value=MagicMock())
-    mock_supabase.from_.return_value.select = MagicMock(return_value=mock_messages_select)
-    
+    mock_supabase = _make_supabase_messages(few_messages)
+
     with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-        from app.agents.memory_agent import extract_conversation_insights
-        result = await extract_conversation_insights(session_id, user_id, coach_id)
-    
-    # Should return 0 for conversations with < 5 messages
+        result = await extract_conversation_insights("s-1", "u-1", "c-1")
+
     assert result == 0
 
 
 @pytest.mark.asyncio
 async def test_extract_conversation_insights_no_messages():
-    """Test handling of sessions with no messages"""
-    session_id = "session-123"
-    user_id = "user-456"
-    coach_id = "coach-789"
-    
-    mock_supabase = AsyncMock()
-    mock_messages_result = MagicMock()
-    mock_messages_result.data = []
-    mock_messages_query = MagicMock()
-    mock_messages_query.execute = AsyncMock(return_value=mock_messages_result)
-    mock_messages_select = MagicMock()
-    mock_messages_select.eq = MagicMock(return_value=MagicMock())
-    mock_messages_select.eq.return_value.order = MagicMock(return_value=mock_messages_query)
-    mock_supabase.from_ = MagicMock(return_value=MagicMock())
-    mock_supabase.from_.return_value.select = MagicMock(return_value=mock_messages_select)
-    
+    """Sessions with no messages return 0."""
+    mock_supabase = _make_supabase_messages([])
+
     with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-        from app.agents.memory_agent import extract_conversation_insights
-        result = await extract_conversation_insights(session_id, user_id, coach_id)
-    
+        result = await extract_conversation_insights("s-1", "u-1", "c-1")
+
     assert result == 0
 
 
 @pytest.mark.asyncio
 async def test_extract_conversation_insights_low_confidence():
-    """Test that low confidence insights are filtered out"""
-    session_id = "session-123"
-    user_id = "user-456"
-    coach_id = "coach-789"
-    
-    mock_messages = [
-        {"role": "user", "content": "Message 1"},
-        {"role": "assistant", "content": "Response 1"},
-        {"role": "user", "content": "Message 2"},
-        {"role": "assistant", "content": "Response 2"},
-        {"role": "user", "content": "Message 3"},
-        {"role": "assistant", "content": "Response 3"},
-    ]
-    
-    # Mock Groq response with low confidence insight
-    mock_groq_response = MagicMock()
-    mock_groq_response.choices = [MagicMock()]
-    mock_groq_response.choices[0].message.content = '''
-    {
-        "insights": [
-            {
-                "content": "User might be interested in something",
-                "confidence": 0.5
-            }
-        ]
-    }
-    '''
-    
-    mock_supabase = AsyncMock()
-    mock_messages_result = MagicMock()
-    mock_messages_result.data = mock_messages
-    mock_messages_query = MagicMock()
-    mock_messages_query.execute = AsyncMock(return_value=mock_messages_result)
-    mock_messages_select = MagicMock()
-    mock_messages_select.eq = MagicMock(return_value=MagicMock())
-    mock_messages_select.eq.return_value.order = MagicMock(return_value=mock_messages_query)
-    mock_supabase.from_ = MagicMock(return_value=MagicMock())
-    mock_supabase.from_.return_value.select = MagicMock(return_value=mock_messages_select)
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(return_value=mock_groq_response)
-        mock_get_groq.return_value = mock_groq
-        
+    """Insights with confidence < 0.7 are filtered out; result is 0."""
+    ai_response = _make_ai_response(json.dumps({
+        "insights": [{"content": "User might be interested in something", "confidence": 0.5}]
+    }))
+    mock_supabase = _make_supabase_messages(_ENOUGH_MESSAGES)
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=_make_ai_service(ai_response)):
         with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-            from app.agents.memory_agent import extract_conversation_insights
-            result = await extract_conversation_insights(session_id, user_id, coach_id)
-    
-    # Should return 0 because confidence < 0.7
+            result = await extract_conversation_insights("s-1", "u-1", "c-1")
+
     assert result == 0
 
 
 @pytest.mark.asyncio
-async def test_extract_conversation_insights_groq_error():
-    """Test handling of Groq API errors during insight extraction"""
-    session_id = "session-123"
-    user_id = "user-456"
-    coach_id = "coach-789"
-    
-    mock_messages = [
-        {"role": "user", "content": "Message 1"},
-        {"role": "assistant", "content": "Response 1"},
-        {"role": "user", "content": "Message 2"},
-        {"role": "assistant", "content": "Response 2"},
-        {"role": "user", "content": "Message 3"},
-        {"role": "assistant", "content": "Response 3"},
-    ]
-    
-    mock_supabase = AsyncMock()
-    mock_messages_result = MagicMock()
-    mock_messages_result.data = mock_messages
-    mock_messages_query = MagicMock()
-    mock_messages_query.execute = AsyncMock(return_value=mock_messages_result)
-    mock_messages_select = MagicMock()
-    mock_messages_select.eq = MagicMock(return_value=MagicMock())
-    mock_messages_select.eq.return_value.order = MagicMock(return_value=mock_messages_query)
-    mock_supabase.from_ = MagicMock(return_value=MagicMock())
-    mock_supabase.from_.return_value.select = MagicMock(return_value=mock_messages_select)
-    
-    with patch("app.agents.memory_agent.get_groq_client") as mock_get_groq:
-        mock_groq = MagicMock()
-        mock_groq.chat.completions.create = AsyncMock(side_effect=Exception("API Error"))
-        mock_get_groq.return_value = mock_groq
-        
+async def test_extract_conversation_insights_ai_error():
+    """When AIService.complete raises, result is 0."""
+    svc = MagicMock()
+    svc.complete = AsyncMock(side_effect=Exception("API Error"))
+    mock_supabase = _make_supabase_messages(_ENOUGH_MESSAGES)
+
+    with patch("app.agents.memory_agent._get_ai_service", return_value=svc):
         with patch("app.agents.memory_agent.get_async_supabase_client", return_value=mock_supabase):
-            from app.agents.memory_agent import extract_conversation_insights
-            result = await extract_conversation_insights(session_id, user_id, coach_id)
-    
-    # Should return 0 on error
+            result = await extract_conversation_insights("s-1", "u-1", "c-1")
+
     assert result == 0
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

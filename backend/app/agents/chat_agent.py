@@ -1,5 +1,10 @@
+import asyncio
 import json
+import logging
 import time
+from datetime import datetime, timezone
+from uuid import uuid4
+
 from app.services.supabase import get_async_supabase_client
 from app.services.rag import retrieve_relevant_memories, format_memories_for_prompt
 from app.services.cache import (
@@ -18,6 +23,8 @@ from app.services.ai_service import (
     AIServiceError,
     MODEL_PRIMARY,
 )
+
+logger = logging.getLogger(__name__)
 
 PERSONA_PROMPTS = {
     "gentle": (
@@ -59,6 +66,8 @@ def get_persona_prompt(firmness_level: int) -> str:
         return PERSONA_PROMPTS["balanced"]
     else:
         return PERSONA_PROMPTS["tough"]
+
+
 def get_grow_stage_guidance(grow_state: str) -> str:
     """
     Get stage-specific coaching guidance for the GROW model.
@@ -130,7 +139,6 @@ def calculate_cost_usd(model: str, input_tokens: int, output_tokens: int) -> flo
         "llama-3.3-70b-versatile": (0.59, 0.79),
         "llama-3.1-8b-instant": (0.05, 0.08),
         "deepseek-r1-distill-llama-70b": (0.99, 0.99),
-        # Legacy providers removed (Claude, Gemini) - now using Groq exclusively
     }
     input_rate, output_rate = pricing.get(model, (0.10, 0.10))
     return round((input_tokens / 1_000_000) * input_rate + (output_tokens / 1_000_000) * output_rate, 6)
@@ -161,7 +169,7 @@ async def log_model_usage(
         )
     except Exception as e:
         # Non-blocking: analytics failures should not impact chat UX.
-        print(f"Failed to log model usage: {e}")
+        logger.warning("Failed to log model usage: %s", e)
 
 
 async def get_user_firmness(user_id: str) -> int:
@@ -370,7 +378,7 @@ async def get_conversation_insights(user_id: str, coach_id: str, limit: int = 3)
 
     except Exception as e:
         # Non-blocking: if insights retrieval fails, continue without them
-        print(f"Error retrieving conversation insights: {e}")
+        logger.warning("Error retrieving conversation insights: %s", e)
         return ""
 
 
@@ -418,7 +426,7 @@ async def get_grow_state(session_id: str) -> dict:
             }
     except Exception as e:
         # Log error but don't fail - return default state
-        print(f"Error retrieving GROW state for session {session_id}: {e}")
+        logger.warning("Error retrieving GROW state for session %s: %s", session_id, e)
 
     # Return default state if session not found or error occurred
     return {
@@ -535,7 +543,7 @@ Respond with ONLY a JSON object in this exact format:
 
     except (AIServiceError, json.JSONDecodeError) as e:
         # If detection fails, don't advance - safer to stay in current stage
-        print(f"Error detecting stage completion: {e}")
+        logger.warning("Error detecting stage completion: %s", e)
         return {"should_advance": False, "next_state": current_state}
 
 
@@ -575,7 +583,7 @@ async def update_grow_state(session_id: str, new_state: str, reasoning: str = ""
             .update({
                 "grow_state": new_state,
                 "grow_data": grow_data,
-                "grow_updated_at": "now()"
+                "grow_updated_at": datetime.now(timezone.utc).isoformat()
             })
             .eq("id", session_id)
             .execute()
@@ -584,17 +592,62 @@ async def update_grow_state(session_id: str, new_state: str, reasoning: str = ""
         return result.data is not None
 
     except Exception as e:
-        print(f"Error updating GROW state for session {session_id}: {e}")
+        logger.error("Error updating GROW state for session %s: %s", session_id, e)
         return False
 
 
 
 async def save_message(session_id: str, role: str, content: str) -> str:
     supabase = await get_async_supabase_client()
-    result = await supabase.from_("messages").insert({"chat_session_id": session_id, "role": role, "content": content}).execute()
-    if result.data and len(result.data) > 0:
-        return result.data[0].get("id", "")
-    return ""
+    result = await (
+        supabase.from_("messages")
+        .insert(
+            {
+                "chat_session_id": session_id,
+                "role": role,
+                "content": content,
+            }
+        )
+        .select("id")
+        .single()
+        .execute()
+    )
+    if result.data and result.data.get("id"):
+        return result.data["id"]
+    raise RuntimeError("Message insert completed without returning an id")
+
+
+async def _run_post_response_tasks(
+    user_id: str,
+    session_id: str,
+    message: str,
+    full_response: str,
+    model: str,
+    input_text: str,
+    previous_grow_state: str,
+) -> None:
+    """Run non-critical tasks after the client already received the done event."""
+    try:
+        await log_model_usage(
+            user_id=user_id,
+            session_id=session_id,
+            model=model,
+            input_tokens=estimate_tokens(input_text),
+            output_tokens=estimate_tokens(full_response),
+        )
+    except Exception as e:
+        logger.warning("Failed to log usage for session %s: %s", session_id, e)
+
+    try:
+        detection_result = await detect_stage_completion(session_id, message, full_response)
+        if detection_result.get("should_advance"):
+            new_state = detection_result.get("next_state")
+            reasoning = detection_result.get("reasoning", "")
+            success = await update_grow_state(session_id, new_state, reasoning)
+            if success:
+                logger.info("GROW state advanced: %s -> %s", previous_grow_state, new_state)
+    except Exception as e:
+        logger.warning("Error in GROW stage detection: %s", e)
 
 
 def build_multimodal_content(message: str, attachments: list | None) -> str | list:
@@ -678,13 +731,13 @@ async def stream_chat_response(
         
         async for chunk in ai_service.stream_completion(request):
             full_response += chunk
-            yield f"data: {json.dumps({'type': 'token', 'data': chunk})}\n\n"
+            yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
 
         # Successfully streamed
         llm_success = True
     except (AIServiceError, Exception) as e:
         llm_error = str(e)
-        print(f"Error streaming chat response with model={MODEL_PRIMARY}: {e}")
+        logger.error("Error streaming chat response with model=%s: %s", MODEL_PRIMARY, e)
 
     # Record LLM metrics
     llm_duration = time.time() - llm_start_time
@@ -698,33 +751,32 @@ async def stream_chat_response(
     )
 
     if not llm_success:
-        print(f"Error streaming chat response with model={MODEL_PRIMARY}: {llm_error}")
-        yield f"data: {json.dumps({'type': 'error', 'data': {'message': 'AI service is not available at the moment. Please try again later.'}})}\n\n"
+        logger.error("Error streaming chat response with model=%s: %s", MODEL_PRIMARY, llm_error)
+        yield f"data: {json.dumps({'type': 'error', 'message': 'AI service is not available at the moment. Please try again later.'})}\n\n"
         return
 
-    saved_id = await save_message(session_id, "assistant", full_response)
+    if not full_response.strip():
+        logger.warning("Empty response from AI for session %s — skipping save", session_id)
+        yield f"data: {json.dumps({'type': 'error', 'message': 'The coach returned an empty response. Please try again.'})}\n\n"
+        return
 
-    # Log model usage analytics in background-compatible, non-blocking path.
-    input_text = "\n".join([str(m.get("content", "")) for m in messages])
-    await log_model_usage(
-        user_id=user_id,
-        session_id=session_id,
-        model=MODEL_PRIMARY,
-        input_tokens=estimate_tokens(input_text),
-        output_tokens=estimate_tokens(full_response),
-    )
-
-    # Detect if GROW stage should advance
+    saved_id = f"assistant-{uuid4()}"
     try:
-        detection_result = await detect_stage_completion(session_id, message, full_response)
-        if detection_result.get("should_advance"):
-            new_state = detection_result.get("next_state")
-            reasoning = detection_result.get("reasoning", "")
-            success = await update_grow_state(session_id, new_state, reasoning)
-            if success:
-                print(f"GROW state advanced: {grow_state_data['state']} -> {new_state}")
+        saved_id = await save_message(session_id, "assistant", full_response)
     except Exception as e:
-        # Don't fail the response if stage detection fails
-        print(f"Error in GROW stage detection: {e}")
+        logger.error("Failed to persist assistant message for session %s: %s", session_id, e)
 
-    yield f"data: {json.dumps({'type': 'done', 'data': {'messageId': saved_id}})}\n\n"
+    yield f"data: {json.dumps({'type': 'done', 'messageId': saved_id})}\n\n"
+
+    input_text = "\n".join([str(m.get("content", "")) for m in messages])
+    asyncio.create_task(
+        _run_post_response_tasks(
+            user_id=user_id,
+            session_id=session_id,
+            message=message,
+            full_response=full_response,
+            model=MODEL_PRIMARY,
+            input_text=input_text,
+            previous_grow_state=grow_state_data["state"],
+        )
+    )

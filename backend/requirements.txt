@@ -21,4 +21,3 @@ sentry-sdk[fastapi]>=1.40.0
 # Dev / Testing
 pytest>=9.0.0
 pytest-asyncio>=1.0.0
-httpx>=0.26.0

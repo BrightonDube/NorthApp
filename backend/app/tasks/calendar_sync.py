@@ -1,20 +1,27 @@
+import logging
+
 from app.services.supabase import get_async_supabase_client
 from app.services.calendar import fetch_today_events
-from app.services.groq_client import MODEL_FAST, get_groq_client
+from app.services.groq_client import MODEL_FAST
+from app.services.ai_service import AIService, AIRequest
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 async def summarize_calendar_events(events: list[dict]) -> str:
+    """Summarise a list of calendar events into a short coaching-context string."""
     if not events:
         return "No events scheduled today."
 
-    client = get_groq_client()
+    settings = get_settings()
+    ai = AIService(api_key=settings.groq_api_key)
 
     events_text = "\n".join(
         [f"- {e.get('summary', 'Untitled')} at {e.get('start', 'unknown time')}" for e in events]
     )
 
-    response = await client.chat.completions.create(
-        model=MODEL_FAST,
+    request = AIRequest(
         messages=[
             {
                 "role": "user",
@@ -25,12 +32,20 @@ async def summarize_calendar_events(events: list[dict]) -> str:
         ],
         temperature=0.45,
         max_tokens=100,
+        model=MODEL_FAST,
+        stream=False,
     )
-    return response.choices[0].message.content.strip()
+    response = await ai.complete(request)
+
+    if not response.success:
+        logger.warning("Calendar summarization failed: %s", response.error)
+        return f"You have {len(events)} events today."
+
+    return response.content.strip()
 
 
 async def sync_all_calendars():
-    print("[CalendarSync] Starting daily calendar sync...")
+    logger.info("Starting daily calendar sync...")
     supabase = await get_async_supabase_client()
 
     # Get all users with connected Google Calendar
@@ -42,7 +57,7 @@ async def sync_all_calendars():
     )
 
     if not result.data:
-        print("[CalendarSync] No users with connected calendars")
+        logger.info("No users with connected calendars")
         return
 
     count = 0
@@ -63,6 +78,6 @@ async def sync_all_calendars():
             ).execute()
             count += 1
         except Exception as e:
-            print(f"[CalendarSync] Failed for user {user_id}: {e}")
+            logger.warning("Calendar sync failed for user %s: %s", user_id, e)
 
-    print(f"[CalendarSync] Synced {count} calendars")
+    logger.info("Synced %d calendars", count)

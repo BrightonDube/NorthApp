@@ -1,5 +1,11 @@
 import json
-from app.services.groq_client import MODEL_COMPLEX, get_groq_client
+import logging
+
+from app.services.groq_client import MODEL_COMPLEX
+from app.services.ai_service import AIService, AIRequest, AIServiceError
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 PANIC_SYSTEM_PROMPT = """You are a crisis support coach. The user has pressed the PANIC button — they are overwhelmed and need immediate support.
 
@@ -23,27 +29,40 @@ async def stream_panic_response(
     user_id: str,
     initial_message: str | None = None,
 ):
-    client = get_groq_client()
+    """Stream a crisis-support response via AIService.
+
+    Uses lower temperature for calm, consistent tone and the complex model
+    for nuanced emotional understanding.  Retries are handled by AIService.
+
+    Args:
+        user_id: Authenticated user UUID (for logging).
+        initial_message: Optional user-supplied text; defaults to generic panic.
+
+    Yields:
+        SSE-formatted data lines.
+    """
+    settings = get_settings()
+    ai = AIService(api_key=settings.groq_api_key)
 
     user_content = initial_message or "I pressed the panic button. I need help."
 
-    messages = [
-        {"role": "system", "content": PANIC_SYSTEM_PROMPT},
-        {"role": "user", "content": user_content},
-    ]
-
-    full_response = ""
-
-    async with client.chat.completions.stream(
-        model=MODEL_COMPLEX,
-        messages=messages,
+    request = AIRequest(
+        messages=[
+            {"role": "system", "content": PANIC_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
         temperature=0.35,
         max_tokens=512,
-    ) as stream:
-        async for chunk in stream:
-            delta = chunk.choices[0].delta.content if chunk.choices else None
-            if delta:
-                full_response += delta
-                yield f"data: {json.dumps({'type': 'token', 'data': delta})}\n\n"
+        model=MODEL_COMPLEX,
+        stream=True,
+    )
 
-    yield f"data: {json.dumps({'type': 'done', 'data': {'panic': True}})}\n\n"
+    try:
+        async for chunk in ai.stream_completion(request):
+            yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
+    except AIServiceError as e:
+        logger.error("Panic stream failed for user %s: %s", user_id, e)
+        yield f"data: {json.dumps({'type': 'error', 'message': 'Crisis support is temporarily unavailable. Please reach out to a helpline.'})}\n\n"
+        return
+
+    yield f"data: {json.dumps({'type': 'done', 'panic': True})}\n\n"
