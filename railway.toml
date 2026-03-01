@@ -1,12 +1,10 @@
 # Railway deployment configuration
-# Updated: 2026-03-01 - Force redeploy to fix chat streaming
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "cd backend && python -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip && pip install -r requirements.txt"
 
 [deploy]
-startCommand = "cd backend && . .venv/bin/activate && export PORT=${PORT:-8000} && echo Starting app on port $PORT && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
