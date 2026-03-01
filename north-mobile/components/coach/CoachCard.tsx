@@ -122,9 +122,6 @@ export function CoachCard({
     }
   };
 
-  // Focus indicator color
-  const focusColor = colors.primary;
-  
   // Category badge color
   const categoryColor = getCategoryColor(coach.category);
   
@@ -152,7 +149,7 @@ export function CoachCard({
         accessibilityLabel={`${isMarketplaceMode ? 'Open' : 'Chat with'} ${coach.name}. ${coachDescription}`}
         accessibilityHint={onLongPress ? "Long press to edit" : isMarketplaceMode ? "Opens coach profile" : "Opens chat conversation with this coach"}
         testID={testID}
-        style={({ pressed, focused }) => [
+        style={({ pressed }: { pressed: boolean }) => [
           styles.card,
           { 
             backgroundColor: colors.card,
@@ -160,10 +157,6 @@ export function CoachCard({
           },
           isMarketplaceMode && styles.marketplaceCard,
           pressed && styles.pressed,
-          focused && { 
-            borderWidth: 3, 
-            borderColor: focusColor,
-          },
         ]}
       >
         {/* Share button - top right corner */}
@@ -266,11 +259,11 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    top: 8,
+    right: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',

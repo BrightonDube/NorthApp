@@ -1,28 +1,25 @@
 /**
  * MessageList Component
  * 
- * Displays a scrollable list of messages with auto-scroll to latest.
- * Uses FlatList for virtualization and performance.
+ * Displays a scrollable list of messages with rock-solid auto-scroll.
+ * Uses FlatList with onContentSizeChange/onLayout for precise bottom-anchoring.
  * 
  * Performance optimizations:
- * - FlatList with getItemLayout for instant scrolling
  * - Memoized MessageBubble components
  * - Optimized key extraction
  * - Message pagination (load 50 at a time)
+ * - No getItemLayout (variable height messages need dynamic measurement)
  * 
  * Validates: Requirements 8.7, 11.5, 20.3 (Memory Management)
  */
 
-import React, { useRef, useEffect, useCallback } from 'react';
-import { FlatList, View, Text, Pressable, ActivityIndicator } from 'react-native';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { FlatList, View, Text, Pressable, ActivityIndicator, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useThemeColors } from '@/contexts/ThemeContext';
 import type { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { StreamingIndicator } from './StreamingIndicator';
-
-// Estimated item height for getItemLayout optimization
-// This improves scroll performance significantly
-const ESTIMATED_ITEM_HEIGHT = 80;
 
 export interface MessageListProps {
   messages: Message[];
@@ -34,35 +31,6 @@ export interface MessageListProps {
   isLoadingMore?: boolean;
 }
 
-/**
- * MessageList Component
- * 
- * Renders a virtualized list of messages with auto-scroll behavior.
- * Automatically scrolls to the bottom when new messages arrive.
- * Shows a streaming indicator when AI is responding.
- * Supports pagination with "Load More" button for chat history.
- * 
- * @param messages - Array of messages to display
- * @param streamingMessage - Current streaming message content (if any)
- * @param isLoading - Whether messages are being loaded
- * @param emptyMessage - Message to show when list is empty
- * @param hasMore - Whether there are more messages to load
- * @param onLoadMore - Callback to load more messages
- * @param isLoadingMore - Whether more messages are currently being loaded
- * 
- * @example
- * ```tsx
- * <MessageList
- *   messages={messages}
- *   streamingMessage={streamingMessage}
- *   isLoading={isLoading}
- *   emptyMessage="Start a conversation with your coach"
- *   hasMore={hasMore}
- *   onLoadMore={loadMoreMessages}
- *   isLoadingMore={isLoadingMore}
- * />
- * ```
- */
 export function MessageList({
   messages,
   streamingMessage,
@@ -75,41 +43,60 @@ export function MessageList({
   const colors = useThemeColors();
   const flatListRef = useRef<FlatList>(null);
   const shouldAutoScroll = useRef(true);
+  const contentHeight = useRef(0);
+  const layoutHeight = useRef(0);
+  const prevStreamRef = useRef<string | null | undefined>(null);
 
-  // Auto-scroll to bottom when messages change (only if user is at bottom)
-  useEffect(() => {
-    if (shouldAutoScroll.current && (messages.length > 0 || streamingMessage)) {
-      // Small delay to ensure layout is complete
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+  // Scroll to bottom helper - only animates for small deltas (streaming tokens)
+  const scrollToBottom = useCallback((animated = true) => {
+    if (!shouldAutoScroll.current) return;
+    flatListRef.current?.scrollToEnd({ animated });
+  }, []);
+
+  // Anchor to bottom when content size grows (covers streaming + new messages)
+  const handleContentSizeChange = useCallback((_w: number, h: number) => {
+    const grew = h > contentHeight.current;
+    contentHeight.current = h;
+    if (grew && shouldAutoScroll.current) {
+      scrollToBottom(true);
     }
-  }, [messages.length, streamingMessage]);
+  }, [scrollToBottom]);
 
-  // Memoized render function for better performance
+  // Track visible height for "is at bottom" calculation
+  const handleLayout = useCallback((e: any) => {
+    layoutHeight.current = e.nativeEvent.layout.height;
+  }, []);
+
+  // Detect if user has scrolled away from bottom
+  const handleScroll = useCallback((event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const distFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    shouldAutoScroll.current = distFromBottom < 80;
+  }, []);
+
+  // Fire haptic when AI finishes streaming
+  useEffect(() => {
+    const wasStreaming = prevStreamRef.current != null && prevStreamRef.current.length > 0;
+    const stoppedStreaming = streamingMessage == null || streamingMessage.length === 0;
+    if (wasStreaming && stoppedStreaming) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+    prevStreamRef.current = streamingMessage;
+  }, [streamingMessage]);
+
+  // Initial scroll when messages first load
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Use requestAnimationFrame to wait for layout
+      requestAnimationFrame(() => scrollToBottom(false));
+    }
+  }, [messages.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const renderItem = useCallback(({ item }: { item: Message }) => (
     <MessageBubble message={item} />
   ), []);
 
-  // Memoized key extractor
   const keyExtractor = useCallback((item: Message) => item.id, []);
-
-  // getItemLayout for instant scrolling (performance optimization)
-  const getItemLayout = useCallback(
-    (_: any, index: number) => ({
-      length: ESTIMATED_ITEM_HEIGHT,
-      offset: ESTIMATED_ITEM_HEIGHT * index,
-      index,
-    }),
-    []
-  );
-
-  // Handle scroll to detect if user is at bottom
-  const handleScroll = useCallback((event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const isAtBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
-    shouldAutoScroll.current = isAtBottom;
-  }, []);
 
   // Render "Load More" button at the top
   const renderHeader = useCallback(() => {
@@ -121,7 +108,10 @@ export function MessageList({
           <ActivityIndicator size="small" color={colors.textSecondary} />
         ) : (
           <Pressable
-            onPress={onLoadMore}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onLoadMore();
+            }}
             style={{ backgroundColor: colors.surface }}
             className="px-4 py-2 rounded-full"
             accessible
@@ -159,19 +149,25 @@ export function MessageList({
       data={messages}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
-      getItemLayout={getItemLayout}
-      removeClippedSubviews={true}
-      maxToRenderPerBatch={10}
-      updateCellsBatchingPeriod={50}
-      initialNumToRender={15}
-      windowSize={10}
+      removeClippedSubviews={Platform.OS !== 'web'}
+      maxToRenderPerBatch={15}
+      updateCellsBatchingPeriod={30}
+      initialNumToRender={20}
+      windowSize={12}
       onScroll={handleScroll}
-      scrollEventThrottle={400}
+      scrollEventThrottle={16}
+      onContentSizeChange={handleContentSizeChange}
+      onLayout={handleLayout}
+      maintainVisibleContentPosition={
+        Platform.OS === 'ios' ? { minIndexForVisible: 0 } : undefined
+      }
       ListHeaderComponent={renderHeader}
       contentContainerStyle={{
-        paddingHorizontal: 24, // Updated to screen-margin-x (24px)
-        paddingTop: 16,
-        paddingBottom: 8,
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        paddingBottom: 16,
+        flexGrow: 1,
+        justifyContent: messages.length === 0 ? 'center' : 'flex-start',
       }}
       showsVerticalScrollIndicator={false}
       ListFooterComponent={

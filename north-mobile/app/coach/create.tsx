@@ -153,7 +153,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Pressable 
             onPress={handleClose} 
-            style={[styles.closeButton, { backgroundColor: colors.secondaryBackground }]}
+            style={[styles.closeButton, { backgroundColor: colors.backgroundSecondary }]}
             accessibilityRole="button"
             accessibilityLabel="Close coach creation"
           >
@@ -182,7 +182,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
                   }}
                   style={[
                     styles.avatarOption,
-                    { backgroundColor: colors.secondaryBackground, borderColor: 'transparent' },
+                    { backgroundColor: colors.backgroundSecondary, borderColor: 'transparent' },
                     avatar === emoji && { borderColor: colors.text, backgroundColor: colors.border },
                   ]}
                   accessibilityRole="radio"
@@ -199,7 +199,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
           <View style={styles.section}>
             <Text style={[styles.label, { color: colors.text }]}>Coach Name</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: colors.secondaryBackground, color: colors.text }]}
+              style={[styles.input, { backgroundColor: colors.backgroundSecondary, color: colors.text }]}
               placeholder="e.g., Alex the Strategist"
               placeholderTextColor={colors.textTertiary}
               value={name}
@@ -224,7 +224,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
                   }}
                   style={[
                     styles.chip,
-                    { backgroundColor: colors.secondaryBackground, borderColor: colors.border },
+                    { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
                     expertise === domain && { backgroundColor: colors.text, borderColor: colors.text },
                   ]}
                   accessibilityRole="radio"
@@ -243,7 +243,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
             </View>
             {expertise === 'Custom' && (
               <TextInput
-                style={[styles.input, { marginTop: 12, backgroundColor: colors.secondaryBackground, color: colors.text }]}
+                style={[styles.input, { marginTop: 12, backgroundColor: colors.backgroundSecondary, color: colors.text }]}
                 placeholder="Enter custom expertise..."
                 placeholderTextColor={colors.textTertiary}
                 value={customExpertise}
@@ -268,7 +268,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
                   }}
                   style={[
                     styles.styleOption,
-                    { backgroundColor: colors.secondaryBackground, borderColor: 'transparent' },
+                    { backgroundColor: colors.backgroundSecondary, borderColor: 'transparent' },
                     style === s.id && { borderColor: colors.text, backgroundColor: colors.background },
                   ]}
                   accessibilityRole="radio"
@@ -300,7 +300,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
           <View style={styles.section}>
             <Text style={[styles.label, { color: colors.text }]}>Description <Text style={[styles.optional, { color: colors.textSecondary }]}>(Optional)</Text></Text>
             <TextInput
-              style={[styles.input, styles.textArea, { backgroundColor: colors.secondaryBackground, color: colors.text }]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.backgroundSecondary, color: colors.text }]}
               placeholder="Add a short bio for your coach..."
               placeholderTextColor={colors.textTertiary}
               value={description}
@@ -323,7 +323,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
               Customize how your coach behaves. Leave empty for auto-generated prompt.
             </Text>
             <TextInput
-              style={[styles.input, styles.textArea, { backgroundColor: colors.secondaryBackground, color: colors.text }]}
+              style={[styles.input, styles.textArea, { backgroundColor: colors.backgroundSecondary, color: colors.text }]}
               placeholder="You are a coach who..."
               placeholderTextColor={colors.textTertiary}
               value={systemPrompt}
@@ -338,7 +338,7 @@ TONE: ${selectedStyle?.description || 'Warm, encouraging, and supportive'}. You 
           </View>
 
           {/* Preview */}
-          <View style={[styles.preview, { backgroundColor: colors.secondaryBackground }]}>
+          <View style={[styles.preview, { backgroundColor: colors.backgroundSecondary }]}>
             <View style={[styles.previewAvatar, { backgroundColor: colors.background }]}>
               <Text style={styles.previewAvatarText}>{avatar}</Text>
             </View>
@@ -391,11 +391,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+    borderRadius: 22,
   },
   headerTitle: {
     fontSize: 17,
@@ -460,9 +460,11 @@ const styles = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   chipText: {
     fontSize: 14,

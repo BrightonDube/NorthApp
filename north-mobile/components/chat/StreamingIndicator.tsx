@@ -8,7 +8,7 @@
  */
 
 import { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,7 +17,7 @@ import Animated, {
   withTiming,
   withDelay,
 } from 'react-native-reanimated';
-import { useThemeColors } from '@/contexts/ThemeContext';
+import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 /**
@@ -33,6 +33,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
  */
 export function StreamingIndicator() {
   const colors = useThemeColors();
+  const isDark = useIsDark();
   const prefersReducedMotion = useReducedMotion();
   const dot1Opacity = useSharedValue(0.3);
   const dot2Opacity = useSharedValue(0.3);
@@ -90,22 +91,30 @@ export function StreamingIndicator() {
 
   return (
     <View
-      className="mb-4 items-start"
+      style={{ marginBottom: 8, alignItems: 'flex-start' }}
       accessible
       accessibilityRole="text"
-      accessibilityLabel="Assistant is typing"
+      accessibilityLabel="Coach is thinking"
+      accessibilityLiveRegion="polite"
     >
-      <View style={{ backgroundColor: colors.surface }} className="px-4 py-3 rounded-2xl">
-        <View className="flex-row items-center gap-1">
-          <Animated.View style={dot1Style}>
-            <Text style={{ color: colors.text }} className="text-lg">•</Text>
-          </Animated.View>
-          <Animated.View style={dot2Style}>
-            <Text style={{ color: colors.text }} className="text-lg">•</Text>
-          </Animated.View>
-          <Animated.View style={dot3Style}>
-            <Text style={{ color: colors.text }} className="text-lg">•</Text>
-          </Animated.View>
+      <View
+        style={{
+          backgroundColor: isDark ? '#1E1C1A' : '#FFFFFF',
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          borderRadius: 22,
+          borderBottomLeftRadius: 6,
+          shadowColor: isDark ? '#000' : '#78716C',
+          shadowOpacity: isDark ? 0.3 : 0.08,
+          shadowRadius: isDark ? 8 : 12,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }, dot1Style]} />
+          <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }, dot2Style]} />
+          <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }, dot3Style]} />
         </View>
       </View>
     </View>

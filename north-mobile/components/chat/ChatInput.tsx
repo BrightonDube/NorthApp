@@ -196,8 +196,11 @@ export function ChatInput({
       let base64: string | undefined;
       if (FileSystem) {
         try {
+          // EncodingType.Base64 resolves to 'base64' at runtime.
+          // expo-file-system v19 moved EncodingType to the legacy subpath,
+          // so we use the string literal directly for type compatibility.
           base64 = await FileSystem.readAsStringAsync(asset.uri, {
-            encoding: FileSystem.EncodingType.Base64,
+            encoding: 'base64' as any,
           });
         } catch {
           // If base64 read fails, send without it
@@ -252,11 +255,11 @@ export function ChatInput({
       {/* Attach menu */}
       {showAttachMenu && (
         <View style={[styles.attachMenu, { backgroundColor: isDark ? '#292524' : '#F5F5F4' }]}>
-          <Pressable onPress={pickImage} style={styles.attachOption}>
+          <Pressable onPress={pickImage} style={styles.attachOption} accessibilityRole="button" accessibilityLabel="Attach a photo">
             <Ionicons name="image-outline" size={20} color="#3B82F6" />
             <Text style={[styles.attachOptionText, { color: isDark ? '#D6D3D1' : '#44403C' }]}>Photo</Text>
           </Pressable>
-          <Pressable onPress={pickDocument} style={styles.attachOption}>
+          <Pressable onPress={pickDocument} style={styles.attachOption} accessibilityRole="button" accessibilityLabel="Attach a document">
             <Ionicons name="document-text-outline" size={20} color="#3B82F6" />
             <Text style={[styles.attachOptionText, { color: isDark ? '#D6D3D1' : '#44403C' }]}>Document</Text>
           </Pressable>
@@ -370,9 +373,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   attachButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -445,8 +448,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderRadius: 10,
+    minHeight: 44,
   },
   attachOptionText: {
     fontSize: 14,

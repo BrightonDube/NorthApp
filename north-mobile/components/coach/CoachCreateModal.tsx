@@ -1,27 +1,39 @@
 /**
  * CoachCreateModal Component
  * 
- * Modal for creating new custom coaches (Pro feature).
- * Includes name, icon picker, and system prompt input.
+ * A paginated Socratic wizard for creating custom coaches (Pro feature).
+ * Uses fluid Reanimated transitions between steps with haptic feedback.
+ * 
+ * Steps:
+ * 1. Name & Icon — "What shall we call your coach?"
+ * 2. Personality  — "How should your coach behave?"
+ * 3. Review       — Preview and confirm
  * 
  * Validates: Requirements 7.1, 7.2
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   Modal,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInRight,
+  SlideOutLeft,
+  SlideInLeft,
+  SlideOutRight,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { useThemeColors } from '@/contexts/ThemeContext';
+import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
 interface CoachCreateModalProps {
   visible: boolean;
@@ -29,9 +41,8 @@ interface CoachCreateModalProps {
   onClose: () => void;
 }
 
-/**
- * Suggested coach icons (emojis)
- */
+const TOTAL_STEPS = 3;
+
 const suggestedIcons = [
   '🎯', '💼', '🚀', '💡', '🧠', '📊',
   '🎨', '✍️', '🏃', '💪', '🌟', '🔥',
@@ -39,44 +50,27 @@ const suggestedIcons = [
   '⚡', '🌙', '☀️', '🌊', '🏔️', '🌺',
 ];
 
-/**
- * CoachCreateModal Component
- * 
- * Features:
- * - Name input with validation
- * - Icon picker with emoji suggestions
- * - System prompt textarea with character limit
- * - Create and Cancel buttons
- * - Loading state during creation
- * - Error display with retry option
- * - Keyboard avoiding view for better UX
- * - Haptic feedback on actions
- * - Form validation
- * 
- * @example
- * ```tsx
- * <CoachCreateModal
- *   visible={isCreateModalVisible}
- *   onCreate={handleCreate}
- *   onClose={() => setIsCreateModalVisible(false)}
- * />
- * ```
- */
-export function CoachCreateModal({
-  visible,
-  onCreate,
-  onClose,
-}: CoachCreateModalProps) {
+const stepTitles = [
+  'What shall we call\nyour coach?',
+  'How should your\ncoach behave?',
+  'Looking good!\nReady to create?',
+];
+
+export function CoachCreateModal({ visible, onCreate, onClose }: CoachCreateModalProps) {
   const colors = useThemeColors();
+  const isDark = useIsDark();
+  const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState<'forward' | 'back'>('forward');
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('🎯');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when modal opens
   useEffect(() => {
     if (visible) {
+      setStep(0);
+      setDirection('forward');
       setName('');
       setIcon('🎯');
       setSystemPrompt('');
@@ -84,79 +78,61 @@ export function CoachCreateModal({
     }
   }, [visible]);
 
-  /**
-   * Handle icon selection
-   */
-  const handleIconSelect = (selectedIcon: string) => {
-    setIcon(selectedIcon);
+  const canAdvance = useCallback(() => {
+    if (step === 0) return name.trim().length > 0;
+    if (step === 1) return systemPrompt.trim().length >= 20;
+    return true;
+  }, [step, name, systemPrompt]);
+
+  const goNext = useCallback(() => {
+    if (!canAdvance() || step >= TOTAL_STEPS - 1) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setError(null);
+    setDirection('forward');
+    setStep(s => s + 1);
+  }, [canAdvance, step]);
+
+  const goBack = useCallback(() => {
+    if (step <= 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
+    setError(null);
+    setDirection('back');
+    setStep(s => s - 1);
+  }, [step]);
 
-  /**
-   * Handle create action
-   * Validates input and calls onCreate callback
-   */
-  const handleCreate = async () => {
-    // Validate inputs
-    const trimmedName = name.trim();
-    const trimmedPrompt = systemPrompt.trim();
-
-    if (!trimmedName) {
-      setError('Coach name is required');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    if (trimmedName.length > 50) {
-      setError('Coach name must be 50 characters or less');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    if (!trimmedPrompt) {
-      setError('System prompt is required');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    if (trimmedPrompt.length < 20) {
-      setError('System prompt must be at least 20 characters');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    if (trimmedPrompt.length > 2000) {
-      setError('System prompt must be 2000 characters or less');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
+  const handleCreate = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     try {
-      await onCreate(trimmedName, icon, trimmedPrompt);
+      await onCreate(name.trim(), icon, systemPrompt.trim());
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create coach';
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : 'Failed to create coach');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [name, icon, systemPrompt, onCreate, onClose]);
 
-  /**
-   * Handle cancel action
-   */
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onClose();
-  };
+  }, [onClose]);
 
-  const isFormValid = name.trim() && systemPrompt.trim().length >= 20;
+  const handleIconSelect = useCallback((sel: string) => {
+    setIcon(sel);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  const entering = direction === 'forward'
+    ? SlideInRight.duration(300).springify()
+    : SlideInLeft.duration(300).springify();
+  const exiting = direction === 'forward'
+    ? SlideOutLeft.duration(200)
+    : SlideOutRight.duration(200);
+
+  const progress = ((step + 1) / TOTAL_STEPS) * 100;
 
   return (
     <Modal
@@ -164,7 +140,7 @@ export function CoachCreateModal({
       animationType="slide"
       presentationStyle="pageSheet"
       onRequestClose={handleCancel}
-      accessibilityViewIsModal={true}
+      accessibilityViewIsModal
     >
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
@@ -172,146 +148,247 @@ export function CoachCreateModal({
           style={{ flex: 1 }}
         >
           <View style={{ flex: 1, backgroundColor: colors.background }}>
-            {/* Header */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 16, minHeight: 56, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <TouchableOpacity
-                onPress={handleCancel}
-                disabled={isLoading}
-                style={{ paddingVertical: 8, paddingHorizontal: 8, minHeight: 44, justifyContent: 'center' }}
-                accessible
-                accessibilityRole="button"
-                accessibilityLabel="Cancel"
-              >
-                <Text style={{ fontSize: 16, color: colors.textSecondary }}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-
-              <Text 
-                style={{ fontSize: 18, fontWeight: '600', color: colors.text }}
-                accessibilityRole="header"
-              >
-                Create Coach
-              </Text>
-
-              <TouchableOpacity
-                onPress={handleCreate}
-                disabled={isLoading || !isFormValid}
-                style={{ paddingVertical: 8, paddingHorizontal: 8, minHeight: 44, justifyContent: 'center' }}
-                accessible
-                accessibilityRole="button"
-                accessibilityLabel="Create coach"
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" />
-                ) : (
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: '600',
-                      color: isFormValid ? colors.primary : colors.textTertiary
-                    }}
-                  >
-                    Create
+            {/* Header with progress */}
+            <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Pressable
+                  onPress={step === 0 ? handleCancel : goBack}
+                  style={{ minWidth: 44, minHeight: 44, justifyContent: 'center' }}
+                  accessibilityRole="button"
+                  accessibilityLabel={step === 0 ? 'Cancel' : 'Go back'}
+                >
+                  <Text style={{ fontSize: 16, color: colors.textSecondary }}>
+                    {step === 0 ? 'Cancel' : '← Back'}
                   </Text>
-                )}
-              </TouchableOpacity>
+                </Pressable>
+                <Text style={{ fontSize: 13, color: colors.textTertiary, fontWeight: '500' }}>
+                  Step {step + 1} of {TOTAL_STEPS}
+                </Text>
+                <View style={{ minWidth: 44 }} />
+              </View>
+              {/* Progress bar */}
+              <View style={{ height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden' }}>
+                <Animated.View
+                  style={{
+                    height: 4,
+                    borderRadius: 2,
+                    backgroundColor: colors.primary,
+                    width: `${progress}%`,
+                  }}
+                />
+              </View>
             </View>
 
-            <ScrollView style={{ flex: 1, paddingHorizontal: 24 }}>
-              {/* Error Display */}
+            {/* Step content */}
+            <View style={{ flex: 1, paddingHorizontal: 24 }}>
+              {/* Step title */}
+              <Animated.Text
+                key={`title-${step}`}
+                entering={FadeIn.duration(300).delay(100)}
+                exiting={FadeOut.duration(150)}
+                style={{ fontSize: 28, fontWeight: '700', color: colors.text, marginTop: 24, marginBottom: 8, lineHeight: 36, letterSpacing: -0.5 }}
+                accessibilityRole="header"
+              >
+                {stepTitles[step]}
+              </Animated.Text>
+
+              {/* Error */}
               {error && (
-                <View style={{ marginTop: 16, padding: 12, backgroundColor: colors.error + '20', borderRadius: 12, borderWidth: 1, borderColor: colors.error }}>
-                  <Text style={{ fontSize: 14, color: colors.error }}>
-                    {error}
-                  </Text>
-                </View>
+                <Animated.View entering={FadeIn.duration(200)} style={{ padding: 12, backgroundColor: colors.error + '15', borderRadius: 12, borderWidth: 1, borderColor: colors.error + '40', marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, color: colors.error }}>{error}</Text>
+                </Animated.View>
               )}
 
-              {/* Name Input */}
-              <View style={{ marginTop: 24 }}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, marginBottom: 8 }}>
-                  Coach Name
-                </Text>
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="e.g., Strategy Coach"
-                  placeholderTextColor={colors.textTertiary}
-                  style={{ padding: 16, backgroundColor: colors.input, borderRadius: 12, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border }}
-                  maxLength={50}
-                  editable={!isLoading}
-                  accessible
-                  accessibilityLabel="Coach name input"
-                  accessibilityHint="Enter a name for your coach"
-                />
-                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 4, textAlign: 'right' }}>
-                  {name.length} / 50
-                </Text>
-              </View>
+              {/* Step 0: Name & Icon */}
+              {step === 0 && (
+                <Animated.View key="step-0" entering={entering} exiting={exiting} style={{ flex: 1, paddingTop: 16 }}>
+                  <Text style={{ fontSize: 15, color: colors.textSecondary, marginBottom: 20, lineHeight: 22 }}>
+                    Give your coach a memorable name and pick an icon that represents their vibe.
+                  </Text>
+                  <TextInput
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="e.g., Strategy Coach"
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      padding: 16,
+                      backgroundColor: isDark ? '#1E1C1A' : '#FFFFFF',
+                      borderRadius: 16,
+                      fontSize: 18,
+                      fontWeight: '500',
+                      color: colors.text,
+                      borderWidth: 1.5,
+                      borderColor: name.trim() ? colors.primary + '60' : colors.border,
+                      marginBottom: 6,
+                    }}
+                    maxLength={50}
+                    autoFocus
+                    accessible
+                    accessibilityLabel="Coach name"
+                    accessibilityHint="Enter a name for your coach"
+                  />
+                  <Text style={{ fontSize: 12, color: colors.textTertiary, textAlign: 'right', marginBottom: 24 }}>
+                    {name.length}/50
+                  </Text>
 
-              {/* Icon Picker */}
-              <View style={{ marginTop: 24 }}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, marginBottom: 12 }}>
-                  Icon
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {suggestedIcons.map((suggestedIcon) => (
-                    <TouchableOpacity
-                      key={suggestedIcon}
-                      onPress={() => handleIconSelect(suggestedIcon)}
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 12,
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 14 }}>
+                    Choose an icon
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    {suggestedIcons.map((ic) => (
+                      <Pressable
+                        key={ic}
+                        onPress={() => handleIconSelect(ic)}
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: 16,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: icon === ic ? colors.primary + '18' : (isDark ? '#1E1C1A' : '#FFFFFF'),
+                          borderWidth: 2,
+                          borderColor: icon === ic ? colors.primary : 'transparent',
+                        }}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: icon === ic }}
+                        accessibilityLabel={`Icon ${ic}`}
+                      >
+                        <Text style={{ fontSize: 26 }}>{ic}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </Animated.View>
+              )}
+
+              {/* Step 1: System Prompt */}
+              {step === 1 && (
+                <Animated.View key="step-1" entering={entering} exiting={exiting} style={{ flex: 1, paddingTop: 16 }}>
+                  <Text style={{ fontSize: 15, color: colors.textSecondary, marginBottom: 20, lineHeight: 22 }}>
+                    Describe your coach's personality, expertise, and coaching style. Be specific — this shapes every conversation.
+                  </Text>
+                  <TextInput
+                    value={systemPrompt}
+                    onChangeText={setSystemPrompt}
+                    placeholder="You are a strategic thinking coach who helps founders make better decisions..."
+                    placeholderTextColor={colors.textTertiary}
+                    multiline
+                    textAlignVertical="top"
+                    style={{
+                      flex: 1,
+                      padding: 16,
+                      backgroundColor: isDark ? '#1E1C1A' : '#FFFFFF',
+                      borderRadius: 16,
+                      fontSize: 16,
+                      color: colors.text,
+                      lineHeight: 24,
+                      borderWidth: 1.5,
+                      borderColor: systemPrompt.trim().length >= 20 ? colors.primary + '60' : colors.border,
+                      minHeight: 200,
+                      maxHeight: 360,
+                    }}
+                    maxLength={2000}
+                    autoFocus
+                    accessible
+                    accessibilityLabel="System prompt"
+                    accessibilityHint="Describe how your coach should behave"
+                  />
+                  <Text style={{ fontSize: 12, color: systemPrompt.trim().length < 20 ? colors.warning : colors.textTertiary, marginTop: 6, textAlign: 'right' }}>
+                    {systemPrompt.length}/2000 {systemPrompt.trim().length < 20 ? `(${20 - systemPrompt.trim().length} more needed)` : ''}
+                  </Text>
+                </Animated.View>
+              )}
+
+              {/* Step 2: Review */}
+              {step === 2 && (
+                <Animated.View key="step-2" entering={entering} exiting={exiting} style={{ flex: 1, paddingTop: 16 }}>
+                  <Text style={{ fontSize: 15, color: colors.textSecondary, marginBottom: 24, lineHeight: 22 }}>
+                    Here's a preview of your new coach. Hit Create when you're happy!
+                  </Text>
+
+                  {/* Preview card */}
+                  <View style={{
+                    backgroundColor: isDark ? '#1E1C1A' : '#FFFFFF',
+                    borderRadius: 20,
+                    padding: 24,
+                    shadowColor: isDark ? '#000' : '#78716C',
+                    shadowOpacity: isDark ? 0.3 : 0.1,
+                    shadowRadius: 16,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 4,
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                      <View style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 18,
+                        backgroundColor: colors.primary + '15',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        backgroundColor: icon === suggestedIcon ? colors.primary + '20' : colors.surface,
-                        borderWidth: 2,
-                        borderColor: icon === suggestedIcon ? colors.primary : 'transparent'
-                      }}
-                      accessible
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: icon === suggestedIcon }}
-                      accessibilityLabel={`Icon ${suggestedIcon}`}
-                    >
-                      <Text style={{ fontSize: 24 }}>{suggestedIcon}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 8 }}>
-                  Selected: {icon}
-                </Text>
-              </View>
+                        marginRight: 16,
+                      }}>
+                        <Text style={{ fontSize: 30 }}>{icon}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text }}>{name.trim()}</Text>
+                        <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>Custom Coach</Text>
+                      </View>
+                    </View>
+                    <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 16 }} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>Personality</Text>
+                    <Text style={{ fontSize: 15, color: colors.text, lineHeight: 22 }} numberOfLines={6}>
+                      {systemPrompt.trim()}
+                    </Text>
+                  </View>
+                </Animated.View>
+              )}
+            </View>
 
-              {/* System Prompt Input */}
-              <View style={{ marginTop: 24, marginBottom: 24 }}>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text, marginBottom: 8 }}>
-                  System Prompt
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 8 }}>
-                  Define your coach's role, expertise, and personality. This guides how the AI responds.
-                </Text>
-                <TextInput
-                  value={systemPrompt}
-                  onChangeText={setSystemPrompt}
-                  placeholder="You are a strategic thinking coach who helps founders make better decisions. You ask clarifying questions and provide frameworks for thinking through complex problems..."
-                  placeholderTextColor={colors.textTertiary}
-                  multiline
-                  numberOfLines={8}
-                  textAlignVertical="top"
-                  style={{ padding: 16, backgroundColor: colors.input, borderRadius: 12, fontSize: 16, color: colors.text, borderWidth: 1, borderColor: colors.border, minHeight: 200 }}
-                  maxLength={2000}
-                  editable={!isLoading}
-                  accessible
-                  accessibilityLabel="System prompt input"
-                  accessibilityHint="Enter the system prompt that defines your coach's behavior"
-                />
-                <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 8, textAlign: 'right' }}>
-                  {systemPrompt.length} / 2000 (minimum 20)
-                </Text>
-              </View>
-            </ScrollView>
+            {/* Bottom button */}
+            <View style={{ paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 8 : 16, paddingTop: 12 }}>
+              {step < TOTAL_STEPS - 1 ? (
+                <Pressable
+                  onPress={goNext}
+                  disabled={!canAdvance()}
+                  style={{
+                    height: 56,
+                    borderRadius: 16,
+                    backgroundColor: canAdvance() ? colors.primary : colors.border,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue to next step"
+                  accessibilityState={{ disabled: !canAdvance() }}
+                >
+                  <Text style={{ fontSize: 17, fontWeight: '600', color: canAdvance() ? '#FFFFFF' : colors.textTertiary }}>
+                    Continue
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={handleCreate}
+                  disabled={isLoading}
+                  style={{
+                    height: 56,
+                    borderRadius: 16,
+                    backgroundColor: colors.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: isLoading ? 0.7 : 1,
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Create coach"
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ fontSize: 17, fontWeight: '600', color: '#FFFFFF' }}>
+                      Create Coach
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

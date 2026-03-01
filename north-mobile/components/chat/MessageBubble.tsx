@@ -7,12 +7,20 @@
  * Validates: Requirements 8.7, 11.1, 11.2
  */
 
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import type { Message } from '@/types';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useThemeColors } from '@/contexts/ThemeContext';
+import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
 export interface MessageBubbleProps {
   message: Message;
@@ -54,10 +62,44 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
   const isUser = message.role === 'user';
   const prefersReducedMotion = useReducedMotion();
   const colors = useThemeColors();
+  const isDark = useIsDark();
+
+  // Animated blinking cursor for streaming
+  const cursorOpacity = useSharedValue(1);
+  useEffect(() => {
+    if (isStreaming && !prefersReducedMotion) {
+      cursorOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0, { duration: 400 }),
+          withTiming(1, { duration: 400 }),
+        ),
+        -1,
+        true,
+      );
+    } else {
+      cursorOpacity.value = 1;
+    }
+  }, [isStreaming, prefersReducedMotion]);
+
+  const cursorStyle = useAnimatedStyle(() => ({
+    opacity: cursorOpacity.value,
+  }));
+
+  const enterAnim = prefersReducedMotion
+    ? undefined
+    : isUser
+      ? FadeIn.duration(200)
+      : FadeInDown.duration(280).springify();
+
+  const bubbleShadow = isUser
+    ? {}
+    : isDark
+      ? { shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3 }
+      : { shadowColor: '#78716C', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 2 };
 
   return (
     <Animated.View
-      entering={prefersReducedMotion ? undefined : FadeIn}
+      entering={enterAnim}
       style={[
         styles.container,
         isUser ? styles.userContainer : styles.assistantContainer,
@@ -65,28 +107,35 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
       testID={`message-bubble-${message.id}`}
       accessible
       accessibilityRole="text"
-      accessibilityLabel={`${isUser ? 'You' : 'Assistant'} said: ${message.content}`}
+      accessibilityLabel={`${isUser ? 'You' : 'Coach'} said: ${message.content}`}
+      accessibilityLiveRegion={isStreaming ? 'polite' : 'none'}
     >
       <View
         style={[
           styles.bubble,
+          isUser ? styles.userBubble : styles.assistantBubble,
           {
-            backgroundColor: isUser ? colors.messageSent : colors.messageReceived,
+            backgroundColor: isUser
+              ? (isDark ? '#3B82F6' : '#1D4ED8')
+              : (isDark ? '#1E1C1A' : '#FFFFFF'),
           },
+          bubbleShadow,
         ]}
       >
         <Text
           style={[
             styles.text,
             {
-              color: isUser ? colors.messageTextSent : colors.messageTextReceived,
+              color: isUser ? '#FFFFFF' : colors.text,
             },
           ]}
-          selectable
+          selectable={!isStreaming}
         >
           {message.content}
           {isStreaming && (
-            <Text style={styles.cursor}> ▊</Text>
+            <Animated.View style={[styles.cursorWrap, cursorStyle]}>
+              <Text style={[styles.cursor, { color: colors.primary }]}>{'|'}</Text>
+            </Animated.View>
           )}
         </Text>
       </View>
@@ -96,8 +145,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
-    paddingHorizontal: 16,
+    marginBottom: 6,
   },
   userContainer: {
     alignItems: 'flex-end',
@@ -106,19 +154,34 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   bubble: {
-    maxWidth: '80%',
-    paddingHorizontal: 16,
+    maxWidth: '82%',
+    paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 20,
+    borderRadius: 22,
+  },
+  userBubble: {
+    borderBottomRightRadius: 6,
+  },
+  assistantBubble: {
+    borderBottomLeftRadius: 6,
   },
   text: {
     fontSize: 16,
     lineHeight: 24,
+    letterSpacing: 0.15,
+  },
+  cursorWrap: {
+    display: 'flex',
+    width: 10,
+    height: 20,
+    marginLeft: 1,
+    ...Platform.select({ web: { display: 'inline-flex' as any } }),
   },
   cursor: {
-    opacity: 0.5,
+    fontSize: 18,
+    fontWeight: '300',
+    lineHeight: 20,
   },
 });
 
-// Memoization comparison function - only re-render if content or streaming state changes
 MessageBubble.displayName = 'MessageBubble';

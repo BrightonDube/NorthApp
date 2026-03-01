@@ -7,7 +7,7 @@
  * Validates: Requirements 11.6, 11.7
  */
 
-import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -48,16 +48,12 @@ export function ChatHeader({ coach, onBack, onOpenFileSelector, onExport }: Chat
   const colors = useThemeColors();
   
   const handleBack = () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onBack();
   };
 
   const handleFileSelector = () => {
-    if (Platform.OS === 'ios') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onOpenFileSelector?.();
   };
 
@@ -109,7 +105,7 @@ export function ChatHeader({ coach, onBack, onOpenFileSelector, onExport }: Chat
         {onExport && (
           <TouchableOpacity
             onPress={() => {
-              if (Platform.OS === 'ios') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onExport();
             }}
             className="ml-1 items-center justify-center"
