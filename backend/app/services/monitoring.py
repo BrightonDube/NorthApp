@@ -358,7 +358,8 @@ async def check_alerts_periodically():
         # - Email
         # - SMS
         for alert in alerts:
-            logger.critical(
-                f"ALERT: {alert['message']}",
-                extra=alert
-            )
+            safe_extra = {
+                k if k != "message" else "alert_message": v
+                for k, v in alert.items()
+            }
+            logger.critical("ALERT: %s", alert.get("message", "unknown"), extra=safe_extra)
