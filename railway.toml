@@ -1,3 +1,6 @@
+# Railway deployment configuration
+# Updated: 2026-03-01 - Force redeploy to fix chat streaming
+
 [build]
 builder = "NIXPACKS"
 buildCommand = "cd backend && python -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip && pip install -r requirements.txt"
