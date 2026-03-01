@@ -198,11 +198,34 @@ async def create_check_in(
             .execute()
         )
 
-        if not result.data:
+        row = result.data
+        if not row:
+            lookup = await (
+                supabase.from_("check_ins")
+                .select("id, user_id, mood, energy, priorities, reflection, gratitude, type, created_at")
+                .eq("user_id", user.id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if lookup.data:
+                row = lookup.data[0]
+
+        if not row:
             logger.error("Check-in insert returned no data for user %s", user.id)
             raise HTTPException(status_code=500, detail="Failed to save check-in")
 
-        return result.data
+        return {
+            "id": row["id"],
+            "user_id": row["user_id"],
+            "mood": row["mood"],
+            "energy": row["energy"],
+            "priorities": row.get("priorities") or [],
+            "reflection": row.get("reflection") or "",
+            "gratitude": row.get("gratitude") or "",
+            "type": row["type"],
+            "created_at": row["created_at"],
+        }
     except HTTPException:
         raise
     except Exception as e:

@@ -1,4 +1,5 @@
 import logging
+import json
 
 from typing import AsyncGenerator
 
@@ -135,6 +136,8 @@ async def chat_stream(
                 yield chunk
         except Exception as e:
             logger.warning("Stream interrupted for session %s: %s", body.session_id, e)
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Stream interrupted before completion.'})}\n\n"
+            return
 
     inner_gen = stream_chat_response(
         user_id=user.id,
@@ -148,6 +151,7 @@ async def chat_stream(
         _disconnect_aware_stream(request, inner_gen),
         media_type="text/event-stream",
         headers={
+            "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
