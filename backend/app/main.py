@@ -270,4 +270,4 @@ async def health():
     - `GET /docs` - Interactive API documentation
     - `GET /openapi.json` - OpenAPI specification
     """
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "1.0.0", "deployed": "2026-03-02-00:35"}
