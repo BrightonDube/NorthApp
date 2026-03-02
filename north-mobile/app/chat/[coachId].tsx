@@ -370,10 +370,17 @@ export default function ChatScreen() {
         onNewChat={handleNewChat}
       />
       
+      {/* 
+        DO NOT REMOVE: Platform-specific keyboard avoidance.
+        - iOS: 'padding' adds bottom padding equal to keyboard height.
+        - Android: 'height' shrinks the view to fit above the keyboard.
+        - keyboardVerticalOffset accounts for the ChatHeader + status bar so
+          the input isn't partially covered.  Adjust if header height changes.
+      */}
       <KeyboardAvoidingView 
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {messages.length === 0 && !streamingMessage ? (
           <EmptyChat coach={coach} />

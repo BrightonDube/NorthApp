@@ -1,3 +1,9 @@
+# ---------------------------------------------------------------------------
+# DO NOT REMOVE: Railway deployment configuration for the North backend.
+# The app MUST bind to 0.0.0.0:$PORT (not 127.0.0.1) for Railway to route
+# traffic.  The /health endpoint must return 200 within healthcheckTimeout.
+# ---------------------------------------------------------------------------
+
 [build]
 builder = "NIXPACKS"
 buildCommand = "cd backend && python -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip && pip install -r requirements.txt"
@@ -5,5 +11,6 @@ buildCommand = "cd backend && python -m venv .venv && . .venv/bin/activate && py
 [deploy]
 startCommand = "cd backend && . .venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
+restartPolicyMaxRetries = 5

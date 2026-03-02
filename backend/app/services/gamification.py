@@ -1,5 +1,8 @@
+import logging
 from datetime import datetime, timezone
 from app.services.supabase import get_async_supabase_client
+
+logger = logging.getLogger(__name__)
 
 LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000]
 
@@ -22,25 +25,37 @@ def calculate_level(total_xp: int) -> int:
 
 
 async def get_user_xp(user_id: str) -> dict:
+    """
+    Fetch user XP row, creating one if it doesn't exist.
+
+    Uses .maybe_single() instead of .single() to avoid PostgREST PGRST116
+    errors when no row exists for the user (returns None instead of throwing).
+    """
     supabase = await get_async_supabase_client()
     result = await (
         supabase.from_("user_xp")
         .select("*")
         .eq("user_id", user_id)
-        .single()
+        .maybe_single()
         .execute()
     )
     if result.data:
         return result.data
-    # Create row if not exists
-    insert = await (
-        supabase.from_("user_xp")
-        .insert({"user_id": user_id})
-        .select()
-        .single()
-        .execute()
-    )
-    return insert.data
+
+    # Row does not exist for this user — create it with defaults
+    try:
+        insert = await (
+            supabase.from_("user_xp")
+            .insert({"user_id": user_id, "total_xp": 0, "level": 1, "current_streak": 0, "longest_streak": 0})
+            .select()
+            .single()
+            .execute()
+        )
+        return insert.data
+    except Exception as e:
+        logger.error("Failed to create user_xp row for user %s: %s", user_id, e)
+        # Return safe defaults so the caller doesn't crash
+        return {"user_id": user_id, "total_xp": 0, "level": 1, "current_streak": 0, "longest_streak": 0}
 
 
 async def award_xp(user_id: str, event_type: str, multiplier: int = 1) -> dict:

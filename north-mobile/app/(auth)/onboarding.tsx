@@ -55,7 +55,10 @@ export default function OnboardingScreen() {
         throw new Error('User not authenticated');
       }
 
-      // Update or create profile
+      // Upsert profile row with the user's name.
+      // IMPORTANT: This uses the user's auth token, so the profiles table
+      // MUST have RLS policies allowing INSERT/UPDATE where auth.uid() = id.
+      // See migration: 20260303000001_fix_profiles_rls_and_user_xp.sql
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
@@ -64,12 +67,22 @@ export default function OnboardingScreen() {
           updated_at: new Date().toISOString(),
         });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        // Log the full Supabase/Postgres error for debugging
+        console.error('[Onboarding] Profile upsert failed:', {
+          code: profileError.code,
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint,
+          userId: user.id,
+        });
+        throw profileError;
+      }
       
       // Move to goal step
       setStep('goal');
     } catch (err) {
-      console.error('Profile update error:', err);
+      console.error('[Onboarding] Profile update error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save name');
     } finally {
       setIsLoading(false);
