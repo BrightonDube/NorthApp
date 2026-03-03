@@ -6,6 +6,12 @@
 # Documentation
 .documentation/
 
+# Python
+.venv/
+__pycache__/
+*.pyc
+backend/.venv/
+
 # Dependencies
 node_modules/
 .pnp
@@ -63,3 +69,4 @@ coverage/
 .cache/
 fix-tasks-comprehensive.ps1
 north-mobile/temp_service_key.json
+temp_schema_dump.sql

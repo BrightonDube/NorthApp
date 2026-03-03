@@ -181,7 +181,17 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
           </View>
 
           {/* Pricing Packages */}
-          {isLoading ? (
+          {isProUser ? (
+            <View style={{ backgroundColor: colors.surface }} className="rounded-2xl p-8 mb-8 items-center">
+              <Ionicons name="checkmark-circle" size={48} color="#22C55E" />
+              <Text style={{ color: colors.text }} className="text-center mt-3 font-semibold text-lg">
+                You're on North Pro!
+              </Text>
+              <Text style={{ color: colors.textSecondary }} className="text-center mt-2">
+                All Pro features are unlocked. Enjoy unlimited coaching, voice input, custom coaches, and more.
+              </Text>
+            </View>
+          ) : isLoading ? (
             <View className="py-12 items-center">
               <ActivityIndicator size="large" color={colors.text} />
             </View>
@@ -199,12 +209,12 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
             </View>
           ) : (
             <View style={{ backgroundColor: colors.surface }} className="rounded-2xl p-8 mb-8 items-center">
-              <Ionicons name="construct-outline" size={32} color={colors.textSecondary} />
+              <Ionicons name="diamond" size={32} color={colors.primary} />
               <Text style={{ color: colors.text }} className="text-center mt-3 font-semibold text-base">
-                Coming Soon
+                Pro Plans Coming Soon
               </Text>
               <Text style={{ color: colors.textSecondary }} className="text-center mt-2">
-                Pro subscription plans are being set up and will be available shortly. Check back soon!
+                In-app purchases are being finalized. All features are currently available to you!
               </Text>
             </View>
           )}

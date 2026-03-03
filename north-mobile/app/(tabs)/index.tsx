@@ -286,8 +286,8 @@ export default function HomeScreen() {
   }, [fetchCoaches, clearError]);
 
   const handleCoachPress = (coach: Coach) => {
-    // Navigate to coach profile screen first (intermediate screen)
-    router.push(`/coach/profile?coachId=${coach.id}`);
+    // Go directly to chat — no intermediate profile screen
+    router.push(`/chat/${coach.id}`);
   };
 
   const handleCoachLongPress = (coach: Coach) => {

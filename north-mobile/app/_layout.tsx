@@ -490,27 +490,6 @@ function RootLayoutNav() {
       <Stack.Screen 
         name="coach/profile" 
         options={{ 
-          headerShown: false,
-          animation: prefersReducedMotion ? 'none' : 'slide_from_right',
-          animationDuration: 180,
-        }} 
-      />
-      <Stack.Screen 
-        name="coach/create" 
-        options={{ 
-          headerShown: false,
-          presentation: 'modal',
-          // Slide from bottom for modal-style screens
-          animation: prefersReducedMotion ? 'none' : 'slide_from_bottom',
-          animationDuration: 180,
-        }} 
-      />
-      <Stack.Screen 
-        name="legal" 
-        options={{ 
-          headerShown: false,
-          // Slide from right for legal pages (feels like navigating to a new page)
-          animation: prefersReducedMotion ? 'none' : 'slide_from_right',
           animationDuration: 180,
         }} 
       />
