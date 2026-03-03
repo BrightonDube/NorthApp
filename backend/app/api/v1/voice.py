@@ -52,7 +52,7 @@ async def _check_voice_access(user_id: str) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Voice features require a Pro subscription",
         )
-    if not data.get("voice_enabled", False):
+    if not data.get("voice_enabled", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Voice is disabled. Enable it in Settings (Pro required)",

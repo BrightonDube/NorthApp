@@ -17,6 +17,8 @@ import {
   Alert,
   StyleSheet,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -115,6 +117,11 @@ export default function CheckInScreen() {
   if (showForm) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Pressable onPress={() => setShowForm(false)} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -269,6 +276,7 @@ export default function CheckInScreen() {
             </Text>
           </Pressable>
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }

@@ -75,9 +75,8 @@ function computeWeeklyCount(checkIns: CheckIn[]): number {
 function getStartOfWeek(): Date {
   const now = new Date();
   const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(now.setDate(diff));
-  monday.setHours(0, 0, 0, 0);
+  const diff = day === 0 ? -6 : 1 - day; // days to subtract to reach Monday
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff, 0, 0, 0, 0);
   return monday;
 }
 
@@ -429,6 +428,11 @@ export const useCheckInStore = create<CheckInStore>()(
         longestStreak: state.longestStreak,
         lastCheckInDate: state.lastCheckInDate,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Recalculate streak & weeklyCount after hydration so stale
+        // persisted values are corrected against the current week.
+        state?.calculateStreak();
+      },
     }
   )
 );

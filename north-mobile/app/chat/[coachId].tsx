@@ -380,7 +380,7 @@ export default function ChatScreen() {
       <KeyboardAvoidingView 
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 30}
       >
         {messages.length === 0 && !streamingMessage ? (
           <EmptyChat coach={coach} />
