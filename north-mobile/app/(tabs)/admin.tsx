@@ -23,8 +23,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { useThemeColors } from '@/contexts/ThemeContext';
 
-// Admin email - only this account has admin access
-const ADMIN_EMAIL = 'max@north.app';
+// Admin access is controlled by the is_admin flag in the profiles table.
+// See convertUser() in authStore.ts which fetches is_admin on login.
 
 interface ManagedUser {
   id: string;
@@ -146,7 +146,7 @@ export default function AdminScreen() {
   });
   
   // Check if current user is admin
-  const isAdmin = user?.email === ADMIN_EMAIL || user?.isAdmin === true;
+  const isAdmin = user?.isAdmin === true;
   
   // Redirect non-admin users
   useEffect(() => {

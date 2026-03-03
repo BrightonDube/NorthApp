@@ -18,8 +18,8 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme, useIsDark, useThemeColors } from '@/contexts/ThemeContext';
 
-// Admin email for access control
-const ADMIN_EMAIL = 'max@north.app';
+// Admin access is controlled by the is_admin flag in the profiles table.
+// See convertUser() in authStore.ts which fetches is_admin on login.
 
 /**
  * Tab icon component
@@ -52,7 +52,7 @@ export default function TabsLayout() {
   const isDark = useIsDark();
   
   // Check if user is admin
-  const isAdmin = user?.email === ADMIN_EMAIL || user?.isAdmin === true;
+  const isAdmin = user?.isAdmin === true;
 
   return (
     <Tabs

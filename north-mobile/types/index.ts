@@ -19,6 +19,7 @@ export interface User {
   email: string;
   name: string;
   createdAt: string;
+  isPro?: boolean;   // Pro subscription status from profiles table
   isAdmin?: boolean; // Admin role for management screens
 }
 

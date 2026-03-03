@@ -252,7 +252,7 @@ export const useBillingStore = create<BillingStoreInternal>()(
         }
       }
 
-      // FALLBACK: Check user metadata for is_pro flag
+      // FALLBACK 1: Check user metadata for is_pro flag
       // This is useful for:
       // 1. Testing without RevenueCat products configured
       // 2. Development builds in Expo Go
@@ -280,7 +280,37 @@ export const useBillingStore = create<BillingStoreInternal>()(
         return;
       }
 
-      // No Pro status from either source
+      // FALLBACK 2: Check profiles.is_pro column in the database.
+      // This catches users granted Pro via DB migration (e.g. admin users,
+      // make_all_users_pro migration) who don't have user_metadata.is_pro set.
+      if (user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_pro')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile?.is_pro === true) {
+          console.log('[BillingStore] Pro status granted via profiles.is_pro column');
+          const wasNotPro = !get().isProUser;
+
+          set({
+            entitlements: {
+              pro: {
+                isActive: true,
+                expirationDate: null,
+              },
+            },
+            isProUser: true,
+            isLoading: false,
+            lastSynced: Date.now(),
+            lastUpgradeTime: wasNotPro ? Date.now() : get().lastUpgradeTime,
+          });
+          return;
+        }
+      }
+
+      // No Pro status from any source
       set({
         entitlements: {
           pro: {

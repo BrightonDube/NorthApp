@@ -71,21 +71,27 @@ function convertSession(supabaseSession: SupabaseSession): Session {
 }
 
 /**
- * Convert Supabase user to our User type
+ * Convert Supabase user to our User type.
+ *
+ * Uses .maybeSingle() instead of .single() to avoid PostgREST PGRST116
+ * errors when no profile row exists yet (new user before onboarding).
+ * Also fetches is_pro and is_admin so existing users retain their
+ * subscription tier and admin access immediately on login.
  */
 async function convertUser(supabaseUser: any): Promise<User> {
-  // Fetch user profile to get name
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name')
+    .select('name, is_pro, is_admin')
     .eq('id', supabaseUser.id)
-    .single();
+    .maybeSingle();
 
   return {
     id: supabaseUser.id,
     email: supabaseUser.email || '',
     name: profile?.name || '',
     createdAt: supabaseUser.created_at || new Date().toISOString(),
+    isPro: profile?.is_pro === true,
+    isAdmin: profile?.is_admin === true,
   };
 }
 
