@@ -428,6 +428,28 @@ export default function MarketplaceScreen() {
           />
         </View>
 
+        {/* Discover Resources Card */}
+        {!debouncedSearchQuery && !selectedCategory && (
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/discover');
+            }}
+            style={[styles.discoverCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            accessibilityRole="button"
+            accessibilityLabel="Discover AI-curated resources"
+          >
+            <Text style={{ fontSize: 24 }}>✨</Text>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[styles.discoverTitle, { color: colors.text }]}>Discover Resources</Text>
+              <Text style={[styles.discoverSub, { color: colors.textTertiary }]}>
+                AI-curated books, articles, tools & more
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+          </Pressable>
+        )}
+
         {/* Error State */}
         {error && coaches.length === 0 ? (
           <ErrorState message={error} onRetry={onRefresh} />
@@ -603,5 +625,22 @@ const styles = StyleSheet.create({
   retryText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  discoverCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 24,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  discoverTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  discoverSub: {
+    fontSize: 13,
+    marginTop: 2,
   },
 });
