@@ -68,6 +68,10 @@ describe('Marketplace Type Utilities', () => {
     category: 'Productivity',
     is_featured: false,
     source_coach_id: null,
+    about: null,
+    expectations: null,
+    tags: null,
+    theme_color: null,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   };

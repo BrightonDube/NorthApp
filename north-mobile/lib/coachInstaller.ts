@@ -141,7 +141,7 @@ export class SupabaseCoachInstaller implements CoachInstaller {
     // Step 4: Insert the new coach record into the database
     const { data: insertedCoachData, error: insertError } = await supabase
       .from('coaches')
-      .insert(dbInsert)
+      .insert(dbInsert as any)
       .select()
       .single();
 

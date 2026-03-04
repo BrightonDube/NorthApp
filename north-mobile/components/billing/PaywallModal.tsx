@@ -136,7 +136,6 @@ export function PaywallModal({ visible, feature, onClose }: PaywallModalProps) {
             </Text>
             <Pressable
               onPress={handleClose}
-              style={{ backgroundColor: colors.surface }}
               className="items-center justify-center rounded-full"
               style={{ width: 44, height: 44, backgroundColor: colors.surface }}
               accessibilityLabel="Close paywall"

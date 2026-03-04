@@ -8,7 +8,10 @@
  * - Performance data retrieval
  */
 
-import { performance, PerformanceObserver } from 'react-native';
+// performance and PerformanceObserver are not exported from react-native
+// They are available as globals in the JS environment
+declare const performance: any;
+declare const PerformanceObserver: any;
 import {
   markPerformance,
   measurePerformance,

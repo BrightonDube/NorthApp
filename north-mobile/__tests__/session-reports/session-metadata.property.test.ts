@@ -120,12 +120,12 @@ describe('Feature: session-reports-memory', () => {
       }
 
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           sessionTimestampArbitrary,
           fc.option(sessionTimestampArbitrary, { nil: null }),
           messageCountArbitrary,
           sessionStatusArbitrary,
-          async (startTime, endTime, messageCount, status) => {
+          async (startTime: string, endTime: string | null, messageCount: number, status: string) => {
             // Ensure end_time is after start_time if both are present
             if (endTime && new Date(endTime) <= new Date(startTime)) {
               return; // Skip invalid combinations
@@ -174,7 +174,7 @@ describe('Feature: session-reports-memory', () => {
             // Property: End time should be stored and retrievable (or null)
             if (endTime) {
               expect(retrievedSession.end_time).toBeDefined();
-              expect(new Date(retrievedSession.end_time).toISOString()).toBe(endTime);
+              expect(new Date(retrievedSession.end_time as string).toISOString()).toBe(endTime);
             } else {
               expect(retrievedSession.end_time).toBeNull();
             }
@@ -208,10 +208,10 @@ describe('Feature: session-reports-memory', () => {
       }
 
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           sessionTimestampArbitrary,
           messageCountArbitrary,
-          async (startTime, messageCount) => {
+          async (startTime: string, messageCount: number) => {
             // Create an active session (no end time)
             const { data: session, error: insertError } = await supabase
               .from('coaching_sessions')
@@ -266,11 +266,11 @@ describe('Feature: session-reports-memory', () => {
       }
 
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           sessionTimestampArbitrary,
           sessionDurationArbitrary,
           messageCountArbitrary,
-          async (startTime, durationMinutes, messageCount) => {
+          async (startTime: string, durationMinutes: number, messageCount: number) => {
             // Calculate end time based on start time + duration
             const startDate = new Date(startTime);
             const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
@@ -313,7 +313,7 @@ describe('Feature: session-reports-memory', () => {
 
             // Property: End time should be after start time
             const retrievedStartTime = new Date(retrievedSession.start_time).getTime();
-            const retrievedEndTime = new Date(retrievedSession.end_time).getTime();
+            const retrievedEndTime = new Date(retrievedSession.end_time as string).getTime();
             expect(retrievedEndTime).toBeGreaterThan(retrievedStartTime);
 
             // Property: Duration should match
@@ -338,10 +338,10 @@ describe('Feature: session-reports-memory', () => {
       }
 
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           messageCountArbitrary,
           messageCountArbitrary,
-          async (initialCount, updatedCount) => {
+          async (initialCount: number, updatedCount: number) => {
             // Create a session with initial message count
             const { data: session, error: insertError } = await supabase
               .from('coaching_sessions')

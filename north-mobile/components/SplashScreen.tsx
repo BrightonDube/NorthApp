@@ -46,7 +46,7 @@ export interface SplashScreenProps {
  * @param props - Component props
  * @returns SplashScreen component
  */
-export function SplashScreen({ onReady, visible = true }: SplashScreenProps): JSX.Element | null {
+export function SplashScreen({ onReady, visible = true }: SplashScreenProps): React.ReactElement | null {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(1)).current;
   

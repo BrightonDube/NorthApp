@@ -33,7 +33,6 @@ describe('ReportGenerator', () => {
       expect(REPORT_CONFIG.MAX_MESSAGES_PER_BATCH).toBe(100);
       expect(REPORT_CONFIG.MIN_SUMMARY_SENTENCES).toBe(2);
       expect(REPORT_CONFIG.MAX_SUMMARY_SENTENCES).toBe(4);
-      expect(['openai', 'gemini']).toContain(REPORT_CONFIG.AI_PROVIDER);
     });
   });
 

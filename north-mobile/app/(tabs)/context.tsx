@@ -606,7 +606,7 @@ export default function ContextScreen() {
 
         {/* Total Count */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.textMuted }]}>
+          <Text style={[styles.footerText, { color: colors.textTertiary }]}>
             {items.length} context item{items.length !== 1 ? 's' : ''} defined
           </Text>
         </View>

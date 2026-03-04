@@ -72,8 +72,6 @@ export default function TabsLayout() {
         lazy: true,
         // Subtle fade animation between tabs (< 200ms)
         animation: prefersReducedMotion ? undefined : 'fade',
-        // Smooth transition configuration
-        animationDuration: 150, // Even faster for tab switches
       }}
     >
       <Tabs.Screen

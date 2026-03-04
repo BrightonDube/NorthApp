@@ -100,7 +100,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
     try {
       setIsLoading(true);
       const userFiles = await getFileAttachments(userId);
-      setFiles(userFiles);
+      setFiles(userFiles as any);
     } catch (error) {
       console.error('Error loading files:', error);
       logError(error as Error, errorContext, 'error');

@@ -91,7 +91,7 @@ export function Card({
   const paddingValue = padding === 'large' ? 24 : 20;
 
   // Determine shadow style
-  const shadowStyle = shadow !== 'none' ? styles[`shadow${shadow.charAt(0).toUpperCase() + shadow.slice(1)}${isDark ? 'Dark' : ''}`] : undefined;
+  const shadowStyle = shadow !== 'none' ? (styles as any)[`shadow${shadow.charAt(0).toUpperCase() + shadow.slice(1)}${isDark ? 'Dark' : ''}`] : undefined;
 
   // Base card style
   const baseCardStyle = [

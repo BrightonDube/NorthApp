@@ -39,7 +39,7 @@ describe('Supabase Client', () => {
         jest.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({
           data: { user: null },
           error: null,
-        });
+        } as any);
 
         const user = await getCurrentUser();
         expect(user).toBeNull();
@@ -58,7 +58,7 @@ describe('Supabase Client', () => {
         jest.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({
           data: { user: mockUser },
           error: null,
-        });
+        } as any);
 
         const user = await getCurrentUser();
         expect(user).toEqual(mockUser);
@@ -69,7 +69,7 @@ describe('Supabase Client', () => {
         jest.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({
           data: { user: null },
           error: mockError,
-        });
+        } as any);
 
         // Mock console.error to avoid test output pollution
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
@@ -90,7 +90,7 @@ describe('Supabase Client', () => {
         jest.spyOn(supabase.auth, 'getSession').mockResolvedValueOnce({
           data: { session: null },
           error: null,
-        });
+        } as any);
 
         const session = await getCurrentSession();
         expect(session).toBeNull();
@@ -116,7 +116,7 @@ describe('Supabase Client', () => {
         jest.spyOn(supabase.auth, 'getSession').mockResolvedValueOnce({
           data: { session: mockSession },
           error: null,
-        });
+        } as any);
 
         const session = await getCurrentSession();
         expect(session).toEqual(mockSession);
@@ -127,7 +127,7 @@ describe('Supabase Client', () => {
         jest.spyOn(supabase.auth, 'getSession').mockResolvedValueOnce({
           data: { session: null },
           error: mockError,
-        });
+        } as any);
 
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
@@ -156,7 +156,7 @@ describe('Supabase Client', () => {
         const mockError = new Error('Sign out failed');
         jest.spyOn(supabase.auth, 'signOut').mockResolvedValueOnce({
           error: mockError,
-        });
+        } as any);
 
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 

@@ -278,11 +278,10 @@ describe('Coach Profile Screen Property-Based Tests', () => {
     it('should handle coaches with special characters in names', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.record({
-            ...coachArb.value,
-            name: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
-          }),
-          async (coach) => {
+          coachArb.chain(c => 
+            fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0).map(name => ({ ...c, name }))
+          ),
+          async (coach: any) => {
             mockUseLocalSearchParams.mockReturnValue({ coachId: coach.id });
             
             mockUseCoachStore.mockReturnValue({

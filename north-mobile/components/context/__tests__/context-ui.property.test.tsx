@@ -269,7 +269,7 @@ describe('Context UI Property-Based Tests', () => {
 
             // Mock Alert.alert to automatically call the discard callback
             const mockAlert = jest.spyOn(require('react-native').Alert, 'alert');
-            mockAlert.mockImplementation((title, message, buttons) => {
+            mockAlert.mockImplementation((title: any, message: any, buttons: any) => {
               // Find and call the discard button callback
               const discardButton = buttons?.find((b: any) => b.text === 'Discard');
               if (discardButton && discardButton.onPress) {

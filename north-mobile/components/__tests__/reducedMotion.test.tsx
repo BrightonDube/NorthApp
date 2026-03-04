@@ -36,7 +36,7 @@ jest.mock('expo-haptics', () => ({
 jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false);
 jest.spyOn(AccessibilityInfo, 'addEventListener').mockReturnValue({
   remove: jest.fn(),
-});
+} as any);
 
 describe('Reduced Motion Support', () => {
   beforeEach(() => {
@@ -46,10 +46,10 @@ describe('Reduced Motion Support', () => {
   describe('MessageBubble', () => {
     const mockMessage: Message = {
       id: '1',
-      chat_session_id: 'session-1',
+      chatSessionId: 'session-1',
       role: 'user',
       content: 'Test message',
-      created_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
 
     it('should render successfully when reduced motion is enabled', async () => {
@@ -98,11 +98,11 @@ describe('Reduced Motion Support', () => {
   describe('ContextCard', () => {
     const mockContext: UserContext = {
       id: '1',
-      user_id: 'user-1',
+      userId: 'user-1',
       category: 'values',
       content: 'Test value',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     it('should render successfully when reduced motion is enabled', async () => {
@@ -188,10 +188,10 @@ describe('Reduced Motion Support', () => {
 
       const mockMessage: Message = {
         id: '1',
-        chat_session_id: 'session-1',
+        chatSessionId: 'session-1',
         role: 'user',
         content: 'Test',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
 
       render(<MessageBubble message={mockMessage} />);
@@ -206,10 +206,10 @@ describe('Reduced Motion Support', () => {
 
       const mockMessage: Message = {
         id: '1',
-        chat_session_id: 'session-1',
+        chatSessionId: 'session-1',
         role: 'user',
         content: 'Test',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
 
       render(<MessageBubble message={mockMessage} />);

@@ -168,7 +168,7 @@ describe('Chat UI Property-Based Tests', () => {
     it('should handle empty message list', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.constant([]),
+          fc.constant([] as any[]),
           async (messages) => {
             // Render MessageList with empty array
             const { getByText } = render(

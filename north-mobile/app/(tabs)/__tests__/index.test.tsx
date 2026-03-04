@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useCoachStore } from '@/stores/coachStore';
 import { useBillingStore } from '@/stores/billingStore';
 import type { Coach, User } from '@/types';
+import { CoachCategory } from '@/types';
 
 // Mock dependencies
 jest.mock('expo-router', () => ({
@@ -61,6 +62,9 @@ describe('Home Screen - FAB Behavior', () => {
     systemPrompt: 'You are a strategic thinking coach',
     creatorId: null,
     isPublic: false,
+    category: CoachCategory.GENERAL,
+    isFeatured: false,
+    sourceCoachId: null,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   };

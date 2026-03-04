@@ -222,7 +222,7 @@ describe('useHaptic', () => {
         selection: result.current.selection,
       };
 
-      rerender();
+      rerender({});
 
       expect(result.current.trigger).toBe(firstRender.trigger);
       expect(result.current.light).toBe(firstRender.light);
@@ -240,7 +240,7 @@ describe('useHaptic', () => {
       const firstIsAvailable = result.current.isAvailable;
       const firstIsEnabled = result.current.isEnabled;
 
-      rerender();
+      rerender({});
 
       expect(result.current.isAvailable).toBe(firstIsAvailable);
       expect(result.current.isEnabled).toBe(firstIsEnabled);

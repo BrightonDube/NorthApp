@@ -534,7 +534,7 @@ describe('ChatStore Property-Based Tests', () => {
               sessions: {},
               messages: {
                 [sessionId]: sortedMessages,
-              },
+              } as any,
               streamingMessage: null,
               streamingSessionId: null,
               isSending: false,

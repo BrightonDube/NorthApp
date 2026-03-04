@@ -202,7 +202,7 @@ export function GradientBackground({
     <LinearGradient
       {...gradientProps}
       style={[styles.gradient, style]}
-      {...viewProps}
+      {...(viewProps as any)}
     >
       {children}
     </LinearGradient>

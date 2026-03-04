@@ -205,13 +205,13 @@ export default function AdminScreen() {
       
       // Fetch subscription status from RevenueCat or local tracking
       // For simplicity, we'll check a subscriptions table if it exists
-      const { data: subscriptions } = await supabase
+      const { data: subscriptions } = await (supabase as any)
         .from('user_subscriptions')
         .select('user_id, is_active, expires_at');
       
       if (subscriptions) {
         userList = userList.map(user => {
-          const sub = subscriptions.find(s => s.user_id === user.id);
+          const sub = subscriptions.find((s: any) => s.user_id === user.id);
           return {
             ...user,
             is_pro: sub?.is_active ?? false,
@@ -234,13 +234,13 @@ export default function AdminScreen() {
       console.error('Error fetching users:', error);
       // If admin API fails, try alternative approach
       try {
-        const { data: profiles } = await supabase
+        const { data: profiles } = await (supabase as any)
           .from('profiles')
           .select('*')
           .order('created_at', { ascending: false });
         
         if (profiles) {
-          const userList = profiles.map(p => ({
+          const userList = profiles.map((p: any) => ({
             id: p.id,
             email: p.email || 'Email not available',
             name: p.name,
@@ -251,7 +251,7 @@ export default function AdminScreen() {
           
           setUsers(userList);
           
-          const proCount = userList.filter(u => u.is_pro).length;
+          const proCount = userList.filter((u: any) => u.is_pro).length;
           setStats({
             totalUsers: userList.length,
             proUsers: proCount,
@@ -295,7 +295,7 @@ export default function AdminScreen() {
             
             try {
               // Update in user_subscriptions table
-              const { error } = await supabase
+              const { error } = await (supabase as any)
                 .from('user_subscriptions')
                 .upsert({
                   user_id: userId,

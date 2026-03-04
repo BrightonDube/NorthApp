@@ -8,7 +8,7 @@
  */
 
 import * as fc from 'fast-check';
-import { FileValidator, MAX_FILE_SIZE, ALLOWED_FILE_TYPES } from '../fileValidator';
+import { FileValidator, MAX_FILE_SIZE, AllowedFileType } from '../fileValidator';
 
 describe('File Validator Properties', () => {
   let validator: FileValidator;

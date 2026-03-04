@@ -146,6 +146,7 @@ describe('Search Engine Properties', () => {
               name: uniqueId,
               icon: '📚',
               systemPrompt: `I help with ${searchTerm} and other tasks`,
+              creatorId: null,
               creatorName: uniqueId,
               isPublic: true,
               category: CoachCategory.LEARNING,
