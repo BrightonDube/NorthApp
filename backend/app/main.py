@@ -20,10 +20,18 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting application...")
-    start_scheduler()
+    try:
+        start_scheduler()
+    except Exception as exc:
+        # Log but do NOT re-raise — the /health endpoint must remain reachable
+        # so Railway can confirm the container is alive while we diagnose.
+        logger.critical("Scheduler failed to start: %s", exc, exc_info=True)
     yield
     logger.info("Shutting down application...")
-    stop_scheduler()
+    try:
+        stop_scheduler()
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
