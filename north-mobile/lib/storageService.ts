@@ -140,7 +140,7 @@ export class StorageService {
     operation: string
   ): Promise<string> {
     // Query the file to check ownership
-    const { data: fileData, error } = await supabase
+    const { data: fileData, error } = await (supabase as any)
       .from('file_attachments')
       .select('user_id')
       .eq('id', fileId)
@@ -357,7 +357,7 @@ export class StorageService {
       await this.verifyFileOwnership(authenticatedUserId, fileId, 'deleteFile');
       
       // First, get the file path from the database to know the extension
-      const { data: fileData, error: queryError } = await supabase
+      const { data: fileData, error: queryError } = await (supabase as any)
         .from('file_attachments')
         .select('storage_path')
         .eq('user_id', userId)
@@ -431,7 +431,7 @@ export class StorageService {
       await this.verifyFileOwnership(authenticatedUserId, fileId, 'getFileUrl');
       
       // Get the file path from the database
-      const { data: fileData, error: queryError } = await supabase
+      const { data: fileData, error: queryError } = await (supabase as any)
         .from('file_attachments')
         .select('storage_path')
         .eq('user_id', userId)
@@ -507,7 +507,7 @@ export class StorageService {
       }
       
       // Query all files for this user and sum their sizes
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('file_attachments')
         .select('file_size')
         .eq('user_id', userId);
@@ -518,7 +518,7 @@ export class StorageService {
       }
       
       // Sum up all file sizes
-      const totalUsage = data?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
+      const totalUsage = data?.reduce((sum: number, file: any) => sum + (file.file_size || 0), 0) || 0;
       
       return totalUsage;
     } catch (error) {

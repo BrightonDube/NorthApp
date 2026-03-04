@@ -25,8 +25,8 @@ export function useNotifications() {
   } = useNotificationStore();
 
   const [lastNotification, setLastNotification] = useState<Notifications.Notification | null>(null);
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.Subscription>(null);
+  const responseListener = useRef<Notifications.Subscription>(null);
 
   // Register for push notifications when user logs in
   useEffect(() => {

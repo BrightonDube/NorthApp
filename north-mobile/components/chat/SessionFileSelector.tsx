@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useThemeColors } from '@/contexts/ThemeContext';
 import { useContextStore } from '@/stores/contextStore';
+import { supabase } from '@/lib/supabase';
 import type { FileAttachment } from '@/lib/database.types';
 
 export interface SessionFileSelectorProps {
@@ -56,12 +57,13 @@ export interface SessionFileSelectorProps {
 export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorProps) {
   const colors = useThemeColors();
   const { 
-    fileAttachments, 
-    fetchFileAttachments, 
+    getFileAttachments,
     setSessionFiles, 
     getSessionFiles,
     isLoading,
   } = useContextStore();
+
+  const [fileAttachments, setFileAttachments] = useState<FileAttachment[]>([]);
 
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [useAllFiles, setUseAllFiles] = useState(true);
@@ -74,7 +76,11 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
       setInitializing(true);
       try {
         // Fetch user's file attachments
-        await fetchFileAttachments();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const files = await getFileAttachments(user.id);
+          setFileAttachments(files);
+        }
 
         // Fetch current session file selections
         const sessionFiles = await getSessionFiles(sessionId);
@@ -276,7 +282,7 @@ export function SessionFileSelector({ sessionId, onClose }: SessionFileSelectorP
           </View>
         ) : (
           <View className="pb-4">
-            {fileAttachments.map((file) => {
+            {fileAttachments.map((file: FileAttachment) => {
               const isSelected = !useAllFiles && selectedFileIds.includes(file.id);
               const isDisabled = useAllFiles;
 

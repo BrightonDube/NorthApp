@@ -10,6 +10,7 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { View, Text, Pressable } from 'react-native';
 import type { Coach } from '@/types';
+import { CoachCategory } from '@/types';
 
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
@@ -71,6 +72,9 @@ describe('Chat Screen Components', () => {
     systemPrompt: 'You are a helpful assistant',
     creatorId: null,
     isPublic: true,
+    category: CoachCategory.GENERAL,
+    isFeatured: false,
+    sourceCoachId: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

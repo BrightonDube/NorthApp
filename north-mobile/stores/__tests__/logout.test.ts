@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../authStore';
 import { useContextStore } from '../contextStore';
 import { useCoachStore } from '../coachStore';
+import { CoachCategory } from '@/types';
 import { useChatStore } from '../chatStore';
 import { useBillingStore } from '../billingStore';
 import { supabase } from '@/lib/supabase';
@@ -284,6 +285,9 @@ describe('Logout Integration Tests', () => {
             systemPrompt: 'Test prompt',
             creatorId: 'user-123',
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },

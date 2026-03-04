@@ -16,6 +16,10 @@ import type { UserContext, ContextCategory } from '@/types';
 import type { FileAttachment, FileAttachmentInsert, SessionFileSelection } from '@/lib/database.types';
 import { useOfflineQueue } from '@/lib/offlineQueue';
 
+// Helper for querying tables not yet in the generated Supabase schema
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabaseUntyped = supabase as any;
+
 /**
  * Database row type (snake_case from Supabase)
  */
@@ -609,7 +613,7 @@ export const useContextStore = create<ContextStore>()(
             extraction_error: null,
           };
 
-          const { data, error } = await supabase
+          const { data, error } = await supabaseUntyped
             .from('file_attachments')
             .insert(insertData)
             .select()
@@ -678,7 +682,7 @@ export const useContextStore = create<ContextStore>()(
             throw error;
           }
           
-          const { data, error } = await supabase
+          const { data, error } = await supabaseUntyped
             .from('file_attachments')
             .select('*')
             .eq('user_id', userId)
@@ -741,7 +745,7 @@ export const useContextStore = create<ContextStore>()(
           }
           
           // Verify file ownership before deletion (Requirement 6.5)
-          const { data: fileData, error: ownershipError } = await supabase
+          const { data: fileData, error: ownershipError } = await supabaseUntyped
             .from('file_attachments')
             .select('user_id')
             .eq('id', fileId)
@@ -766,7 +770,7 @@ export const useContextStore = create<ContextStore>()(
             throw error;
           }
           
-          const { error } = await supabase
+          const { error } = await supabaseUntyped
             .from('file_attachments')
             .delete()
             .eq('id', fileId)
@@ -828,7 +832,7 @@ export const useContextStore = create<ContextStore>()(
           }
           
           // Verify file ownership before update (Requirement 6.5)
-          const { data: fileData, error: ownershipError } = await supabase
+          const { data: fileData, error: ownershipError } = await supabaseUntyped
             .from('file_attachments')
             .select('user_id')
             .eq('id', fileId)
@@ -853,7 +857,7 @@ export const useContextStore = create<ContextStore>()(
             throw error;
           }
           
-          const { error } = await supabase
+          const { error } = await supabaseUntyped
             .from('file_attachments')
             .update({ filename: newName, updated_at: new Date().toISOString() })
             .eq('id', fileId)
@@ -913,14 +917,14 @@ export const useContextStore = create<ContextStore>()(
             throw error;
           }
           
-          const { data, error } = await supabase
+          const { data, error } = await supabaseUntyped
             .from('file_attachments')
             .select('file_size')
             .eq('user_id', userId);
 
           if (error) throw error;
 
-          const usedBytes = (data || []).reduce((sum, file) => sum + file.file_size, 0);
+          const usedBytes = (data || []).reduce((sum: number, file: any) => sum + file.file_size, 0);
           const totalBytes = 100 * 1024 * 1024; // 100MB quota
           const percentageUsed = Math.round((usedBytes / totalBytes) * 100);
 
@@ -967,7 +971,7 @@ export const useContextStore = create<ContextStore>()(
           }
           
           // First, delete existing selections for this session
-          const { error: deleteError } = await supabase
+          const { error: deleteError } = await supabaseUntyped
             .from('session_file_selections')
             .delete()
             .eq('session_id', sessionId);
@@ -981,7 +985,7 @@ export const useContextStore = create<ContextStore>()(
               file_id: fileId,
             }));
 
-            const { error: insertError } = await supabase
+            const { error: insertError } = await supabaseUntyped
               .from('session_file_selections')
               .insert(insertData);
 
@@ -1029,7 +1033,7 @@ export const useContextStore = create<ContextStore>()(
             throw error;
           }
           
-          const { data, error } = await supabase
+          const { data, error } = await supabaseUntyped
             .from('session_file_selections')
             .select(`
               file_id,

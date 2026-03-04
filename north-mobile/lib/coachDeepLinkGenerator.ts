@@ -6,7 +6,7 @@
  * Validates: Requirements 2.1, 2.3, 2.4
  */
 
-import { Share, ShareOptions } from 'react-native';
+import { Share } from 'react-native';
 
 /**
  * Interface for generating coach deep links and sharing
@@ -60,12 +60,10 @@ export class CoachDeepLinkGenerator implements DeepLinkGenerator {
    */
   async openShareDialog(link: string): Promise<void> {
     try {
-      const shareOptions: ShareOptions = {
+      const result = await Share.share({
         message: `Check out this AI coach: ${link}`,
         url: link,
-      };
-
-      const result = await Share.share(shareOptions);
+      });
 
       // Handle share result
       if (result.action === Share.sharedAction) {

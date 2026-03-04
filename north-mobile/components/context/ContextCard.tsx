@@ -85,7 +85,7 @@ export function ContextCard({ context, onEdit, onDelete }: ContextCardProps) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         onDelete();
       }}
-      style={({ focused }) => [
+      style={({ focused }: any) => [
         { backgroundColor: colors.error },
         styles.deleteButton,
         focused && { borderWidth: 2, borderColor: colors.primary },
@@ -112,7 +112,7 @@ export function ContextCard({ context, onEdit, onDelete }: ContextCardProps) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onEdit();
           }}
-          style={({ focused }) => [
+          style={({ focused }: any) => [
             styles.card,
             focused && { borderWidth: 2, borderColor: colors.primary },
           ]}

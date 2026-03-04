@@ -54,7 +54,7 @@ export function FileManagementScreen() {
           </Text>
           <Pressable
             onPress={() => setShowUpload(true)}
-            style={({ focused }) => [
+            style={({ focused }: any) => [
               styles.uploadButton,
               focused && { borderWidth: 2, borderColor: colors.focus },
             ]}
@@ -99,7 +99,7 @@ export function FileManagementWithTabs() {
         <View className="flex-row">
           <Pressable
             onPress={() => setActiveTab('manage')}
-            style={({ focused }) => [
+            style={({ focused }: any) => [
               styles.tab,
               focused && { borderWidth: 2, borderColor: colors.focus },
             ]}
@@ -126,7 +126,7 @@ export function FileManagementWithTabs() {
 
           <Pressable
             onPress={() => setActiveTab('upload')}
-            style={({ focused }) => [
+            style={({ focused }: any) => [
               styles.tab,
               focused && { borderWidth: 2, borderColor: colors.focus },
             ]}

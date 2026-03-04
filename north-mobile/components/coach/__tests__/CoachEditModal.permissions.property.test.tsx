@@ -12,6 +12,7 @@ import fc from 'fast-check';
 import { CoachEditModal } from '../CoachEditModal';
 import { useBillingStore } from '@/stores/billingStore';
 import type { Coach } from '@/types';
+import { CoachCategory } from '@/types';
 import { Alert } from 'react-native';
 
 // Arbitraries that filter out whitespace-only strings
@@ -80,7 +81,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               systemPrompt,
               creatorId: 'user-123',
               isPublic: false,
-              category: 'General',
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -146,7 +147,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               systemPrompt,
               creatorId: 'user-123',
               isPublic: true, // Start with public coach
-              category: 'General',
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -211,7 +212,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               systemPrompt: 'Test system prompt for property testing',
               creatorId: 'user-123',
               isPublic: false,
-              category: 'General',
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -286,7 +287,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               systemPrompt,
               creatorId: 'user-123',
               isPublic: initialIsPublic,
-              category: 'General',
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -333,7 +334,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               systemPrompt: 'Test system prompt for property testing',
               creatorId: 'user-123',
               isPublic: initialIsPublic,
-              category: 'General',
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -382,7 +383,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               systemPrompt: 'Test system prompt for property testing',
               creatorId: 'user-123',
               isPublic: false,
-              category: 'General',
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -440,7 +441,7 @@ describe('Coach Visibility Permissions Property Tests', () => {
               systemPrompt: 'Test system prompt for property testing',
               creatorId: 'user-123',
               isPublic: initialIsPublic,
-              category: 'General',
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),

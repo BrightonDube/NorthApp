@@ -41,6 +41,7 @@ jest.mock('@react-native-async-storage/async-storage', () => {
 
 import fc from 'fast-check';
 import { useCoachStore } from '../coachStore';
+import { CoachCategory } from '@/types';
 import {
   runPropertyTest,
   property,
@@ -186,7 +187,7 @@ describe('Property 23: Coach Creation Optimistic Update', () => {
     const testCases = [
       { existing: [], newName: 'Coach A', newIcon: '🚀', newPrompt: 'Prompt A' },
       { existing: [
-        { id: 'existing-1', name: 'Existing Coach', icon: '💼', systemPrompt: 'Existing Prompt', creatorId: null, isPublic: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+        { id: 'existing-1', name: 'Existing Coach', icon: '💼', systemPrompt: 'Existing Prompt', creatorId: null, isPublic: true, category: CoachCategory.GENERAL, isFeatured: false, sourceCoachId: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       ], newName: 'Coach B', newIcon: '🎯', newPrompt: 'Prompt B' },
     ];
 

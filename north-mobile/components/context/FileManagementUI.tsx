@@ -406,7 +406,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                   {/* File Info */}
                   <Pressable
                     onPress={() => handleFileSelect(file)}
-                    style={({ focused }) => [
+                    style={({ focused }: any) => [
                       styles.fileCard,
                       focused && { borderWidth: 2, borderColor: colors.focus },
                     ]}
@@ -433,7 +433,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                             />
                             <Pressable
                               onPress={() => handleSaveRename(file.id)}
-                              style={({ focused }) => [
+                              style={({ focused }: any) => [
                                 styles.iconButton,
                                 focused && { borderWidth: 2, borderColor: colors.focus },
                               ]}
@@ -446,7 +446,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                             </Pressable>
                             <Pressable
                               onPress={handleCancelRename}
-                              style={({ focused }) => [
+                              style={({ focused }: any) => [
                                 styles.iconButton,
                                 focused && { borderWidth: 2, borderColor: colors.focus },
                               ]}
@@ -485,7 +485,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                     <View className="flex-row border-t border-zinc-200 dark:border-zinc-700">
                       <Pressable
                         onPress={() => handleStartRename(file)}
-                        style={({ focused }) => [
+                        style={({ focused }: any) => [
                           styles.actionButton,
                           focused && { borderWidth: 2, borderColor: colors.focus },
                         ]}
@@ -501,7 +501,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                       
                       <Pressable
                         onPress={() => handleDeleteFile(file)}
-                        style={({ focused }) => [
+                        style={({ focused }: any) => [
                           styles.actionButton,
                           focused && { borderWidth: 2, borderColor: colors.focus },
                         ]}
@@ -593,7 +593,7 @@ export function FileManagementUI({ userId, onFilesUpdated }: FileManagementUIPro
                 setSelectedFile(null);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              style={({ focused }) => [
+              style={({ focused }: any) => [
                 styles.closeButton,
                 focused && { borderWidth: 2, borderColor: colors.focus },
               ]}

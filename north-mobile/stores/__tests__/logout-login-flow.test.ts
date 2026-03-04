@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore, setupAuthListener } from '@/stores/authStore';
 import { useContextStore } from '@/stores/contextStore';
 import { useCoachStore } from '@/stores/coachStore';
+import { CoachCategory } from '@/types';
 import { useChatStore } from '@/stores/chatStore';
 import { useBillingStore } from '@/stores/billingStore';
 import { supabase } from '@/lib/supabase';
@@ -507,6 +508,9 @@ describe('Logout → Login Flow Integration', () => {
             systemPrompt: 'Test prompt',
             creatorId: 'user-123',
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
           },

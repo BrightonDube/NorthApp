@@ -9,6 +9,7 @@
 import fc from 'fast-check';
 import { useCoachStore } from '../coachStore';
 import { supabase } from '@/lib/supabase';
+import { CoachCategory } from '@/types';
 
 // Mock Supabase
 jest.mock('@/lib/supabase', () => ({
@@ -84,7 +85,7 @@ describe('Coach Visibility Property Tests', () => {
               systemPrompt,
               creatorId,
               isPublic: false,
-              category: 'General' as const,
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -135,7 +136,7 @@ describe('Coach Visibility Property Tests', () => {
               systemPrompt,
               creatorId,
               isPublic: true,
-              category: 'General' as const,
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -184,7 +185,7 @@ describe('Coach Visibility Property Tests', () => {
               systemPrompt: 'Test system prompt for property testing',
               creatorId: 'creator-123',
               isPublic: initialIsPublic,
-              category: 'General' as const,
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),
@@ -246,7 +247,7 @@ describe('Coach Visibility Property Tests', () => {
               systemPrompt: 'Test system prompt for property testing',
               creatorId: 'creator-123',
               isPublic: false,
-              category: 'General' as const,
+              category: CoachCategory.GENERAL,
               isFeatured: false,
               sourceCoachId: null,
               createdAt: new Date().toISOString(),

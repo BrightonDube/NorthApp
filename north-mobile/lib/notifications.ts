@@ -20,7 +20,6 @@ export async function scheduleDailyReminder(
     type: Notifications.SchedulableTriggerInputTypes.DAILY,
     hour,
     minute,
-    repeats: true,
   };
 
   return await useNotificationStore.getState().scheduleLocalNotification(
@@ -98,7 +97,7 @@ export async function registerPushTokenWithBackend(
   try {
     const { supabase } = await import('@/lib/supabase');
     
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('push_tokens')
       .upsert(
         {

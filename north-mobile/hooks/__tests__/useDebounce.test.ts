@@ -24,7 +24,7 @@ describe('useDebounce', () => {
 
   it('should debounce value updates', async () => {
     const { result, rerender } = renderHook(
-      ({ value, delay }) => useDebounce(value, delay),
+      ({ value, delay }: { value: string; delay: number }) => useDebounce(value, delay),
       { initialProps: { value: 'initial', delay: 300 } }
     );
 
@@ -49,7 +49,7 @@ describe('useDebounce', () => {
 
   it('should reset timer on rapid value changes', async () => {
     const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 300),
+      ({ value }: { value: string }) => useDebounce(value, 300),
       { initialProps: { value: 'initial' } }
     );
 
@@ -85,7 +85,7 @@ describe('useDebounce', () => {
 
   it('should use default delay of 300ms when not specified', async () => {
     const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value),
+      ({ value }: { value: string }) => useDebounce(value),
       { initialProps: { value: 'initial' } }
     );
 
@@ -107,7 +107,7 @@ describe('useDebounce', () => {
 
   it('should handle different delay values', async () => {
     const { result, rerender } = renderHook(
-      ({ value, delay }) => useDebounce(value, delay),
+      ({ value, delay }: { value: string; delay: number }) => useDebounce(value, delay),
       { initialProps: { value: 'initial', delay: 500 } }
     );
 
@@ -130,7 +130,7 @@ describe('useDebounce', () => {
   it('should work with different value types', async () => {
     // Test with number
     const { result: numberResult, rerender: numberRerender } = renderHook(
-      ({ value }) => useDebounce(value, 300),
+      ({ value }: { value: number }) => useDebounce(value, 300),
       { initialProps: { value: 0 } }
     );
 
@@ -145,7 +145,7 @@ describe('useDebounce', () => {
 
     // Test with object
     const { result: objectResult, rerender: objectRerender } = renderHook(
-      ({ value }) => useDebounce(value, 300),
+      ({ value }: { value: { name: string } }) => useDebounce(value, 300),
       { initialProps: { value: { name: 'initial' } } }
     );
 

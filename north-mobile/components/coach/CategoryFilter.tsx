@@ -96,7 +96,7 @@ export function CategoryFilter({
               accessibilityLabel={`Filter by ${getCategoryLabel(category)}`}
               accessibilityState={{ selected }}
               testID={`${testID}-${category || 'all'}`}
-              style={({ pressed, focused }) => [
+              style={({ pressed, focused }: any) => [
                 styles.pill,
                 selected && [styles.pillSelected, { backgroundColor: categoryColor }],
                 !selected && { backgroundColor: colors.backgroundTertiary },

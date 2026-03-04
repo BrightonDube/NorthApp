@@ -130,5 +130,6 @@ export function useThemeColors() {
     messageReceived: isDark ? '#252220' : '#E7E5E4',
     messageTextSent: isDark ? '#FAFAF9' : '#FAFAF9',
     messageTextReceived: isDark ? '#FAFAF9' : '#1C1917',
+    focus: isDark ? '#60A5FA' : '#3B82F6',
   };
 }

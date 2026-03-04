@@ -824,4 +824,42 @@ export const Constants = {
 export type SessionReport = Tables<'session_reports'>;
 export type ActionItem = Tables<'action_items'>;
 export type ActionItemStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type SessionReportInsert = TablesInsert<'session_reports'>;
+export type SessionReportUpdate = TablesUpdate<'session_reports'>;
+export type ActionItemInsert = TablesInsert<'action_items'>;
+export type ActionItemUpdate = TablesUpdate<'action_items'>;
+export type CoachingSession = Tables<'coaching_sessions'>;
+export type CoachingSessionInsert = TablesInsert<'coaching_sessions'>;
+export type CoachingSessionUpdate = TablesUpdate<'coaching_sessions'>;
+export type Message = Tables<'messages'>;
+
+// File attachment types (tables pending migration — defined manually for contextStore)
+export interface FileAttachment {
+  id: string;
+  user_id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  upload_date: string;
+  storage_path: string;
+  storage_url: string;
+  extracted_content: string | null;
+  extraction_success: boolean;
+  extraction_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FileAttachmentInsert = Omit<FileAttachment, 'id' | 'created_at' | 'updated_at'> & {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export interface SessionFileSelection {
+  id: string;
+  session_id: string;
+  file_id: string;
+  created_at: string;
+}
 

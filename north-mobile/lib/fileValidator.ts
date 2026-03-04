@@ -217,7 +217,7 @@ export class FileValidator {
     
     try {
       // Query the database to get the sum of all file sizes for this user
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('file_attachments')
         .select('file_size')
         .eq('user_id', userId);
@@ -232,7 +232,7 @@ export class FileValidator {
       }
       
       // Calculate current usage
-      const currentUsage = data?.reduce((sum, file) => sum + (file.file_size || 0), 0) || 0;
+      const currentUsage = data?.reduce((sum: number, file: any) => sum + (file.file_size || 0), 0) || 0;
       const newUsage = currentUsage + fileSize;
       
       // Calculate values in MB for display

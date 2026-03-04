@@ -22,7 +22,7 @@ import { Pressable, View, StyleSheet, type PressableProps, type ViewStyle } from
 import { useHaptic } from '@/hooks/useHaptic';
 import { useThemeColors, useIsDark } from '@/contexts/ThemeContext';
 
-export interface FocusableProps extends PressableProps {
+export interface FocusableProps extends Omit<PressableProps, 'style' | 'children'> {
   /**
    * Custom style for the container
    */
@@ -100,7 +100,7 @@ export function Focusable({
     <Pressable
       {...pressableProps}
       onPress={handlePress}
-      style={({ pressed, focused }) => {
+      style={({ pressed, focused }: any) => {
         const baseStyle = typeof style === 'function' 
           ? style({ pressed, focused }) 
           : style;
@@ -115,10 +115,10 @@ export function Focusable({
         return [baseStyle, focusStyle];
       }}
     >
-      {({ pressed, focused }) => (
+      {({ pressed, focused }: any) => (
         <View style={{ borderRadius }}>
           {typeof children === 'function' 
-            ? children({ pressed, focused }) 
+            ? (children as any)({ pressed, focused }) 
             : children}
         </View>
       )}
@@ -235,13 +235,13 @@ export function FocusableButton({
       {...props}
       disabled={disabled}
       enableHaptic={true} // Always enable haptic for buttons
-      style={({ pressed, focused }) => {
+      style={({ pressed, focused }: { pressed: boolean; focused: boolean }) => {
         const variantStyle = getVariantStyle(pressed, focused);
         const customStyle = typeof style === 'function' 
           ? style({ pressed, focused }) 
           : style;
         
-        return [variantStyle, customStyle];
+        return Object.assign({}, variantStyle, customStyle) as ViewStyle;
       }}
     >
       {children}

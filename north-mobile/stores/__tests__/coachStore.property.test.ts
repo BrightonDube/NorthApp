@@ -61,6 +61,7 @@ jest.mock('@react-native-async-storage/async-storage', () => {
 import fc from 'fast-check';
 import { useCoachStore } from '../coachStore';
 import type { Coach } from '@/types';
+import { CoachCategory } from '@/types';
 import {
   PBT_CONFIG,
   runPropertyTest,
@@ -123,6 +124,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt,
               creatorId,
               isPublic,
+              category: CoachCategory.GENERAL,
+              isFeatured: false,
+              sourceCoachId: null,
               createdAt,
               updatedAt,
             };
@@ -191,6 +195,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.constant(null),
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null as string | null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -204,6 +211,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: uuidArbitrary,
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null as string | null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -270,6 +280,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.constant(null),
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -282,6 +295,9 @@ describe('coachStore - Property-Based Tests', () => {
               icon: coachIconArbitrary,
               systemPrompt: systemPromptArbitrary,
               isPublic: fc.constant(false),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -294,6 +310,9 @@ describe('coachStore - Property-Based Tests', () => {
               icon: coachIconArbitrary,
               systemPrompt: systemPromptArbitrary,
               isPublic: fc.constant(false),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -621,6 +640,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt: 'Original Prompt',
           creatorId: userId,
           isPublic: false,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -663,6 +685,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt: 'Original Prompt',
           creatorId: userId,
           isPublic: false,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -778,6 +803,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.constant(null), // Default coaches have null creatorId
               isPublic: fc.constant(true),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -828,6 +856,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt,
           creatorId: userId,
           isPublic: false,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -868,6 +899,9 @@ describe('coachStore - Property-Based Tests', () => {
               icon: coachIconArbitrary,
               systemPrompt: systemPromptArbitrary,
               isPublic: fc.constant(false),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -911,6 +945,9 @@ describe('coachStore - Property-Based Tests', () => {
             systemPrompt: systemPromptArbitrary,
             creatorId: fc.constant(null), // Default coach
             isPublic: fc.constant(true),
+            category: fc.constant(CoachCategory.GENERAL),
+            isFeatured: fc.constant(false),
+            sourceCoachId: fc.constant(null),
             createdAt: timestampArbitrary,
             updatedAt: timestampArbitrary,
           }),
@@ -958,6 +995,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt: systemPromptArbitrary,
           creatorId: fc.constant(null), // Default coach
           isPublic: fc.constant(true),
+          category: fc.constant(CoachCategory.GENERAL),
+          isFeatured: fc.constant(false),
+          sourceCoachId: fc.constant(null),
           createdAt: timestampArbitrary,
           updatedAt: timestampArbitrary,
         }),
@@ -1004,6 +1044,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.constant(null),
               isPublic: fc.constant(true),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -1016,6 +1059,9 @@ describe('coachStore - Property-Based Tests', () => {
               icon: coachIconArbitrary,
               systemPrompt: systemPromptArbitrary,
               isPublic: fc.constant(false),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -1099,6 +1145,9 @@ describe('coachStore - Property-Based Tests', () => {
         systemPrompt: 'I am a default coach',
         creatorId: null,
         isPublic: true,
+        category: CoachCategory.GENERAL,
+        isFeatured: false,
+        sourceCoachId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -1131,7 +1180,7 @@ describe('coachStore - Property-Based Tests', () => {
 
     it('should prevent updating any field of default coaches (property-based)', async () => {
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           fc.record({
             id: uuidArbitrary,
             name: coachNameArbitrary,
@@ -1139,6 +1188,9 @@ describe('coachStore - Property-Based Tests', () => {
             systemPrompt: systemPromptArbitrary,
             creatorId: fc.constant(null), // Default coach
             isPublic: fc.constant(true),
+            category: fc.constant(CoachCategory.GENERAL),
+            isFeatured: fc.constant(false),
+            sourceCoachId: fc.constant(null),
             createdAt: timestampArbitrary,
             updatedAt: timestampArbitrary,
           }),
@@ -1203,7 +1255,7 @@ describe('coachStore - Property-Based Tests', () => {
 
     it('should prevent deleting default coaches (property-based)', async () => {
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           fc.record({
             id: uuidArbitrary,
             name: coachNameArbitrary,
@@ -1211,6 +1263,9 @@ describe('coachStore - Property-Based Tests', () => {
             systemPrompt: systemPromptArbitrary,
             creatorId: fc.constant(null), // Default coach
             isPublic: fc.constant(true),
+            category: fc.constant(CoachCategory.GENERAL),
+            isFeatured: fc.constant(false),
+            sourceCoachId: fc.constant(null),
             createdAt: timestampArbitrary,
             updatedAt: timestampArbitrary,
           }),
@@ -1253,7 +1308,7 @@ describe('coachStore - Property-Based Tests', () => {
 
     it('should maintain default coach immutability in mixed collections', async () => {
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           uuidArbitrary, // userId for user coaches
           fc.array(
             fc.record({
@@ -1263,6 +1318,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.constant(null), // Default coaches
               isPublic: fc.constant(true),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -1275,6 +1333,9 @@ describe('coachStore - Property-Based Tests', () => {
               icon: coachIconArbitrary,
               systemPrompt: systemPromptArbitrary,
               isPublic: fc.constant(false),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -1355,6 +1416,9 @@ describe('coachStore - Property-Based Tests', () => {
         systemPrompt: 'I am a default coach',
         creatorId: null,
         isPublic: true,
+        category: CoachCategory.GENERAL,
+        isFeatured: false,
+        sourceCoachId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -1410,7 +1474,7 @@ describe('coachStore - Property-Based Tests', () => {
 
     it('should preserve default coach data integrity after failed modification attempts', async () => {
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           fc.record({
             id: uuidArbitrary,
             name: coachNameArbitrary,
@@ -1418,6 +1482,9 @@ describe('coachStore - Property-Based Tests', () => {
             systemPrompt: systemPromptArbitrary,
             creatorId: fc.constant(null),
             isPublic: fc.constant(true),
+            category: fc.constant(CoachCategory.GENERAL),
+            isFeatured: fc.constant(false),
+            sourceCoachId: fc.constant(null),
             createdAt: timestampArbitrary,
             updatedAt: timestampArbitrary,
           }),
@@ -1502,6 +1569,9 @@ describe('coachStore - Property-Based Tests', () => {
         systemPrompt: 'I am a default coach',
         creatorId: null,
         isPublic: true,
+        category: CoachCategory.GENERAL,
+        isFeatured: false,
+        sourceCoachId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -1513,6 +1583,9 @@ describe('coachStore - Property-Based Tests', () => {
         systemPrompt: 'I am User A\'s coach',
         creatorId: userAId,
         isPublic: false,
+        category: CoachCategory.GENERAL,
+        isFeatured: false,
+        sourceCoachId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -1524,6 +1597,9 @@ describe('coachStore - Property-Based Tests', () => {
         systemPrompt: 'I am User B\'s coach',
         creatorId: userBId,
         isPublic: false,
+        category: CoachCategory.GENERAL,
+        isFeatured: false,
+        sourceCoachId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -1669,6 +1745,9 @@ describe('coachStore - Property-Based Tests', () => {
         icon: '🚀', 
         systemPrompt: 'Prompt',
         isPublic: false,
+        category: CoachCategory.GENERAL,
+        isFeatured: false,
+        sourceCoachId: null,
       });
       
       supabase.from = jest.fn().mockReturnValue({
@@ -1717,7 +1796,7 @@ describe('coachStore - Property-Based Tests', () => {
       // Property-based test: For any valid coach data, the coach should appear
       // in the store immediately when createCoach is called
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           coachNameArbitrary,
           coachIconArbitrary,
           systemPromptArbitrary,
@@ -1805,7 +1884,7 @@ describe('coachStore - Property-Based Tests', () => {
       // Property-based test: If server returns error, the optimistic coach
       // should be removed from the store (rollback)
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           coachNameArbitrary,
           coachIconArbitrary,
           systemPromptArbitrary,
@@ -1865,7 +1944,7 @@ describe('coachStore - Property-Based Tests', () => {
       // Property-based test: When adding a new coach optimistically, it should
       // maintain proper ordering after server confirmation
       await runPropertyTest(
-        property(
+        fc.asyncProperty(
           fc.array(
             fc.record({
               id: uuidArbitrary,
@@ -1874,6 +1953,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.option(uuidArbitrary, { nil: null }),
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.constant(false),
+              sourceCoachId: fc.constant(null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -2004,6 +2086,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt: origPrompt,
           creatorId: userId,
           isPublic: false,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -2079,6 +2164,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt,
           creatorId: userId,
           isPublic: false,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -2140,6 +2228,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt: 'Test prompt',
           creatorId: userId,
           isPublic: false,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -2208,6 +2299,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt: 'Test prompt',
           creatorId: userId,
           isPublic: false,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -2273,6 +2367,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt: 'Test prompt',
           creatorId: null, // Default coach
           isPublic: true,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -2319,6 +2416,9 @@ describe('coachStore - Property-Based Tests', () => {
           systemPrompt: 'Test prompt',
           creatorId: null, // Default coach
           isPublic: true,
+          category: CoachCategory.GENERAL,
+          isFeatured: false,
+          sourceCoachId: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -2359,6 +2459,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.option(uuidArbitrary, { nil: null }),
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.boolean(),
+              sourceCoachId: fc.constant(null as string | null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -2399,6 +2502,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.option(uuidArbitrary, { nil: null }),
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.boolean(),
+              sourceCoachId: fc.constant(null as string | null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -2412,6 +2518,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.option(uuidArbitrary, { nil: null }),
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.boolean(),
+              sourceCoachId: fc.constant(null as string | null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -2449,6 +2558,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.option(uuidArbitrary, { nil: null }),
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.boolean(),
+              sourceCoachId: fc.constant(null as string | null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),
@@ -2493,6 +2605,9 @@ describe('coachStore - Property-Based Tests', () => {
               systemPrompt: systemPromptArbitrary,
               creatorId: fc.option(uuidArbitrary, { nil: null }),
               isPublic: fc.boolean(),
+              category: fc.constant(CoachCategory.GENERAL),
+              isFeatured: fc.boolean(),
+              sourceCoachId: fc.constant(null as string | null),
               createdAt: timestampArbitrary,
               updatedAt: timestampArbitrary,
             }),

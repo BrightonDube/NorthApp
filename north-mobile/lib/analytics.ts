@@ -134,9 +134,9 @@ async function flushEvents(): Promise<void> {
   try {
     // Store events in Supabase analytics_events table
     // Falls back to local storage if network fails
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('analytics_events')
-      .insert(batch.map(e => ({
+      .insert(batch.map((e: any) => ({
         event_name: e.event,
         properties: e.properties || {},
         user_id: e.userId,

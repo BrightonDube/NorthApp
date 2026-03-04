@@ -80,17 +80,17 @@ export const timestampArbitrary = fc
  * Helper to run property tests with standard configuration
  */
 export function runPropertyTest<T>(
-  property: fc.IProperty<T>,
+  property: fc.IProperty<T> | fc.IAsyncProperty<T>,
   config: Partial<fc.Parameters<T>> = {}
 ) {
-  return fc.assert(property, { ...PBT_CONFIG, ...config });
+  return fc.assert(property as fc.IProperty<T>, { ...PBT_CONFIG, ...config });
 }
 
 /**
  * Helper to create a property test with standard config
  */
 export function property<Ts extends [unknown, ...unknown[]]>(
-  ...args: [...arbitraries: { [K in keyof Ts]: fc.Arbitrary<Ts[K]> }, predicate: (...args: Ts) => boolean | void | Promise<boolean | void>]
+  ...args: [...arbitraries: { [K in keyof Ts]: fc.Arbitrary<Ts[K]> }, predicate: (...args: Ts) => boolean | void]
 ) {
   return fc.property(...args);
 }
@@ -129,6 +129,9 @@ export function generateMockCoach(overrides?: Partial<any>) {
     systemPrompt: fc.sample(systemPromptArbitrary, 1)[0],
     creatorId: fc.sample(fc.option(uuidArbitrary, { nil: null }), 1)[0],
     isPublic: false,
+    category: 'general' as const,
+    isFeatured: false,
+    sourceCoachId: null,
     createdAt: fc.sample(timestampArbitrary, 1)[0],
     updatedAt: fc.sample(timestampArbitrary, 1)[0],
     ...overrides,

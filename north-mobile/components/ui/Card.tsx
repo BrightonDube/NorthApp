@@ -112,7 +112,7 @@ export function Card({
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
         testID={testID}
-        style={({ pressed, focused }) => [
+        style={({ pressed, focused }: any) => [
           ...baseCardStyle,
           pressed && styles.pressed,
           focused && {

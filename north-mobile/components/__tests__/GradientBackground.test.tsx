@@ -50,10 +50,13 @@ jest.mock('expo-linear-gradient', () => ({
   },
 }));
 
+let mockColorScheme: string | undefined = 'light';
+
 describe('GradientBackground Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (useIsDark as jest.Mock).mockReturnValue(false);
+    mockColorScheme = 'light';
+    (useIsDark as jest.Mock).mockImplementation(() => mockColorScheme === 'dark');
   });
 
   describe('Basic Rendering', () => {

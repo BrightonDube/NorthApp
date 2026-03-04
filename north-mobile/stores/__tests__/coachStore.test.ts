@@ -8,6 +8,7 @@
 
 import { useCoachStore } from '../coachStore';
 import { supabase } from '@/lib/supabase';
+import { CoachCategory } from '@/types';
 
 // Mock Supabase
 jest.mock('@/lib/supabase', () => ({
@@ -81,6 +82,9 @@ describe('coachStore', () => {
             systemPrompt: 'Test prompt',
             creatorId: null,
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -91,6 +95,9 @@ describe('coachStore', () => {
             systemPrompt: 'Test prompt',
             creatorId: 'user-123',
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -117,6 +124,9 @@ describe('coachStore', () => {
             systemPrompt: 'Test prompt',
             creatorId: null,
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -127,6 +137,9 @@ describe('coachStore', () => {
             systemPrompt: 'Test prompt',
             creatorId: 'user-123',
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -137,6 +150,9 @@ describe('coachStore', () => {
             systemPrompt: 'Test prompt',
             creatorId: 'user-456',
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -163,6 +179,9 @@ describe('coachStore', () => {
             systemPrompt: 'Test prompt',
             creatorId: null,
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -205,6 +224,9 @@ describe('coachStore', () => {
             systemPrompt: 'Test prompt',
             creatorId: null,
             isPublic: false,
+            category: CoachCategory.GENERAL,
+            isFeatured: false,
+            sourceCoachId: null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },

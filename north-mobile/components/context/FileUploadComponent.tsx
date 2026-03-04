@@ -213,7 +213,7 @@ export function FileUploadComponent({
 
         // Read file data
         const base64Data = await FileSystem.readAsStringAsync(fileUri, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: (FileSystem as any).EncodingType.Base64,
         });
         const binaryString = atob(base64Data);
         const data = new Uint8Array(binaryString.length);
@@ -634,7 +634,7 @@ export function FileUploadComponent({
           >
             <Pressable
               onPress={handleFileSelect}
-              style={({ focused }) => [
+              style={({ focused }: any) => [
                 styles.uploadZone,
                 focused && { borderWidth: 2, borderColor: colors.focus },
               ]}
@@ -755,7 +755,7 @@ export function FileUploadComponent({
           <View className="flex-row gap-3">
             <Pressable
               onPress={handleCancelUpload}
-              style={({ focused }) => [
+              style={({ focused }: any) => [
                 styles.button,
                 focused && { borderWidth: 2, borderColor: colors.focus },
               ]}
@@ -771,7 +771,7 @@ export function FileUploadComponent({
 
             <Pressable
               onPress={handleConfirmUpload}
-              style={({ focused }) => [
+              style={({ focused }: any) => [
                 styles.button,
                 focused && { borderWidth: 2, borderColor: colors.focus },
               ]}
