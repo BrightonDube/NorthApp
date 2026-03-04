@@ -455,6 +455,34 @@ export default function HomeScreen() {
               </Pressable>
             </View>
 
+            {/* Panic Mode Quick Access */}
+            <View style={styles.section}>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/panic');
+                }}
+                style={({ pressed }) => [
+                  styles.createButton,
+                  { backgroundColor: colors.backgroundTertiary },
+                  pressed && styles.createButtonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Need help now"
+              >
+                <View style={[styles.createIconContainer, { backgroundColor: colors.card }]}>
+                  <Text style={{ fontSize: 24 }}>🫂</Text>
+                </View>
+                <View style={styles.createContent}>
+                  <Text style={[styles.createTitle, { color: colors.text }]}>Need Help Now?</Text>
+                  <Text style={[styles.createSubtitle, { color: colors.textTertiary }]}>
+                    Safe space & crisis support
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </Pressable>
+            </View>
+
             {/* Create Coach Button */}
             <View style={styles.section}>
               <CreateCoachButton onPress={handleCreateCoach} isProUser={isProUser} />
