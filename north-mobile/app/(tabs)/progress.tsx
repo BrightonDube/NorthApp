@@ -23,6 +23,8 @@ import { useProgressStore } from '@/stores/progressStore';
 import { useCheckInStore } from '@/stores/checkInStore';
 import { useBillingStore } from '@/stores/billingStore';
 import { useThemeColors } from '@/contexts/ThemeContext';
+import { api, buildAuthHeaders } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export default function ProgressScreen() {
   const colors = useThemeColors();
@@ -38,16 +40,28 @@ export default function ProgressScreen() {
   const { currentStreak, longestStreak } = useCheckInStore();
   const { isProUser } = useBillingStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [insights, setInsights] = useState<{ id: string; insight: string; confidence: number; created_at: string }[]>([]);
+
+  const fetchInsights = useCallback(async () => {
+    if (!isProUser) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const res = await fetch(`${api.insights}?limit=5`, { headers: buildAuthHeaders(session.access_token) });
+      if (res.ok) setInsights(await res.json());
+    } catch {}
+  }, [isProUser]);
 
   useEffect(() => {
     refreshAll();
+    fetchInsights();
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshAll();
+    await Promise.all([refreshAll(), fetchInsights()]);
     setRefreshing(false);
-  }, [refreshAll]);
+  }, [refreshAll, fetchInsights]);
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -178,6 +192,24 @@ export default function ProgressScreen() {
             <Text style={[styles.recordValue, { color: colors.text }]}>{totalSessions}</Text>
           </View>
         </View>
+
+        {/* AI Insights (Pro) */}
+        {isProUser && insights.length > 0 && (
+          <View style={[styles.insightsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>AI Insights</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+              Key takeaways from your sessions
+            </Text>
+            {insights.map((item) => (
+              <View key={item.id} style={[styles.insightRow, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.insightText, { color: colors.text }]}>{item.insight}</Text>
+                <Text style={[styles.insightDate, { color: colors.textTertiary }]}>
+                  {new Date(item.created_at).toLocaleDateString()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Pro Upsell */}
         {!isProUser && (
@@ -339,6 +371,24 @@ const styles = StyleSheet.create({
   recordValue: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  insightsCard: {
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  insightRow: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  insightText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  insightDate: {
+    fontSize: 11,
+    marginTop: 4,
   },
   proCard: {
     borderRadius: 16,

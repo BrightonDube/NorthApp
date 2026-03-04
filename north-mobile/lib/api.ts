@@ -51,6 +51,14 @@ export const api = {
 
   // GROW
   growState: (sessionId: string) => `${API_BASE}/v1/sessions/${sessionId}/grow`,
+
+  // Insights
+  insights: `${API_BASE}/v1/insights`,
+  insight: (id: string) => `${API_BASE}/v1/insights/${id}`,
+  sessionInsights: (sessionId: string) => `${API_BASE}/v1/sessions/${sessionId}/insights`,
+
+  // Analytics
+  analyticsUsage: `${API_BASE}/v1/analytics/usage`,
 };
 
 /**
