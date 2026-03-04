@@ -427,6 +427,34 @@ export default function HomeScreen() {
             {/* Empty State */}
             {coaches.length === 0 && !isLoading && <EmptyState />}
 
+            {/* Goals Quick Access */}
+            <View style={styles.section}>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push('/goals');
+                }}
+                style={({ pressed }) => [
+                  styles.createButton,
+                  { backgroundColor: colors.backgroundTertiary },
+                  pressed && styles.createButtonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="View goals"
+              >
+                <View style={[styles.createIconContainer, { backgroundColor: colors.card }]}>
+                  <Text style={{ fontSize: 24 }}>🎯</Text>
+                </View>
+                <View style={styles.createContent}>
+                  <Text style={[styles.createTitle, { color: colors.text }]}>My Goals</Text>
+                  <Text style={[styles.createSubtitle, { color: colors.textTertiary }]}>
+                    Track progress & AI-powered planning
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </Pressable>
+            </View>
+
             {/* Create Coach Button */}
             <View style={styles.section}>
               <CreateCoachButton onPress={handleCreateCoach} isProUser={isProUser} />
