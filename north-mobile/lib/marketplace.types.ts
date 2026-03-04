@@ -37,7 +37,7 @@ export function dbCoachToCoach(dbCoach: Tables<'coaches'>): Coach {
     creatorId: dbCoach.creator_id,
     isPublic: dbCoach.is_public,
     category: dbCoach.category as CoachCategory,
-    isFeatured: dbCoach.is_featured,
+    isFeatured: dbCoach.is_featured ?? false,
     sourceCoachId: dbCoach.source_coach_id,
     createdAt: dbCoach.created_at,
     updatedAt: dbCoach.updated_at,
@@ -125,7 +125,7 @@ export function createInstalledCoach(
 /**
  * Filter coaches by category
  */
-export function filterByCategory(coaches: Coach[], category: CoachCategory | null): Coach[] {
+export function filterByCategory<T extends Coach>(coaches: T[], category: CoachCategory | null): T[] {
   if (!category) {
     return coaches;
   }

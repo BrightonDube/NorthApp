@@ -82,16 +82,14 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
         .from('check_ins')
         .select('mood, energy')
         .eq('user_id', user.id)
-        .gte('created_at', weekAgoISO)
-        .catch(() => ({ data: null }));
+        .gte('created_at', weekAgoISO);
 
       // Fetch action items
       const { data: actionItems } = await supabase
         .from('action_items')
         .select('status')
         .eq('user_id', user.id)
-        .gte('created_at', weekAgoISO)
-        .catch(() => ({ data: null }));
+        .gte('created_at', weekAgoISO);
 
       const coachIds = [...new Set((sessions || []).map(s => s.coach_id))];
       const moods = (checkIns || []).map(c => c.mood).filter(Boolean);
@@ -132,8 +130,7 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
         .from('check_ins')
         .select('created_at')
         .eq('user_id', user.id)
-        .gte('created_at', startDate.toISOString())
-        .catch(() => ({ data: null }));
+        .gte('created_at', startDate.toISOString());
 
       // Fetch session dates
       const { data: sessions } = await supabase

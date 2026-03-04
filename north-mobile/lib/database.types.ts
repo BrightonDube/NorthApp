@@ -820,3 +820,8 @@ export const Constants = {
   },
 } as const
 
+// Convenience type aliases used by stores and screens
+export type SessionReport = Tables<'session_reports'>;
+export type ActionItem = Tables<'action_items'>;
+export type ActionItemStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+
