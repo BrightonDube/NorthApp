@@ -7,8 +7,13 @@
  * Validates: Requirements 8.7, 11.1, 11.2
  */
 
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Platform, Pressable, ActivityIndicator } from 'react-native';
+import { Audio } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
+import { api, buildAuthHeaders } from '@/lib/api';
+import { useBillingStore } from '@/stores/billingStore';
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -63,6 +68,43 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
   const prefersReducedMotion = useReducedMotion();
   const colors = useThemeColors();
   const isDark = useIsDark();
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+
+  // Cleanup sound on unmount
+  useEffect(() => {
+    return () => { sound?.unloadAsync(); };
+  }, [sound]);
+
+  const handlePlayTts = useCallback(async () => {
+    if (ttsLoading || !message.content) return;
+    setTtsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const res = await fetch(api.voiceTts, {
+        method: 'POST',
+        headers: buildAuthHeaders(session.access_token),
+        body: JSON.stringify({ text: message.content }),
+      });
+      if (!res.ok) throw new Error('TTS failed');
+      const blob = await res.blob();
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: `data:audio/wav;base64,${base64}` },
+          { shouldPlay: true }
+        );
+        setSound(newSound);
+      };
+      reader.readAsDataURL(blob);
+    } catch (e) {
+      console.warn('[TTS] Playback error:', e);
+    } finally {
+      setTtsLoading(false);
+    }
+  }, [message.content, ttsLoading]);
 
   // Animated blinking cursor for streaming
   const cursorOpacity = useSharedValue(1);
@@ -139,6 +181,15 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
           )}
         </Text>
       </View>
+      {!isUser && !isStreaming && message.content.length > 0 && useBillingStore.getState().isProUser && (
+        <Pressable onPress={handlePlayTts} style={styles.ttsBtn} accessibilityLabel="Listen to response">
+          {ttsLoading ? (
+            <ActivityIndicator size={12} color={colors.textTertiary} />
+          ) : (
+            <Ionicons name="volume-medium-outline" size={16} color={colors.textTertiary} />
+          )}
+        </Pressable>
+      )}
     </Animated.View>
   );
 });
@@ -181,6 +232,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '300',
     lineHeight: 20,
+  },
+  ttsBtn: {
+    marginTop: 4,
+    marginLeft: 8,
+    padding: 4,
   },
 });
 
