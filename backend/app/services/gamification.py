@@ -44,17 +44,26 @@ async def get_user_xp(user_id: str) -> dict:
 
     # Row does not exist for this user — create it with defaults
     try:
-        insert = await (
+        # Insert then fetch separately.
+        # supabase-py v2 async: .insert() may not support .select() chaining.
+        defaults = {"user_id": user_id, "total_xp": 0, "level": 1, "current_streak": 0, "longest_streak": 0}
+        await (
             supabase.from_("user_xp")
-            .insert({"user_id": user_id, "total_xp": 0, "level": 1, "current_streak": 0, "longest_streak": 0})
-            .select()
-            .single()
+            .insert(defaults)
             .execute()
         )
-        if insert is not None and insert.data:
-            return insert.data
+        # Fetch the newly created row
+        fetch = await (
+            supabase.from_("user_xp")
+            .select("*")
+            .eq("user_id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        if fetch is not None and fetch.data:
+            return fetch.data
         logger.warning("Insert for user_xp returned no data for user %s", user_id)
-        return {"user_id": user_id, "total_xp": 0, "level": 1, "current_streak": 0, "longest_streak": 0}
+        return defaults
     except Exception as e:
         logger.error("Failed to create user_xp row for user %s: %s", user_id, e)
         # Return safe defaults so the caller doesn't crash

@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from app.dependencies import get_current_user, AuthUser
 from app.models.requests import TTSRequest
 from app.models.responses import TranscriptResponse
-from app.services.groq_client import get_groq_client, MODEL_WHISPER
+from app.services.groq_client import get_groq_client, MODEL_WHISPER, MODEL_TTS
 from app.services.supabase import get_async_supabase_client
 
 logger = logging.getLogger(__name__)

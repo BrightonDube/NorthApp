@@ -90,11 +90,7 @@ export function SplashScreen({ onReady, visible = true }: SplashScreenProps): Re
           </View>
         </View>
 
-        {/* Footer branding */}
-        <View style={[styles.footer, { marginBottom: 32 + insets.bottom }]}>
-          <Text style={styles.brandText}>Lovi</Text>
-          <Text style={styles.attributionText}>curated by Mobbin</Text>
-        </View>
+        {/* Footer removed: only the North logo should be on the splash screen */}
       </LinearGradient>
     </Animated.View>
   );

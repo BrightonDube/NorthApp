@@ -193,10 +193,22 @@ async def create_goal(
     if body.coach_id:
         insert_data["coach_id"] = body.coach_id
 
-    result = await (
+    # Insert the goal first, then fetch it with subtasks separately.
+    # supabase-py v2 async: .insert() may not support .select() chaining.
+    await (
         supabase.from_("goals")
         .insert(insert_data)
+        .execute()
+    )
+
+    # Fetch the newly created goal with subtasks
+    result = await (
+        supabase.from_("goals")
         .select("*, subtasks(*)")
+        .eq("user_id", user.id)
+        .eq("title", body.title)
+        .order("created_at", desc=True)
+        .limit(1)
         .single()
         .execute()
     )

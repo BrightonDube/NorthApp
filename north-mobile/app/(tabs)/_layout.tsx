@@ -74,30 +74,13 @@ export default function TabsLayout() {
         animation: prefersReducedMotion ? undefined : 'fade',
       }}
     >
+      {/* Primary nav: max 4 visible tabs (Home, Check-In, Progress, Settings) */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="🏠" label="Home" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="marketplace"
-        options={{
-          title: 'Marketplace',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🛍️" label="Marketplace" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="context"
-        options={{
-          title: 'Context',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="📝" label="Context" focused={focused} />
           ),
         }}
       />
@@ -126,6 +109,21 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="⚙️" label="Settings" focused={focused} />
           ),
+        }}
+      />
+      {/* Hidden tabs: accessible via in-app navigation, not shown in tab bar */}
+      <Tabs.Screen
+        name="marketplace"
+        options={{
+          title: 'Marketplace',
+          href: null, // Hidden from tab bar; accessible from Home screen
+        }}
+      />
+      <Tabs.Screen
+        name="context"
+        options={{
+          title: 'Context',
+          href: null, // Hidden from tab bar; accessible from Settings or chat
         }}
       />
       <Tabs.Screen

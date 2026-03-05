@@ -180,7 +180,9 @@ async def create_check_in(
     """
     try:
         supabase = await get_async_supabase_client()
-        result = await (
+        # Insert check-in, then fetch it separately.
+        # supabase-py v2 async: .insert() may not support .select() chaining.
+        await (
             supabase.from_("check_ins")
             .insert(
                 {
@@ -193,23 +195,19 @@ async def create_check_in(
                     "type": body.type,
                 }
             )
-            .select("id, user_id, mood, energy, priorities, reflection, gratitude, type, created_at")
-            .single()
             .execute()
         )
 
-        row = result.data
-        if not row:
-            lookup = await (
-                supabase.from_("check_ins")
-                .select("id, user_id, mood, energy, priorities, reflection, gratitude, type, created_at")
-                .eq("user_id", user.id)
-                .order("created_at", desc=True)
-                .limit(1)
-                .execute()
-            )
-            if lookup.data:
-                row = lookup.data[0]
+        # Fetch the newly created check-in
+        lookup = await (
+            supabase.from_("check_ins")
+            .select("id, user_id, mood, energy, priorities, reflection, gratitude, type, created_at")
+            .eq("user_id", user.id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        row = lookup.data[0] if lookup.data else None
 
         if not row:
             logger.error("Check-in insert returned no data for user %s", user.id)

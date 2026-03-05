@@ -22,6 +22,7 @@ from app.services.ai_service import (
     AIRequest,
     AIServiceError,
     MODEL_PRIMARY,
+    MODEL_VISION,
 )
 
 logger = logging.getLogger(__name__)
@@ -599,7 +600,9 @@ async def update_grow_state(session_id: str, new_state: str, reasoning: str = ""
 
 async def save_message(session_id: str, role: str, content: str) -> str:
     supabase = await get_async_supabase_client()
-    result = await (
+    # Insert message, then fetch its id separately.
+    # supabase-py v2 async: .insert() may not support .select() chaining.
+    await (
         supabase.from_("messages")
         .insert(
             {
@@ -608,7 +611,17 @@ async def save_message(session_id: str, role: str, content: str) -> str:
                 "content": content,
             }
         )
+        .execute()
+    )
+
+    # Fetch the newly created message id
+    result = await (
+        supabase.from_("messages")
         .select("id")
+        .eq("chat_session_id", session_id)
+        .eq("role", role)
+        .order("created_at", desc=True)
+        .limit(1)
         .single()
         .execute()
     )
@@ -701,12 +714,25 @@ async def stream_chat_response(
     system_prompt += f"\n\n{grow_guidance}"
 
     user_content = build_multimodal_content(message, attachments)
+    has_images = isinstance(user_content, list)
+
+    # Sanitize history: Groq requires messages[].content to be a string.
+    # Previous image messages may have stored list-type content.
+    sanitized_history = []
+    for msg in history:
+        content = msg.get("content", "")
+        if not isinstance(content, str):
+            content = str(content)
+        sanitized_history.append({"role": msg["role"], "content": content})
 
     messages = [
         {"role": "system", "content": system_prompt},
-        *history,
+        *sanitized_history,
         {"role": "user", "content": user_content},
     ]
+
+    # Use vision model when images are attached; standard model otherwise
+    selected_model = MODEL_VISION if has_images else MODEL_PRIMARY
 
     full_response = ""
 
@@ -720,12 +746,11 @@ async def stream_chat_response(
     ai_service = get_ai_service()
     
     try:
-        # Use MODEL_PRIMARY with default temperature 0.7
         request = AIRequest(
             messages=messages,
             temperature=0.7,
             max_tokens=1024,
-            model=MODEL_PRIMARY,
+            model=selected_model,
             stream=True
         )
         
@@ -737,13 +762,13 @@ async def stream_chat_response(
         llm_success = True
     except (AIServiceError, Exception) as e:
         llm_error = str(e)
-        logger.error("Error streaming chat response with model=%s: %s", MODEL_PRIMARY, e)
+        logger.error("Error streaming chat response with model=%s: %s", selected_model, e)
 
     # Record LLM metrics
     llm_duration = time.time() - llm_start_time
     estimated_tokens = estimate_tokens(full_response) if full_response else 0
     metrics_collector.record_llm_call(
-        model=MODEL_PRIMARY,
+        model=selected_model,
         tokens=estimated_tokens,
         success=llm_success,
         duration=llm_duration,
@@ -751,7 +776,7 @@ async def stream_chat_response(
     )
 
     if not llm_success:
-        logger.error("Error streaming chat response with model=%s: %s", MODEL_PRIMARY, llm_error)
+        logger.error("Error streaming chat response with model=%s: %s", selected_model, llm_error)
         yield f"data: {json.dumps({'type': 'error', 'message': 'AI service is not available at the moment. Please try again later.'})}\n\n"
         return
 
@@ -775,7 +800,7 @@ async def stream_chat_response(
             session_id=session_id,
             message=message,
             full_response=full_response,
-            model=MODEL_PRIMARY,
+            model=selected_model,
             input_text=input_text,
             previous_grow_state=grow_state_data["state"],
         )

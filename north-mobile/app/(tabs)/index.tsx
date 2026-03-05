@@ -39,21 +39,19 @@ import { useTheme, useIsDark, useThemeColors } from '@/contexts/ThemeContext';
 import type { Coach } from '@/types';
 
 /**
- * Back Button Component for header
+ * North Logo Component for home screen header
+ * Replaces back arrow since home is the root screen with nothing to go back to.
  */
-function HeaderBackButton() {
-  const router = useRouter();
-  const colors = useThemeColors();
+function HeaderLogo() {
   return (
-    <Pressable
-      onPress={() => router.back()}
-      style={styles.headerBackButton}
-      accessible
-      accessibilityRole="button"
-      accessibilityLabel="Go back"
-    >
-      <Ionicons name="arrow-back" size={24} color={colors.text} />
-    </Pressable>
+    <View style={styles.headerLogoContainer}>
+      <Image
+        source={require('@/assets/logo.png')}
+        style={styles.headerLogo}
+        resizeMode="contain"
+        accessibilityLabel="North logo"
+      />
+    </View>
   );
 }
 
@@ -334,7 +332,7 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.borderSecondary }]}>
-          <HeaderBackButton />
+          <HeaderLogo />
           {isProUser && <ProBadge />}
         </View>
         <View style={styles.headerSection}>
@@ -359,8 +357,9 @@ export default function HomeScreen() {
       <OfflineIndicator />
       
       {/* Fixed Header */}
+      {/* North logo replaces back arrow — home is root screen */}
       <View style={[styles.header, { borderBottomColor: colors.borderSecondary }]}>
-        <HeaderBackButton />
+        <HeaderLogo />
         {isProUser && <ProBadge />}
       </View>
 
@@ -538,12 +537,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerBackButton: {
+  headerLogoContainer: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
   },
   proBadge: {
     flexDirection: 'row',

@@ -13,7 +13,8 @@ from app.config import get_settings
 # ---------------------------------------------------------------------------
 MODEL_COMPLEX = "llama-3.3-70b-versatile"       # Primary chat / coaching
 MODEL_FAST = "llama-3.1-8b-instant"              # Background tasks (memory extraction, insights)
-MODEL_REASONING = "deepseek-r1-distill-llama-70b" # Goal planning / complex reasoning
+# deepseek-r1-distill-llama-70b was decommissioned by Groq; use versatile model instead
+MODEL_REASONING = "llama-3.3-70b-versatile"       # Goal planning / complex reasoning
 MODEL_SCOUT = "llama-4-scout"                    # Advanced reasoning & vision
 MODEL_VISION = "llama-3.2-90b-vision-preview"    # Multimodal image analysis
 MODEL_WHISPER = "whisper-large-v3"               # Speech-to-text
