@@ -39,7 +39,7 @@ async def get_user_xp(user_id: str) -> dict:
         .maybe_single()
         .execute()
     )
-    if result.data:
+    if result is not None and result.data:
         return result.data
 
     # Row does not exist for this user — create it with defaults
@@ -51,7 +51,10 @@ async def get_user_xp(user_id: str) -> dict:
             .single()
             .execute()
         )
-        return insert.data
+        if insert is not None and insert.data:
+            return insert.data
+        logger.warning("Insert for user_xp returned no data for user %s", user_id)
+        return {"user_id": user_id, "total_xp": 0, "level": 1, "current_streak": 0, "longest_streak": 0}
     except Exception as e:
         logger.error("Failed to create user_xp row for user %s: %s", user_id, e)
         # Return safe defaults so the caller doesn't crash

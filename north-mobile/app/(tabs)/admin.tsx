@@ -178,7 +178,7 @@ export default function AdminScreen() {
       
       let userList: ManagedUser[] = [];
       
-      if (authData?.users) {
+      if (!authError && authData?.users && authData.users.length > 0) {
         // Map auth users with profile data
         userList = authData.users.map(authUser => {
           const profile = profiles?.find(p => p.id === authUser.id);
@@ -191,7 +191,7 @@ export default function AdminScreen() {
             pro_expires_at: null,
           };
         });
-      } else if (profiles) {
+      } else if (profiles && profiles.length > 0) {
         // Fallback if we can't access auth users
         userList = profiles.map(profile => ({
           id: profile.id,
