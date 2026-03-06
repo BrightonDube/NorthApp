@@ -159,109 +159,41 @@ export default function AdminScreen() {
     }
   }, [isAdmin, isLoading]);
   
-  // Fetch users
+  // Fetch users from backend admin API (requires service role key on backend)
   const fetchUsers = useCallback(async () => {
     if (!isAdmin) return;
     
     try {
-      // Fetch all profiles with subscription info
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, name, created_at')
-        .order('created_at', { ascending: false });
-      
-      if (profilesError) throw profilesError;
-      
-      // Fetch auth users to get emails (this requires admin access in Supabase)
-      // For now, we'll use a workaround by storing email in profiles
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-      
-      let userList: ManagedUser[] = [];
-      
-      if (!authError && authData?.users && authData.users.length > 0) {
-        // Map auth users with profile data
-        userList = authData.users.map(authUser => {
-          const profile = profiles?.find(p => p.id === authUser.id);
-          return {
-            id: authUser.id,
-            email: authUser.email || '',
-            name: profile?.name || null,
-            created_at: authUser.created_at || profile?.created_at || new Date().toISOString(),
-            is_pro: false, // Will be updated from subscription data
-            pro_expires_at: null,
-          };
-        });
-      } else if (profiles && profiles.length > 0) {
-        // Fallback if we can't access auth users
-        userList = profiles.map(profile => ({
-          id: profile.id,
-          email: 'Email hidden',
-          name: profile.name,
-          created_at: profile.created_at,
-          is_pro: false,
-          pro_expires_at: null,
-        }));
+      // Get current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No active session');
       }
       
-      // Fetch subscription status from RevenueCat or local tracking
-      // For simplicity, we'll check a subscriptions table if it exists
-      const { data: subscriptions } = await (supabase as any)
-        .from('user_subscriptions')
-        .select('user_id, is_active, expires_at');
-      
-      if (subscriptions) {
-        userList = userList.map(user => {
-          const sub = subscriptions.find((s: any) => s.user_id === user.id);
-          return {
-            ...user,
-            is_pro: sub?.is_active ?? false,
-            pro_expires_at: sub?.expires_at ?? null,
-          };
-        });
-      }
-      
-      setUsers(userList);
-      
-      // Calculate stats
-      const proCount = userList.filter(u => u.is_pro).length;
-      setStats({
-        totalUsers: userList.length,
-        proUsers: proCount,
-        freeUsers: userList.length - proCount,
+      // Call backend admin API endpoint
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/v1/admin/users`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      setUsers(data.users || []);
+      setStats(data.stats || { totalUsers: 0, proUsers: 0, freeUsers: 0 });
       
     } catch (error) {
       console.error('Error fetching users:', error);
-      // If admin API fails, try alternative approach
-      try {
-        const { data: profiles } = await (supabase as any)
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (profiles) {
-          const userList = profiles.map((p: any) => ({
-            id: p.id,
-            email: p.email || 'Email not available',
-            name: p.name,
-            created_at: p.created_at,
-            is_pro: p.is_pro || false,
-            pro_expires_at: null,
-          }));
-          
-          setUsers(userList);
-          
-          const proCount = userList.filter((u: any) => u.is_pro).length;
-          setStats({
-            totalUsers: userList.length,
-            proUsers: proCount,
-            freeUsers: userList.length - proCount,
-          });
-        }
-      } catch (fallbackError) {
-        console.error('Fallback fetch also failed:', fallbackError);
-        Alert.alert('Error', 'Failed to load users. Please check your admin permissions.');
-      }
+      Alert.alert(
+        'Error', 
+        error instanceof Error ? error.message : 'Failed to load users. Please check your admin permissions.'
+      );
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -277,7 +209,7 @@ export default function AdminScreen() {
     fetchUsers();
   }, [fetchUsers]);
   
-  // Toggle Pro status
+  // Toggle Pro status via backend admin API
   const handleTogglePro = async (userId: string, currentStatus: boolean) => {
     const action = currentStatus ? 'revoke Pro from' : 'grant Pro to';
     const targetUser = users.find(u => u.id === userId);
@@ -294,31 +226,32 @@ export default function AdminScreen() {
             setUpdatingUserId(userId);
             
             try {
-              // Update in user_subscriptions table
-              const { error } = await (supabase as any)
-                .from('user_subscriptions')
-                .upsert({
-                  user_id: userId,
-                  is_active: !currentStatus,
-                  updated_at: new Date().toISOString(),
-                  // If granting, set expiration to 1 year from now
-                  expires_at: !currentStatus 
-                    ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-                    : null,
-                });
+              // Get current session token
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.access_token) {
+                throw new Error('No active session');
+              }
               
-              if (error) throw error;
+              // Call backend admin API to toggle Pro status
+              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/v1/admin/users/${userId}/toggle-pro`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${session.access_token}`,
+                  'Content-Type': 'application/json',
+                },
+              });
               
-              // Also update profiles table for fallback
-              await supabase
-                .from('profiles')
-                .update({ is_pro: !currentStatus })
-                .eq('id', userId);
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(errorData.detail || `HTTP ${response.status}`);
+              }
+              
+              const result = await response.json();
               
               // Update local state
               setUsers(prev => prev.map(u => 
                 u.id === userId 
-                  ? { ...u, is_pro: !currentStatus }
+                  ? { ...u, is_pro: result.is_pro }
                   : u
               ));
               
@@ -338,7 +271,10 @@ export default function AdminScreen() {
             } catch (error) {
               console.error('Error updating user:', error);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Error', 'Failed to update user subscription status.');
+              Alert.alert(
+                'Error', 
+                error instanceof Error ? error.message : 'Failed to update user subscription status.'
+              );
             } finally {
               setUpdatingUserId(null);
             }
