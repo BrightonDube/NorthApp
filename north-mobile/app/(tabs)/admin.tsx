@@ -186,7 +186,13 @@ export default function AdminScreen() {
       const data = await response.json();
       
       setUsers(data.users || []);
-      setStats(data.stats || { totalUsers: 0, proUsers: 0, freeUsers: 0 });
+      // Backend returns snake_case keys, map to camelCase for local state
+      const s = data.stats || {};
+      setStats({
+        totalUsers: s.total_users ?? s.totalUsers ?? 0,
+        proUsers: s.pro_users ?? s.proUsers ?? 0,
+        freeUsers: s.free_users ?? s.freeUsers ?? 0,
+      });
       
     } catch (error) {
       console.error('Error fetching users:', error);

@@ -9,7 +9,6 @@
 import { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -28,30 +27,26 @@ const ANIMATION_DURATION = 280;
 
 interface MenuItem {
   label: string;
-  icon: string;
+  emoji: string;
   route: string;
-  description: string;
   adminOnly?: boolean;
 }
 
 const MENU_ITEMS: MenuItem[] = [
   {
     label: 'Marketplace',
-    icon: 'storefront-outline',
+    emoji: '🛒',
     route: '/marketplace',
-    description: 'Browse & download coaches',
   },
   {
     label: 'Context',
-    icon: 'documents-outline',
+    emoji: '📋',
     route: '/context',
-    description: 'Manage files & knowledge',
   },
   {
     label: 'Session Reports',
-    icon: 'document-text-outline',
+    emoji: '📝',
     route: '/report',
-    description: 'View session summaries',
   },
 ];
 
@@ -141,18 +136,10 @@ export function SideMenu({ isOpen, onClose }: SideMenuProps) {
               accessibilityRole="button"
               accessibilityLabel={item.label}
             >
-              <View style={[styles.menuItemIcon, { backgroundColor: colors.card }]}>
-                <Ionicons name={item.icon as any} size={22} color={colors.text} />
-              </View>
-              <View style={styles.menuItemContent}>
-                <Text style={[styles.menuItemLabel, { color: colors.text }]}>
-                  {item.label}
-                </Text>
-                <Text style={[styles.menuItemDesc, { color: colors.textTertiary }]}>
-                  {item.description}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+              <Text style={styles.menuItemEmoji}>{item.emoji}</Text>
+              <Text style={[styles.menuItemLabel, { color: colors.text }]}>
+                {item.label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -284,24 +271,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 0,
   },
-  menuItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  menuItemEmoji: {
+    fontSize: 24,
     marginRight: 14,
   },
-  menuItemContent: {
-    flex: 1,
-  },
   menuItemLabel: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-  },
-  menuItemDesc: {
-    fontSize: 12,
-    marginTop: 2,
   },
   menuFooter: {
     paddingHorizontal: 24,
