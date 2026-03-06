@@ -10,8 +10,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
-from app.core.auth import get_current_user
-from app.core.supabase_client import get_supabase_client
+from app.dependencies import get_current_user, AuthUser
+from app.services.supabase import get_async_supabase_client
 
 router = APIRouter()
 
@@ -40,12 +40,12 @@ class AdminUsersResponse(BaseModel):
     stats: UserStats
 
 
-async def verify_admin(user_id: str = Depends(get_current_user)) -> str:
+async def verify_admin(user: AuthUser = Depends(get_current_user)) -> str:
     """Verify that the current user is an admin"""
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
     
     # Check if user has admin flag
-    result = await supabase.from_("profiles").select("is_admin").eq("id", user_id).maybe_single().execute()
+    result = await supabase.from_("profiles").select("is_admin").eq("id", user.id).maybe_single().execute()
     
     if not result or not result.data or not result.data.get("is_admin"):
         raise HTTPException(
@@ -53,7 +53,7 @@ async def verify_admin(user_id: str = Depends(get_current_user)) -> str:
             detail="Admin access required"
         )
     
-    return user_id
+    return user.id
 
 
 @router.get("/users", response_model=AdminUsersResponse)
@@ -66,7 +66,7 @@ async def list_users(
     Requires admin role (is_admin=true in profiles table).
     Returns user data from auth.users combined with profiles and subscriptions.
     """
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
     
     try:
         # Fetch all auth users using service role key
@@ -127,7 +127,7 @@ async def toggle_pro_status(
     Requires admin role.
     Updates the user_subscriptions table.
     """
-    supabase = get_supabase_client()
+    supabase = await get_async_supabase_client()
     
     try:
         # Check current subscription status
