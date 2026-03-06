@@ -160,9 +160,9 @@ export default function AdminScreen() {
   }, [isAdmin, isLoading]);
   
   // Fetch users from backend admin API (requires service role key on backend)
+  // Note: no isAdmin guard here — isAdmin may still be false while auth store hydrates.
+  // The backend will return 403 if the user is not admin. isLoading must always be cleared.
   const fetchUsers = useCallback(async () => {
-    if (!isAdmin) return;
-    
     try {
       // Get current session token
       const { data: { session } } = await supabase.auth.getSession();
@@ -204,11 +204,18 @@ export default function AdminScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [isAdmin]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);  // stable — no deps so it never re-creates; isAdmin handled by the useEffect below
   
+  // Only fetch once isAdmin is confirmed true (auth store fully hydrated)
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    if (isAdmin) {
+      fetchUsers();
+    } else {
+      // Auth store may still be hydrating; once isAdmin becomes true the effect re-runs
+      setIsLoading(false);
+    }
+  }, [isAdmin, fetchUsers]);
   
   const onRefresh = useCallback(() => {
     setRefreshing(true);
