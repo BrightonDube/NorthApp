@@ -22,7 +22,7 @@
  * Validates: Requirements 6.2, 6.3, 13.1-13.7
  */
 
-import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet, Image } from 'react-native';
+import { View, Text, ScrollView, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,24 +36,9 @@ import { PaywallModal } from '@/components/billing/PaywallModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { CoachGridSkeleton } from '@/components/SkeletonLoader';
 import { useTheme, useIsDark, useThemeColors } from '@/contexts/ThemeContext';
+import { SideMenu, HamburgerButton } from '@/components/SideMenu';
 import type { Coach } from '@/types';
 
-/**
- * North Logo Component for home screen header
- * Replaces back arrow since home is the root screen with nothing to go back to.
- */
-function HeaderLogo() {
-  return (
-    <View style={styles.headerLogoContainer}>
-      <Image
-        source={require('@/assets/logo.png')}
-        style={styles.headerLogo}
-        resizeMode="contain"
-        accessibilityLabel="North logo"
-      />
-    </View>
-  );
-}
 
 /**
  * Pro Badge Component
@@ -264,6 +249,7 @@ export default function HomeScreen() {
   const { isProUser, isPaywallVisible, paywallFeature, hidePaywall } = useBillingStore();
   
   const [refreshing, setRefreshing] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
@@ -332,7 +318,7 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={[styles.header, { borderBottomColor: colors.borderSecondary }]}>
-          <HeaderLogo />
+          <HamburgerButton isOpen={isMenuOpen} onPress={() => setIsMenuOpen(prev => !prev)} />
           {isProUser && <ProBadge />}
         </View>
         <View style={styles.headerSection}>
@@ -348,6 +334,7 @@ export default function HomeScreen() {
         >
           <CoachGridSkeleton count={4} />
         </ScrollView>
+        <SideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
       </SafeAreaView>
     );
   }
@@ -357,9 +344,9 @@ export default function HomeScreen() {
       <OfflineIndicator />
       
       {/* Fixed Header */}
-      {/* North logo replaces back arrow — home is root screen */}
+      {/* Hamburger menu opens sidebar with Context, Marketplace, etc. */}
       <View style={[styles.header, { borderBottomColor: colors.borderSecondary }]}>
-        <HeaderLogo />
+        <HamburgerButton isOpen={isMenuOpen} onPress={() => setIsMenuOpen(prev => !prev)} />
         {isProUser && <ProBadge />}
       </View>
 
@@ -517,6 +504,9 @@ export default function HomeScreen() {
         feature={paywallFeature || 'coach_creation'}
         onClose={hidePaywall}
       />
+
+      {/* Side Menu */}
+      <SideMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -536,17 +526,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  headerLogoContainer: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerLogo: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
   },
   proBadge: {
     flexDirection: 'row',
