@@ -261,8 +261,9 @@ async def text_to_speech(
     # --- Generate audio via Groq TTS ---
     try:
         client = get_groq_client()
+        # playai-tts was decommissioned by Groq; use MODEL_TTS constant instead
         response = await client.audio.speech.create(
-            model="playai-tts",
+            model=MODEL_TTS,
             input=body.text.strip(),
             voice="Fritz-PlayAI",
             response_format="wav",

@@ -301,10 +301,22 @@ async def create_subtask(
     if body.due_date:
         insert_data["due_date"] = body.due_date
 
-    result = await (
+    # Insert subtask, then fetch it separately.
+    # supabase-py v2 async: .insert() may not support .select() chaining.
+    await (
         supabase.from_("subtasks")
         .insert(insert_data)
-        .select()
+        .execute()
+    )
+
+    # Fetch the newly created subtask
+    result = await (
+        supabase.from_("subtasks")
+        .select("*")
+        .eq("goal_id", goal_id)
+        .eq("title", body.title)
+        .order("created_at", desc=True)
+        .limit(1)
         .single()
         .execute()
     )
