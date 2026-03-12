@@ -71,7 +71,19 @@ async def list_users(
     try:
         # Fetch all auth users using service role key
         auth_response = await supabase.auth.admin.list_users()
-        auth_users = auth_response.users if hasattr(auth_response, 'users') else []
+        auth_users = []
+        if hasattr(auth_response, "users"):
+            auth_users = auth_response.users or []
+        elif isinstance(auth_response, dict):
+            auth_users = auth_response.get("users") or []
+        elif hasattr(auth_response, "data"):
+            data = auth_response.data
+            if isinstance(data, dict):
+                auth_users = data.get("users") or []
+            elif isinstance(data, list):
+                auth_users = data
+            elif hasattr(data, "users"):
+                auth_users = data.users or []
         
         # Fetch all profiles
         profiles_result = await supabase.from_("profiles").select("id, name, is_admin").execute()
@@ -84,14 +96,26 @@ async def list_users(
         # Combine data
         users = []
         for auth_user in auth_users:
-            profile = profiles.get(auth_user.id, {})
-            sub = subscriptions.get(auth_user.id, {})
+            if isinstance(auth_user, dict):
+                user_id = auth_user.get("id")
+                email = auth_user.get("email")
+                created_at = auth_user.get("created_at")
+            else:
+                user_id = getattr(auth_user, "id", None)
+                email = getattr(auth_user, "email", None)
+                created_at = getattr(auth_user, "created_at", None)
+
+            if not user_id:
+                continue
+
+            profile = profiles.get(user_id, {})
+            sub = subscriptions.get(user_id, {})
             
             users.append(ManagedUser(
-                id=auth_user.id,
-                email=auth_user.email or "",
+                id=user_id,
+                email=email or "",
                 name=profile.get("name"),
-                created_at=auth_user.created_at,
+                created_at=created_at or "",
                 is_pro=sub.get("is_active", False),
                 pro_expires_at=sub.get("expires_at"),
                 is_admin=profile.get("is_admin", False)

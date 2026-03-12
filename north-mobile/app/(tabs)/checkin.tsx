@@ -311,7 +311,7 @@ export default function CheckInScreen() {
             </View>
             <View style={[styles.streakDivider, { backgroundColor: colors.border }]} />
             <View style={styles.streakItem}>
-              <Text style={[styles.streakNumber, { color: colors.text }]}>{weeklyCount}/7</Text>
+              <Text style={[styles.streakNumber, { color: colors.text }]}>{weeklyCount}</Text>
               <Text style={[styles.streakLabel, { color: colors.textSecondary }]}>This Week</Text>
             </View>
           </View>

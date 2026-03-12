@@ -63,45 +63,82 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
       weekAgo.setDate(weekAgo.getDate() - 7);
       const weekAgoISO = weekAgo.toISOString();
 
-      // Fetch sessions this week
-      const { data: sessions } = await supabase
-        .from('chat_sessions')
-        .select('id, coach_id, created_at')
+      // Fetch weekly coaching sessions (ended in the last 7 days)
+      const { data: coachingSessions, error: coachingSessionsError } = await supabase
+        .from('coaching_sessions')
+        .select('id, coach_id, end_time')
         .eq('user_id', user.id)
-        .gte('created_at', weekAgoISO);
+        .not('end_time', 'is', null)
+        .gte('end_time', weekAgoISO);
+      if (coachingSessionsError) {
+        throw coachingSessionsError;
+      }
 
-      // Fetch messages this week  
-      const { data: messages } = await supabase
-        .from('messages')
-        .select('id, chat_session_id')
-        .in('chat_session_id', (sessions || []).map(s => s.id))
-        .gte('created_at', weekAgoISO);
+      // Fetch chat sessions (needed to attribute messages to the current user)
+      const { data: chatSessions, error: chatSessionsError } = await supabase
+        .from('chat_sessions')
+        .select('id')
+        .eq('user_id', user.id);
+      if (chatSessionsError) {
+        throw chatSessionsError;
+      }
+
+      // Fetch messages this week
+      let messages: { id: string; chat_session_id: string }[] = [];
+      const chatSessionIds = (chatSessions || []).map((s: any) => s.id).filter(Boolean);
+      if (chatSessionIds.length > 0) {
+        const { data: messagesData, error: messagesError } = await supabase
+          .from('messages')
+          .select('id, chat_session_id, created_at')
+          .in('chat_session_id', chatSessionIds)
+          .gte('created_at', weekAgoISO);
+        if (messagesError) {
+          throw messagesError;
+        }
+        messages = (messagesData || []) as any;
+      }
 
       // Fetch check-ins this week
-      const { data: checkIns } = await supabase
+      const { data: checkIns, error: checkInsError } = await supabase
         .from('check_ins')
         .select('mood, energy')
         .eq('user_id', user.id)
         .gte('created_at', weekAgoISO);
+      if (checkInsError) {
+        throw checkInsError;
+      }
 
-      // Fetch action items
-      const { data: actionItems } = await supabase
+      // Fetch action items created this week (total)
+      const { data: actionItems, error: actionItemsError } = await supabase
         .from('action_items')
-        .select('status')
+        .select('status, completed_at, created_at')
         .eq('user_id', user.id)
         .gte('created_at', weekAgoISO);
+      if (actionItemsError) {
+        throw actionItemsError;
+      }
 
-      const coachIds = [...new Set((sessions || []).map(s => s.coach_id))];
+      // Fetch action items completed this week (done)
+      const { data: completedActionItems, error: completedActionItemsError } = await supabase
+        .from('action_items')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+        .gte('completed_at', weekAgoISO);
+      if (completedActionItemsError) {
+        throw completedActionItemsError;
+      }
+
+      const coachIds = [...new Set((coachingSessions || []).map((s: any) => s.coach_id).filter(Boolean))];
       const moods = (checkIns || []).map(c => c.mood).filter(Boolean);
       const energies = (checkIns || []).map(c => c.energy).filter(Boolean);
-      const completed = (actionItems || []).filter(a => a.status === 'completed');
 
       set({
         weeklySummary: {
-          sessionsCount: (sessions || []).length,
+          sessionsCount: (coachingSessions || []).length,
           messagesCount: (messages || []).length,
           checkInsCount: (checkIns || []).length,
-          actionItemsCompleted: completed.length,
+          actionItemsCompleted: (completedActionItems || []).length,
           actionItemsTotal: (actionItems || []).length,
           coachesUsed: coachIds,
           averageMood: moods.length > 0
@@ -113,7 +150,9 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
         },
       });
     } catch (err: any) {
-      console.warn('[ProgressStore] Weekly summary error:', err.message);
+      const msg = err?.message || 'Failed to load weekly summary';
+      console.warn('[ProgressStore] Weekly summary error:', msg);
+      set({ error: msg });
     }
   },
 

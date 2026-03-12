@@ -44,11 +44,11 @@ Built for creators, founders, and operators who:
 
 ## Tech Stack
 
-- **Frontend**: React Native (Expo), TypeScript, NativeWind
+- **Mobile**: React Native (Expo), TypeScript, NativeWind
 - **Routing**: Expo Router (file-based)
 - **State**: Zustand
-- **Backend**: Supabase (Auth, PostgreSQL, Edge Functions)
-- **AI**: Groq API (Llama / DeepSeek models)
+- **Backend**: Supabase (Auth, PostgreSQL, Edge Functions) + optional FastAPI service (`backend/`)
+- **AI**: Supabase Edge Functions + Groq (backend) + Voyage (embeddings)
 - **Payments**: RevenueCat
 - **Testing**: Jest, React Native Testing Library, fast-check (PBT)
 
@@ -56,16 +56,22 @@ Built for creators, founders, and operators who:
 
 ```
 Mobile Client (Expo)
-├── UI Layer (Screens & Components)
-├── State Management (Zustand Stores)
+├── UI Layer (Expo Router screens & components)
+├── State Management (Zustand)
 └── Local Storage (AsyncStorage)
         │
-        ├─── Supabase Backend
-        │    ├── Auth Service
-        │    ├── PostgreSQL Database
-        │    └── Edge Functions (AI Proxy)
-        │           │
-        │           └─── Groq API
+        ├─── Supabase
+        │    ├── Auth (JWT)
+        │    ├── Postgres (app data)
+        │    └── Edge Functions (AI + context injection)
+        │           ├── Groq
+        │           ├── Gemini
+        │           └── X.AI
+        │
+        ├─── FastAPI Service (optional, `backend/`)
+        │    ├── Groq (chat/voice/TTS)
+        │    ├── Voyage (embeddings → pgvector)
+        │    └── OneSignal / Tavily / Google APIs
         │
         └─── RevenueCat (Subscriptions)
 ```
@@ -73,15 +79,16 @@ Mobile Client (Expo)
 ## Project Structure
 
 ```
-/app                    # Screens (Expo Router)
-  /(auth)              # Authentication screens
-  /(tabs)              # Main tab screens
-  /chat                # Chat screens
-/components            # Reusable UI components
-/stores                # Zustand state stores
-/lib                   # Utilities and services
-/types                 # TypeScript interfaces
-/supabase/functions    # Edge Functions
+north-mobile/          # Expo app (client)
+  app/                 # Screens (Expo Router)
+    (auth)/            # Authentication screens
+    (tabs)/            # Main tab screens
+  components/          # Reusable UI components
+  stores/              # Zustand state stores
+  lib/                 # Utilities and services
+  types/               # TypeScript interfaces
+backend/               # FastAPI service (hosted on Railway)
+supabase/              # Supabase migrations + Edge Functions
 ```
 
 ## Getting Started
@@ -89,33 +96,48 @@ Mobile Client (Expo)
 ### Prerequisites
 
 - Node.js 18+
-- Expo CLI
+- Expo CLI (or `npx expo`)
 - iOS Simulator (macOS) or Android Emulator
 - Supabase account
 - RevenueCat account
-- Groq API key
+
+If you plan to run the optional `backend/` service locally:
+
+- Python 3.11+
+- A Groq API key
+- A Voyage AI API key
 
 ### Installation
 
 ```bash
-# Install dependencies
+# Mobile app
+cd north-mobile
 npm install
-
-# Set up environment variables
 cp .env.example .env
-# Edit .env with your credentials
-
-# Start development server
 npm start
 ```
 
 ### Environment Variables
 
+This repo has separate environment files per service.
+
+#### Mobile (`north-mobile/.env`)
+
+```
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_REVENUECAT_API_KEY=your_revenuecat_public_api_key
+```
+
+#### Backend (`backend/.env`) (optional)
+
+See `backend/.env.example` for the full list. Common values:
+
 ```
 SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 GROQ_API_KEY=your_groq_api_key
-REVENUECAT_API_KEY=your_revenuecat_api_key
+VOYAGE_API_KEY=your_voyage_api_key
 ```
 
 ## Development
@@ -133,6 +155,17 @@ npm run ios
 
 # Run on Android
 npm run android
+```
+
+### Running the Backend (optional)
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --port 8000
 ```
 
 ### Testing
@@ -157,34 +190,30 @@ npm run test:coverage
 
 This project uses GitHub Actions for automated builds and deployments:
 
-- **Automatic Releases**: Push to `main` → Builds and submits to Play Store automatically
 - **Automatic Updates**: Push to `main` → EAS Update publishes automatically
+- **Releases**: Release workflows live under `.github/workflows/` (build/submit/release)
 - **Manual Builds**: Trigger builds from GitHub Actions when needed
 - **Automated Tests**: Tests run on every PR and push to `main`
 
 ### Quick Setup
 
 1. Get your Expo token: `eas whoami --json`
-2. Add GitHub secrets (see `.documentation/CICD_SETUP_CHECKLIST.md`)
+2. Add required GitHub secrets for EAS / store submission
 3. Push to `main` - app builds and submits automatically!
-
-**📚 Documentation:**
-- All guides are in `.documentation/` folder
-- Start with: `.documentation/verify-play-console.md` (if having issues)
-- Or: `.documentation/RELEASE_WORKFLOW_SUMMARY.md` (for releases)
 
 ### Workflows
 
 - `.github/workflows/eas-update.yml` - Automatic OTA updates
 - `.github/workflows/eas-build.yml` - Manual native builds
+- `.github/workflows/eas-submit.yml` - Store submission
+- `.github/workflows/release.yml` - Release orchestration
 - `.github/workflows/test.yml` - Automated testing
 
 ### Database Setup
 
 1. Create a Supabase project
 2. Run the schema migrations in `/supabase/migrations`
-3. Seed default coaches data
-4. Configure Row Level Security (RLS) policies
+3. Configure Row Level Security (RLS) policies
 
 ### Edge Functions
 

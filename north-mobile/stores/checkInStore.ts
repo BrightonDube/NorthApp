@@ -31,6 +31,7 @@ interface CheckInState {
   currentStreak: number;
   longestStreak: number;
   weeklyCount: number;
+  weeklyDays: number;
   isLoading: boolean;
   error: string | null;
   lastCheckInDate: string | null;
@@ -70,6 +71,22 @@ function computeWeeklyCount(checkIns: CheckIn[]): number {
     const createdAt = new Date(normalizeDateString(c.createdAt));
     return createdAt >= weekStart;
   }).length;
+}
+
+function computeWeeklyDays(checkIns: CheckIn[]): number {
+  const weekStart = getStartOfWeek();
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const uniqueDays = new Set<string>();
+  for (const c of checkIns) {
+    const createdAt = new Date(normalizeDateString(c.createdAt));
+    if (createdAt >= weekStart && createdAt < weekEnd) {
+      uniqueDays.add(createdAt.toISOString().split('T')[0]);
+    }
+  }
+
+  return Math.min(7, uniqueDays.size);
 }
 
 function getStartOfWeek(): Date {
@@ -164,6 +181,7 @@ export const useCheckInStore = create<CheckInStore>()(
       currentStreak: 0,
       longestStreak: 0,
       weeklyCount: 0,
+      weeklyDays: 0,
       isLoading: false,
       error: null,
       lastCheckInDate: null,
@@ -355,7 +373,12 @@ export const useCheckInStore = create<CheckInStore>()(
       calculateStreak: () => {
         const { checkIns } = get();
         if (checkIns.length === 0) {
-          set({ currentStreak: 0, longestStreak: 0, weeklyCount: get().getWeeklyCheckIns().length });
+          set({
+            currentStreak: 0,
+            longestStreak: 0,
+            weeklyCount: get().getWeeklyCheckIns().length,
+            weeklyDays: 0,
+          });
           return;
         }
 
@@ -401,6 +424,7 @@ export const useCheckInStore = create<CheckInStore>()(
           currentStreak: streak,
           longestStreak: Math.max(longest, streak),
           weeklyCount: computeWeeklyCount(checkIns),
+          weeklyDays: computeWeeklyDays(checkIns),
         });
       },
 

@@ -164,14 +164,20 @@ export default function AdminScreen() {
   // The backend will return 403 if the user is not admin. isLoading must always be cleared.
   const fetchUsers = useCallback(async () => {
     try {
+      setIsLoading(true);
       // Get current session token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error('No active session');
       }
+
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error('Missing EXPO_PUBLIC_API_URL. Configure it in north-mobile/.env');
+      }
       
       // Call backend admin API endpoint
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/v1/admin/users`, {
+      const response = await fetch(`${apiUrl}/v1/admin/users`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
@@ -244,9 +250,14 @@ export default function AdminScreen() {
               if (!session?.access_token) {
                 throw new Error('No active session');
               }
+
+              const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+              if (!apiUrl) {
+                throw new Error('Missing EXPO_PUBLIC_API_URL. Configure it in north-mobile/.env');
+              }
               
               // Call backend admin API to toggle Pro status
-              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/v1/admin/users/${userId}/toggle-pro`, {
+              const response = await fetch(`${apiUrl}/v1/admin/users/${userId}/toggle-pro`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${session.access_token}`,
